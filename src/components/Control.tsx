@@ -10,7 +10,7 @@ const LOGS = [
   "[09:41:24] task #128 закрыта · отв. С. Орлова",
   "[09:41:31] meeting notes → 3 договорённости зафиксированы",
   "[09:41:37] risk scan: 03 фактора · уровень low",
-  "[09:41:44] control: наём · approval required",
+  "[09:41:44] control: найм · approval required",
   "[09:41:52] report: операционный срез отправлен CEO",
 ];
 
@@ -18,7 +18,7 @@ const OPS = [
   { name: "Проект Alpha", lead: "Д. Ким", value: 68, color: "var(--color-warn)", note: "delayed" },
   { name: "Проект Orion", lead: "М. Ветрова", value: 82, color: "var(--color-flux)", note: "on track" },
   { name: "Маркетинг Q3", lead: "А. Шульц", value: 54, color: "var(--color-ion)", note: "review" },
-  { name: "Наём команды", lead: "HR-контур", value: 41, color: "var(--color-flux)", note: "approval" },
+  { name: "Найм команды", lead: "HR-контур", value: 41, color: "var(--color-flux)", note: "approval" },
 ];
 
 const ALERTS = [
