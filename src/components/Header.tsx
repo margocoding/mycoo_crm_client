@@ -36,7 +36,7 @@ export default function Header() {
     >
       <div
         className={`mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 md:px-8 transition-all duration-500 ${
-          scrolled ? "h-14" : "h-[72px]"
+          scrolled ? "h-14" : "h-18"
         }`}
       >
         {/* brand */}

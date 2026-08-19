@@ -79,7 +79,7 @@ export function WhatIs() {
   return (
     <section id="about" className="relative border-t border-line/50 py-24 md:py-32">
       <div
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] w-[720px] -translate-x-1/2 rounded-full opacity-40"
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] max-w-[720px] -translate-x-1/2 rounded-full opacity-40"
         style={{ background: "radial-gradient(ellipse, rgba(139,133,248,0.14), transparent 70%)" }}
       />
       <div className="mx-auto max-w-7xl px-5 md:px-8">
