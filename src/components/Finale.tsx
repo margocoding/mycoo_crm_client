@@ -1,28 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Reveal, Decode } from "../lib/motion";
 import { OrbitRings, StatusChip, StatusDot } from "./ambient";
-import { Logo, IconArrow, IconCheck } from "./icons";
+import { Logo, IconArrow } from "./icons";
+import { useLaunch } from "./Register";
 
 /* ============ ФИНАЛЬНЫЙ CTA ============ */
 
 export function Launch() {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
-  const [reqId] = useState(
-    () => `MC-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`
-  );
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Укажите корректный email — иначе оператор не сможет выйти на связь.");
-      return;
-    }
-    setError("");
-    setDone(true);
-  };
+  const { open: openLaunch } = useLaunch();
 
   return (
     <section id="launch" className="relative overflow-hidden border-t border-line/50 py-28 md:py-36">
@@ -59,76 +44,44 @@ export function Launch() {
         </Reveal>
 
         <Reveal delay={150}>
-          {!done ? (
-            <form onSubmit={submit} className="glass corner relative mx-auto mt-10 max-w-xl rounded-xl p-5 text-left md:p-6" noValidate>
-              <span className="cx absolute inset-0 pointer-events-none" />
-              <div className="mb-4 flex items-center justify-between">
-                <span className="mono-label text-fog">заявка на запуск</span>
-                <span className="font-mono text-[10px] text-fog/60">REQ {reqId}</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Имя"
-                    aria-label="Имя"
-                    className="w-full rounded-md border border-line bg-void/60 px-4 py-3 text-[14px] text-snow placeholder:text-fog/50 outline-none transition-colors focus:border-flux/60 focus:shadow-[0_0_20px_-8px_rgba(56,189,248,0.6)]"
-                  />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Рабочий email"
-                    aria-label="Рабочий email"
-                    className="w-full rounded-md border border-line bg-void/60 px-4 py-3 text-[14px] text-snow placeholder:text-fog/50 outline-none transition-colors focus:border-flux/60 focus:shadow-[0_0_20px_-8px_rgba(56,189,248,0.6)]"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="btn-primary group inline-flex items-center justify-center gap-2.5 rounded-md bg-flux px-6 py-3 text-[13.5px] font-bold text-void shadow-[0_0_30px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_44px_-8px_rgba(56,189,248,0.95)]"
-                >
-                  Запустить
-                  <IconArrow className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                </button>
-              </div>
-              {error && (
-                <p className="mt-3 flex items-center gap-2 font-mono text-[11px] text-crit">
-                  <StatusDot color="var(--color-crit)" /> {error}
-                </p>
-              )}
-              <p className="mono-label mt-4 text-fog/45">
-                без спама · только план запуска и условия подключения
-              </p>
-            </form>
-          ) : (
-            <div className="glass corner relative mx-auto mt-10 max-w-xl rounded-xl p-7 text-left">
-              <span className="cx absolute inset-0 pointer-events-none" />
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-ok/50 bg-ok/10 text-ok">
-                  <IconCheck className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="font-display text-lg font-semibold text-snow">
-                    Заявка зарегистрирована
-                  </p>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ok">
-                    request {reqId} · logged
-                  </p>
-                </div>
-              </div>
-              <p className="mt-4 text-[14px] leading-relaxed text-fog">
-                {name ? `${name}, ` : ""}оператор MyCOO свяжется с вами по адресу{" "}
-                <span className="font-mono text-[13px] text-mist">{email}</span> и
-                подготовит план запуска вашего цифрового операционного директора.
-              </p>
-              <div className="mt-5 space-y-1.5 border-t border-line/60 pt-4 font-mono text-[11px] text-fog/70">
-                <p>→ step 01 · бриф по процессам компании</p>
-                <p>→ step 02 · конфигурация операционного контура</p>
-                <p>→ step 03 · запуск и первая телеметрия</p>
-              </div>
+          <div className="glass corner relative mx-auto mt-10 max-w-xl rounded-xl p-6 md:p-7">
+            <span className="cx pointer-events-none absolute inset-0" />
+            <div className="mb-5 flex items-center justify-between">
+              <span className="mono-label text-fog">протокол запуска</span>
+              <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ok/90">
+                <StatusDot /> crew onboarding
+              </span>
             </div>
-          )}
+
+            {/* launch steps */}
+            <ol className="mb-6 space-y-2 text-left font-mono text-[11.5px] text-fog/85">
+              <li className="flex items-center gap-3">
+                <span className="text-flux">▸</span> шаг 01 · регистрация по email
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-flux">▸</span> шаг 02 · создание пароля доступа
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-flux">▸</span> шаг 03 · подтверждение email кодом
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-ok">▸</span> шаг 04 · операционный контур активен
+              </li>
+            </ol>
+
+            <button
+              type="button"
+              onClick={openLaunch}
+              className="btn-primary group inline-flex w-full items-center justify-center gap-3 rounded-md bg-flux px-6 py-4 text-[14px] font-bold text-void shadow-[0_0_36px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_52px_-8px_rgba(56,189,248,0.95)]"
+            >
+              Запустить своего цифрового операционного директора
+              <IconArrow className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
+            </button>
+
+            <p className="mono-label mt-4 text-fog/45">
+              4 фазы · ~2 минуты · демо-режим без передачи данных
+            </p>
+          </div>
         </Reveal>
       </div>
     </section>
