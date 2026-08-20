@@ -234,6 +234,35 @@ body {
 .spin-slow { animation: spin-slow 90s linear infinite; transform-origin: center; }
 .spin-slower { animation: spin-slow 160s linear infinite reverse; transform-origin: center; }
 
+/* ---------- registration overlay ---------- */
+@keyframes step-in {
+  from { opacity: 0; transform: translateX(26px); }
+  to { opacity: 1; transform: none; }
+}
+.step-in { animation: step-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes shake-x {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.shake { animation: shake-x 0.42s ease both; }
+
+@keyframes draw-path { to { stroke-dashoffset: 0; } }
+.draw-path {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: draw-path 0.7s 0.25s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+@keyframes log-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.log-in { opacity: 0; animation: log-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

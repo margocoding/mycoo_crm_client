@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Reveal } from "../lib/motion";
 import { Corners, SectionHeading, StatusChip } from "./ambient";
 import { IconCheck } from "./icons";
+import { useLaunch } from "./Register";
 
 /* ============ ТАРИФЫ ============ */
 
@@ -52,6 +53,7 @@ const PLANS = [
 ];
 
 export function Pricing() {
+  const { open: openLaunch } = useLaunch();
   return (
     <section id="pricing" className="relative border-t border-line/50 py-24 md:py-32">
       <div
@@ -137,16 +139,17 @@ export function Pricing() {
                   ))}
                 </ul>
 
-                <a
-                  href="#launch"
-                  className={`btn-primary mt-8 block rounded-md px-5 py-3.5 text-center text-[13.5px] font-bold transition-all duration-300 ${
+                <button
+                  type="button"
+                  onClick={openLaunch}
+                  className={`btn-primary mt-8 block w-full rounded-md px-5 py-3.5 text-center text-[13.5px] font-bold transition-all duration-300 ${
                     p.recommended
                       ? "bg-flux text-void shadow-[0_0_30px_-8px_rgba(56,189,248,0.7)] hover:bg-ice"
                       : "border border-line text-mist hover:border-flux/60 hover:text-flux"
                   }`}
                 >
                   Запустить MyCOO
-                </a>
+                </button>
               </article>
             </Reveal>
           ))}

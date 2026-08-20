@@ -9,10 +9,12 @@ import { Value, Audience } from "./components/ValueAudience";
 import { Cases, Testimonials } from "./components/Proof";
 import { Pricing, Faq } from "./components/PricingFaq";
 import { Launch, Footer } from "./components/Finale";
+import { LaunchProvider } from "./components/Register";
 import { Starfield } from "./components/ambient";
 
 export default function App() {
   return (
+    <LaunchProvider>
     <div className="relative min-h-screen bg-void font-body text-mist">
       {/* ambient background */}
       <Starfield />
@@ -45,5 +47,6 @@ export default function App() {
 
       <Footer />
     </div>
+    </LaunchProvider>
   );
 }

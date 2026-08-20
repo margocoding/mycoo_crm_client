@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Logo, IconX } from "./icons";
 import { StatusDot } from "./ambient";
+import { useLaunch } from "./Register";
 
 const NAV = [
   { href: "#about", label: "О системе" },
@@ -15,6 +16,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
+  const { open: openLaunch } = useLaunch();
 
   useEffect(() => {
     const onScroll = () => {
@@ -65,12 +67,13 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <a
-            href="#launch"
+          <button
+            type="button"
+            onClick={openLaunch}
             className="btn-primary hidden rounded-md bg-flux px-4 py-2.5 text-[13px] font-bold text-void shadow-[0_0_24px_-6px_rgba(56,189,248,0.55)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_34px_-6px_rgba(56,189,248,0.8)] sm:inline-block"
           >
             Запустить MyCOO
-          </a>
+          </button>
 
           {/* burger */}
           <button
@@ -115,13 +118,16 @@ export default function Header() {
               <span className="font-mono text-[10px] text-fog/50">0{i + 1}</span>
             </a>
           ))}
-          <a
-            href="#launch"
-            onClick={() => setOpen(false)}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              openLaunch();
+            }}
             className="mt-3 rounded-md bg-flux px-4 py-3 text-center text-[14px] font-bold text-void"
           >
             Запустить MyCOO
-          </a>
+          </button>
         </nav>
       </div>
     </header>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Decode, fmtTime, useNow } from "../lib/motion";
 import { OrbitRings, StatusChip, StatusDot, CoordTag } from "./ambient";
 import { IconArrow } from "./icons";
+import { useLaunch } from "./Register";
 
 const STATUS_ROWS = [
   { key: "Operations", value: "Stable", tone: "ok" as const },
@@ -120,6 +121,7 @@ function MissionConsole() {
 }
 
 export default function Hero() {
+  const { open: openLaunch } = useLaunch();
   return (
     <section id="top" className="relative overflow-hidden pt-[72px]">
       {/* ambient */}
@@ -170,13 +172,14 @@ export default function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col gap-3.5 sm:flex-row sm:items-center">
-            <a
-              href="#launch"
+            <button
+              type="button"
+              onClick={openLaunch}
               className="btn-primary group inline-flex items-center justify-center gap-3 rounded-md bg-flux px-6 py-4 text-[14px] font-bold text-void shadow-[0_0_36px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_52px_-8px_rgba(56,189,248,0.95)]"
             >
               Запустить своего цифрового операционного директора
               <IconArrow className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </a>
+            </button>
             <a
               href="#how"
               className="inline-flex items-center justify-center gap-2 rounded-md border border-line px-6 py-4 text-[14px] font-semibold text-mist transition-all duration-300 hover:border-flux/50 hover:text-snow"
