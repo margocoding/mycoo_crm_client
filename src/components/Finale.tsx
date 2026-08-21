@@ -59,13 +59,16 @@ export function Launch() {
                 <span className="text-flux">▸</span> шаг 01 · регистрация по email
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-flux">▸</span> шаг 02 · создание пароля доступа
+                <span className="text-flux">▸</span> шаг 02 · пароль и подтверждение кодом
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-flux">▸</span> шаг 03 · подтверждение email кодом
+                <span className="text-flux">▸</span> шаг 03 · бриф компании · ~5 минут
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-ok">▸</span> шаг 04 · операционный контур активен
+                <span className="text-ion">▸</span> шаг 04 · экспресс-диагностика → управленческий профиль
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-ok">▸</span> шаг 05 · trial · 10 дней в рабочем пространстве
               </li>
             </ol>
 
@@ -79,7 +82,7 @@ export function Launch() {
             </button>
 
             <p className="mono-label mt-4 text-fog/45">
-              4 фазы · ~2 минуты · демо-режим без передачи данных
+              trial стартует после онбординга · демо-режим без передачи данных
             </p>
           </div>
         </Reveal>

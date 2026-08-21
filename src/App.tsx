@@ -9,12 +9,12 @@ import { Value, Audience } from "./components/ValueAudience";
 import { Cases, Testimonials } from "./components/Proof";
 import { Pricing, Faq } from "./components/PricingFaq";
 import { Launch, Footer } from "./components/Finale";
-import { LaunchProvider } from "./components/Register";
+import { LaunchProvider, useLaunch } from "./components/Register";
+import Workspace from "./components/Workspace";
 import { Starfield } from "./components/ambient";
 
-export default function App() {
+function Landing() {
   return (
-    <LaunchProvider>
     <div className="relative min-h-screen bg-void font-body text-mist">
       {/* ambient background */}
       <Starfield />
@@ -47,6 +47,18 @@ export default function App() {
 
       <Footer />
     </div>
+  );
+}
+
+function Shell() {
+  const { view } = useLaunch();
+  return view === "app" ? <Workspace /> : <Landing />;
+}
+
+export default function App() {
+  return (
+    <LaunchProvider>
+      <Shell />
     </LaunchProvider>
   );
 }

@@ -58,9 +58,10 @@ const EXAMPLES = [
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const SITE_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?#].*)?$/i;
 
-interface Profile {
+export interface Profile {
   company: string;
   industry: string;
+  industryOther: string;
   site: string;
   employees: string;
   managers: string;
@@ -68,6 +69,7 @@ interface Profile {
   stage: string;
   ownerName: string;
   ownerRole: string;
+  roleOther: string;
   ownerEmail: string;
   goal: string;
   problem: string;
@@ -79,6 +81,7 @@ interface Profile {
 const EMPTY: Profile = {
   company: "",
   industry: "",
+  industryOther: "",
   site: "",
   employees: "",
   managers: "",
@@ -86,6 +89,7 @@ const EMPTY: Profile = {
   stage: "",
   ownerName: "",
   ownerRole: "",
+  roleOther: "",
   ownerEmail: "",
   goal: "",
   problem: "",
@@ -172,10 +176,12 @@ export function OnboardingOverlay({
   open,
   onClose,
   regEmail,
+  onFinish,
 }: {
   open: boolean;
   onClose: () => void;
   regEmail: string;
+  onFinish?: (p: Profile) => void;
 }) {
   const [step, setStep] = useState(0);
   const [p, setP] = useState<Profile>(EMPTY);
@@ -236,6 +242,8 @@ export function OnboardingOverlay({
     if (step === 1) {
       if (!p.company.trim()) return fail("Укажите название компании — это первая точка контекста.");
       if (!p.industry) return fail("Выберите отрасль.");
+      if (p.industry === "Другое" && !p.industryOther.trim())
+        return fail("Опишите, чем занимается компания — вы выбрали «Другое».");
       if (!p.employees) return fail("Укажите количество сотрудников.");
       if (!p.managers) return fail("Укажите количество руководителей.");
       if (!p.stage) return fail("Выберите стадию бизнеса.");
@@ -245,6 +253,8 @@ export function OnboardingOverlay({
     if (step === 2) {
       if (!p.ownerName.trim()) return fail("Как к вам обращаться?");
       if (!p.ownerRole) return fail("Выберите вашу роль.");
+      if (p.ownerRole === "Другое" && !p.roleOther.trim())
+        return fail("Укажите вашу должность — вы выбрали «Другое».");
       if (!EMAIL_RE.test(p.ownerEmail.trim())) return fail("Email для связи не распознан.");
     }
     if (step === 3) {
@@ -506,6 +516,16 @@ export function OnboardingOverlay({
                         </Chip>
                       ))}
                     </div>
+                    {p.industry === "Другое" && (
+                      <input
+                        autoFocus
+                        autoComplete="off"
+                        value={p.industryOther}
+                        onChange={(e) => set("industryOther")(e.target.value)}
+                        placeholder="Чем занимается компания — опишите своими словами"
+                        className={`${inputCls} mt-3`}
+                      />
+                    )}
                   </div>
 
                   <div className="grid gap-5 sm:grid-cols-2">
@@ -607,6 +627,16 @@ export function OnboardingOverlay({
                         </Chip>
                       ))}
                     </div>
+                    {p.ownerRole === "Другое" && (
+                      <input
+                        autoFocus
+                        autoComplete="off"
+                        value={p.roleOther}
+                        onChange={(e) => set("roleOther")(e.target.value)}
+                        placeholder="Ваша должность — например, коммерческий директор"
+                        className={`${inputCls} mt-3`}
+                      />
+                    )}
                   </div>
                   <div>
                     <Label>email</Label>
@@ -799,12 +829,27 @@ export function OnboardingOverlay({
                       </dl>
                     </div>
 
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
                       <button
-                        onClick={onClose}
-                        className="btn-primary inline-flex items-center justify-center gap-2.5 rounded-md bg-flux px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice"
+                        onClick={() =>
+                          onFinish?.({
+                            ...p,
+                            industry:
+                              p.industry === "Другое" && p.industryOther.trim()
+                                ? p.industryOther.trim()
+                                : p.industry,
+                            ownerRole:
+                              p.ownerRole === "Другое" && p.roleOther.trim()
+                                ? p.roleOther.trim()
+                                : p.ownerRole,
+                          })
+                        }
+                        className="btn-primary group inline-flex items-center justify-center gap-2.5 rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_44px_-8px_rgba(139,133,248,0.95)]"
                       >
-                        Вернуться на борт
+                        Перейти к экспресс-диагностике
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 12h14M13 6.5 18.5 12 13 17.5" />
+                        </svg>
                       </button>
                       <a
                         href={`mailto:hello@mycoo.ai?subject=MyCOO бриф · ${encodeURIComponent(p.company)}`}
@@ -812,6 +857,12 @@ export function OnboardingOverlay({
                       >
                         Отправить бриф оператору
                       </a>
+                      <button
+                        onClick={onClose}
+                        className="mono-label text-fog/50 transition-colors hover:text-flux sm:ml-auto"
+                      >
+                        позже
+                      </button>
                     </div>
                   </div>
                 )}

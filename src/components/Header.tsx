@@ -16,7 +16,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
-  const { open: openLaunch } = useLaunch();
+  const { open: openLaunch, trialActive } = useLaunch();
 
   useEffect(() => {
     const onScroll = () => {
@@ -72,7 +72,7 @@ export default function Header() {
             onClick={openLaunch}
             className="btn-primary hidden rounded-md bg-flux px-4 py-2.5 text-[13px] font-bold text-void shadow-[0_0_24px_-6px_rgba(56,189,248,0.55)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_34px_-6px_rgba(56,189,248,0.8)] sm:inline-block"
           >
-            Запустить MyCOO
+            {trialActive ? "Открыть MyCOO" : "Запустить MyCOO"}
           </button>
 
           {/* burger */}
@@ -126,7 +126,7 @@ export default function Header() {
             }}
             className="mt-3 rounded-md bg-flux px-4 py-3 text-center text-[14px] font-bold text-void"
           >
-            Запустить MyCOO
+            {trialActive ? "Открыть MyCOO" : "Запустить MyCOO"}
           </button>
         </nav>
       </div>
