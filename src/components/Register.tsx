@@ -12,6 +12,7 @@ import {
 } from "react";
 import { Logo, IconCheck } from "./icons";
 import { StatusChip, StatusDot } from "./ambient";
+import { OnboardingOverlay } from "./Onboarding";
 
 /* ================= context ================= */
 
@@ -19,11 +20,26 @@ const LaunchCtx = createContext<{ open: () => void }>({ open: () => {} });
 export const useLaunch = () => useContext(LaunchCtx);
 
 export function LaunchProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+  const [regOpen, setRegOpen] = useState(false);
+  const [obOpen, setObOpen] = useState(false);
+  const [email, setEmail] = useState("");
   return (
-    <LaunchCtx.Provider value={{ open: () => setOpen(true) }}>
+    <LaunchCtx.Provider value={{ open: () => setRegOpen(true) }}>
       {children}
-      <RegisterOverlay open={open} onClose={() => setOpen(false)} />
+      <RegisterOverlay
+        open={regOpen}
+        onClose={() => setRegOpen(false)}
+        onFinish={(em) => {
+          setEmail(em);
+          setRegOpen(false);
+          setObOpen(true);
+        }}
+      />
+      <OnboardingOverlay
+        open={obOpen}
+        onClose={() => setObOpen(false)}
+        regEmail={email}
+      />
     </LaunchCtx.Provider>
   );
 }
@@ -78,7 +94,15 @@ const SOCIALS = [
 
 /* ================= overlay ================= */
 
-function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+function RegisterOverlay({
+  open,
+  onClose,
+  onFinish,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onFinish?: (email: string) => void;
+}) {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -129,7 +153,6 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
     setCode(genCode());
     setTimer(30);
     setSent(false);
-    setTimeout(() => emailRef.current?.focus(), 120);
   }, [open]);
 
   /* resend countdown */
@@ -138,13 +161,6 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
     const t = setInterval(() => setTimer((v) => v - 1), 1000);
     return () => clearInterval(t);
   }, [open, step, timer]);
-
-  /* focus per step */
-  useEffect(() => {
-    if (!open) return;
-    if (step === 2) setTimeout(() => pwRef.current?.focus(), 120);
-    if (step === 3) setTimeout(() => boxRefs.current[0]?.focus(), 120);
-  }, [step, open]);
 
   /* ---------- step 1: email ---------- */
   const submitEmail = (e: FormEvent) => {
@@ -198,12 +214,21 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
 
   /* ---------- step 3: code ---------- */
   const onDigitChange = (i: number, v: string) => {
-    const d = v.replace(/\D/g, "").slice(-1);
+    const clean = v.replace(/\D/g, "");
     const next = [...digits];
-    next[i] = d;
+    const wasEmpty = digits[i] === "";
+    if (clean.length === 0) {
+      next[i] = "";
+      setDigits(next);
+      setCodeErr("");
+      return;
+    }
+    next[i] = clean.slice(-1);
     setDigits(next);
     setCodeErr("");
-    if (d && i < 5) boxRefs.current[i + 1]?.focus();
+    /* перенос вправо — только при заполнении пустой ячейки:
+       перезапись и правка не «перебрасывают» курсор */
+    if (wasEmpty && i < 5) boxRefs.current[i + 1]?.focus();
     if (next.every((x) => x !== "")) verify(next.join(""));
   };
   const onDigitKey = (i: number, e: KeyboardEvent<HTMLInputElement>) => {
@@ -249,15 +274,18 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-void/85 p-4 backdrop-blur-md"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed inset-0 z-[70] overflow-y-auto bg-void/85 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label="Регистрация MyCOO"
     >
       <div
+        className="flex min-h-full items-center justify-center p-4"
+        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      >
+      <div
         ref={panelRef}
-        className="corner glass step-in relative my-4 w-full max-w-4xl rounded-xl shadow-[0_0_90px_-20px_rgba(56,189,248,0.35)]"
+        className="corner glass step-in relative w-full max-w-4xl rounded-xl shadow-[0_0_90px_-20px_rgba(56,189,248,0.35)]"
       >
         <span className="cx pointer-events-none absolute inset-0" />
 
@@ -376,6 +404,8 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
                       id="reg-email"
                       ref={emailRef}
                       type="email"
+                      autoFocus
+                      autoComplete="off"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -467,6 +497,8 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
                       id="reg-pw"
                       ref={pwRef}
                       type={showPw ? "text" : "password"}
+                      autoFocus
+                      autoComplete="new-password"
                       value={pw}
                       onChange={(e) => {
                         setPw(e.target.value);
@@ -540,6 +572,7 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
                   <input
                     id="reg-pw2"
                     type={showPw ? "text" : "password"}
+                    autoComplete="new-password"
                     value={pw2}
                     onChange={(e) => {
                       setPw2(e.target.value);
@@ -606,6 +639,8 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
                       onKeyDown={(e) => onDigitKey(i, e)}
                       inputMode="numeric"
                       maxLength={2}
+                      autoFocus={i === 0}
+                      autoComplete="off"
                       aria-label={`Цифра кода ${i + 1}`}
                       className={`h-14 w-11 rounded-md border bg-void/70 text-center font-mono text-xl font-bold text-snow outline-none transition-all duration-300 focus:border-flux/70 focus:shadow-[0_0_18px_-6px_rgba(56,189,248,0.7)] sm:w-12 ${
                         codeErr ? "border-crit/60" : d ? "border-flux/50" : "border-line"
@@ -718,22 +753,29 @@ function RegisterOverlay({ open, onClose }: { open: boolean; onClose: () => void
 
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                   <button
+                    onClick={() => onFinish?.(email)}
+                    className="btn-primary group inline-flex items-center justify-center gap-2.5 rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_44px_-8px_rgba(139,133,248,0.95)]"
+                  >
+                    Начать знакомство с MyCOO
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 12h14M13 6.5 18.5 12 13 17.5" />
+                    </svg>
+                  </button>
+                  <button
                     onClick={onClose}
-                    className="btn-primary inline-flex items-center justify-center gap-2.5 rounded-md bg-flux px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice"
+                    className="inline-flex items-center justify-center rounded-md border border-line px-6 py-3.5 text-[13.5px] font-semibold text-mist transition-all duration-300 hover:border-flux/50 hover:text-snow"
                   >
                     Вернуться на борт
                   </button>
-                  <a
-                    href="mailto:hello@mycoo.ai"
-                    className="inline-flex items-center justify-center rounded-md border border-line px-6 py-3.5 text-[13.5px] font-semibold text-mist transition-all duration-300 hover:border-flux/50 hover:text-snow"
-                  >
-                    Связаться с оператором
-                  </a>
                 </div>
+                <p className="mono-label mt-4 text-fog/45">
+                  следующий шаг · бриф компании ~5 минут
+                </p>
               </div>
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
