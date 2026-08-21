@@ -213,23 +213,21 @@ export function OnboardingOverlay({
     };
   }, [open, onClose]);
 
+  /* фокус не управляется таймерами: autoFocus на полях срабатывает
+     только при монтировании шага и не «перебрасывает» курсор при вводе */
   useEffect(() => {
-    if (!open) return;
-    if (step === 1) setTimeout(() => companyRef.current?.focus(), 140);
-    if (step === 2) setTimeout(() => ownerRef.current?.focus(), 140);
-    if (step === 3) setTimeout(() => goalRef.current?.focus(), 140);
-    if (step === 4 && !synced) {
-      const t = setTimeout(() => {
-        setSynced(true);
-        try {
-          localStorage.setItem("mycoo_profile", JSON.stringify(p));
-        } catch {
-          /* demo mode */
-        }
-      }, 2300);
-      return () => clearTimeout(t);
-    }
-  }, [step, open, synced, p]);
+    if (!open || step !== 4 || synced) return;
+    const t = setTimeout(() => {
+      setSynced(true);
+      try {
+        localStorage.setItem("mycoo_profile", JSON.stringify(p));
+      } catch {
+        /* demo mode */
+      }
+    }, 2300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, open, synced]);
 
   const prioCount = [p.p1, p.p2, p.p3].filter((x) => x.trim()).length;
 
@@ -302,13 +300,16 @@ export function OnboardingOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-[75] flex items-center justify-center overflow-y-auto bg-void/85 p-4 backdrop-blur-md"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed inset-0 z-[75] overflow-y-auto bg-void/85 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label="Знакомство с компанией"
     >
-      <div className="corner glass step-in relative my-4 w-full max-w-4xl rounded-xl shadow-[0_0_90px_-20px_rgba(139,133,248,0.35)]">
+      <div
+        className="flex min-h-full items-center justify-center p-4"
+        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      >
+      <div className="corner glass step-in relative w-full max-w-4xl rounded-xl shadow-[0_0_90px_-20px_rgba(139,133,248,0.35)]">
         <span className="cx pointer-events-none absolute inset-0" />
 
         {/* header */}
@@ -476,6 +477,8 @@ export function OnboardingOverlay({
                       <Label>название</Label>
                       <input
                         ref={companyRef}
+                        autoFocus
+                        autoComplete="off"
                         value={p.company}
                         onChange={(e) => set("company")(e.target.value)}
                         placeholder="ООО «Вектор»"
@@ -485,6 +488,7 @@ export function OnboardingOverlay({
                     <div>
                       <Label optional>сайт</Label>
                       <input
+                        autoComplete="off"
                         value={p.site}
                         onChange={(e) => set("site")(e.target.value)}
                         placeholder="company.ru"
@@ -586,6 +590,8 @@ export function OnboardingOverlay({
                     <Label>имя</Label>
                     <input
                       ref={ownerRef}
+                      autoFocus
+                      autoComplete="off"
                       value={p.ownerName}
                       onChange={(e) => set("ownerName")(e.target.value)}
                       placeholder="Как к вам обращаться"
@@ -606,6 +612,7 @@ export function OnboardingOverlay({
                     <Label>email</Label>
                     <input
                       type="email"
+                      autoComplete="off"
                       value={p.ownerEmail}
                       onChange={(e) => set("ownerEmail")(e.target.value)}
                       placeholder="you@company.ru"
@@ -653,6 +660,7 @@ export function OnboardingOverlay({
                     <textarea
                       ref={goalRef}
                       rows={2}
+                      autoFocus
                       value={p.goal}
                       onChange={(e) => set("goal")(e.target.value)}
                       placeholder="Например: увеличить выручку с 50 до 100 млн ₽"
@@ -811,6 +819,7 @@ export function OnboardingOverlay({
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
