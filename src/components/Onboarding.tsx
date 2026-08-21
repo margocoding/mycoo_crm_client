@@ -309,7 +309,7 @@ export function OnboardingOverlay({
         className="flex min-h-full items-center justify-center p-4"
         onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       >
-      <div className="corner glass step-in relative w-full max-w-4xl rounded-xl shadow-[0_0_90px_-20px_rgba(139,133,248,0.35)]">
+      <div className="corner glass step-in relative w-full rounded-xl shadow-[0_0_90px_-20px_rgba(139,133,248,0.35)]">
         <span className="cx pointer-events-none absolute inset-0" />
 
         {/* header */}
@@ -791,7 +791,7 @@ export function OnboardingOverlay({
                         {summary.map(([k, v]) => (
                           <div key={k} className="flex items-baseline justify-between gap-3 border-b border-line/40 pb-1.5">
                             <dt className="mono-label shrink-0 text-fog/55">{k}</dt>
-                            <dd className="truncate text-right text-[12.5px] font-medium text-mist" title={v}>
+                            <dd className="text-right text-[12.5px] font-medium text-mist" title={v}>
                               {v}
                             </dd>
                           </div>
