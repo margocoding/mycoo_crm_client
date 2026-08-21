@@ -287,7 +287,7 @@ export default function Workspace() {
 
           {/* Задачи */}
           <Card title="Задачи" code="SYS·TASKS" delay={0.22} className="lg:col-span-7">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 max-md:grid-cols-1 gap-3">
               <Stat value={27} label="активных" tone="var(--color-flux)" delay={0.3} />
               <Stat value={8} label="просроченных" tone="var(--color-crit)" delay={0.38} pulse />
               <Stat value={14} label="выполнено" tone="var(--color-ok)" delay={0.46} />
@@ -296,14 +296,16 @@ export default function Workspace() {
               {[
                 { t: "Согласовать бюджет маркетинга", s: "просрочена · 2 дня", tone: "var(--color-crit)" },
                 { t: "Подготовить отчёт по продажам", s: "сегодня · 18:00", tone: "var(--color-warn)" },
-                { t: "Найм руководителя отдела", s: "в работе · 3 дня до срока", tone: "var(--color-flux)" },
+                { t: "Найм руководителя отдела", s: "в работе · ещё 3 дня", tone: "var(--color-flux)" },
               ].map((row) => (
                 <div
                   key={row.t}
                   className="flex items-center gap-3 rounded-md border border-line/60 bg-hull/25 px-3.5 py-2.5 transition-colors duration-300 hover:border-line"
                 >
-                  <StatusDot color={row.tone} />
-                  <span className="truncate text-[13px] font-medium text-mist">{row.t}</span>
+                  <span>
+                    <StatusDot color={row.tone} />
+                  </span>
+                  <span className=" text-[13px] font-medium text-mist">{row.t}</span>
                   <span className="ml-auto shrink-0 font-mono text-[10.5px] uppercase tracking-[0.1em]" style={{ color: row.tone }}>
                     {row.s}
                   </span>

@@ -496,7 +496,7 @@ export function DiagnosticsOverlay({
 
                 <div className="mt-6 grid items-center gap-7 sm:grid-cols-[190px_1fr]">
                   {/* dial */}
-                  <div className="relative mx-auto h-[190px] w-[190px]">
+                  <div className="relative mx-auto w-[190px]">
                     <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
                       <circle cx="70" cy="70" r={R} fill="none" stroke="var(--color-hull)" strokeWidth="9" />
                       <circle
@@ -518,7 +518,7 @@ export function DiagnosticsOverlay({
                         </linearGradient>
                       </defs>
                     </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="inset-0 flex flex-col items-center justify-center">
                       <span className="font-display text-4xl font-bold text-snow">{score}</span>
                       <span className="mono-label mt-1 text-fog/60">/ 100 · управляемость</span>
                     </div>
