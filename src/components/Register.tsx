@@ -12,19 +12,84 @@ import {
 } from "react";
 import { Logo, IconCheck } from "./icons";
 import { StatusChip, StatusDot } from "./ambient";
-import { OnboardingOverlay } from "./Onboarding";
+import { OnboardingOverlay, type Profile } from "./Onboarding";
+import { DiagnosticsOverlay } from "./Diagnostics";
 
 /* ================= context ================= */
 
-const LaunchCtx = createContext<{ open: () => void }>({ open: () => {} });
+interface LaunchCtxType {
+  open: () => void;
+  trialActive: boolean;
+  view: "site" | "app";
+  exitToSite: () => void;
+  resetDemo: () => void;
+}
+
+const LaunchCtx = createContext<LaunchCtxType>({
+  open: () => {},
+  trialActive: false,
+  view: "site",
+  exitToSite: () => {},
+  resetDemo: () => {},
+});
 export const useLaunch = () => useContext(LaunchCtx);
 
 export function LaunchProvider({ children }: { children: ReactNode }) {
   const [regOpen, setRegOpen] = useState(false);
   const [obOpen, setObOpen] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [view, setView] = useState<"site" | "app">(() =>
+    typeof localStorage !== "undefined" && localStorage.getItem("mycoo_trial_start")
+      ? "app"
+      : "site"
+  );
+  const [trialActive, setTrialActive] = useState(view === "app");
   const [email, setEmail] = useState("");
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  const open = () => {
+    if (trialActive) {
+      setView("app");
+      window.scrollTo(0, 0);
+    } else {
+      setRegOpen(true);
+    }
+  };
+
+  const enterWorkspace = () => {
+    try {
+      if (!localStorage.getItem("mycoo_trial_start"))
+        localStorage.setItem("mycoo_trial_start", String(Date.now()));
+    } catch {
+      /* demo mode */
+    }
+    setTrialActive(true);
+    setDiagOpen(false);
+    setView("app");
+    window.scrollTo(0, 0);
+  };
+
+  const exitToSite = () => {
+    setView("site");
+    window.scrollTo(0, 0);
+  };
+
+  const resetDemo = () => {
+    try {
+      ["mycoo_profile", "mycoo_mgmt_profile", "mycoo_trial_start"].forEach((k) =>
+        localStorage.removeItem(k)
+      );
+    } catch {
+      /* demo mode */
+    }
+    setTrialActive(false);
+    setProfile(null);
+    setView("site");
+    window.scrollTo(0, 0);
+  };
+
   return (
-    <LaunchCtx.Provider value={{ open: () => setRegOpen(true) }}>
+    <LaunchCtx.Provider value={{ open, trialActive, view, exitToSite, resetDemo }}>
       {children}
       <RegisterOverlay
         open={regOpen}
@@ -39,6 +104,17 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
         open={obOpen}
         onClose={() => setObOpen(false)}
         regEmail={email}
+        onFinish={(p) => {
+          setProfile(p);
+          setObOpen(false);
+          setDiagOpen(true);
+        }}
+      />
+      <DiagnosticsOverlay
+        open={diagOpen}
+        onClose={() => setDiagOpen(false)}
+        onLaunch={enterWorkspace}
+        profile={profile}
       />
     </LaunchCtx.Provider>
   );
@@ -61,35 +137,47 @@ function genCode() {
 
 /* ================= provider marks ================= */
 
-function GoogleMark() {
+function YandexMark() {
   return (
     <svg viewBox="0 0 24 24" className="h-4.5 w-4.5">
-      <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4Z" />
-      <path fill="#34A853" d="M12 21.5c2.7 0 4.9-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.9 5.9 0 0 1-5.5-4H3.2v2.6A9.9 9.9 0 0 0 12 21.5Z" />
-      <path fill="#FBBC05" d="M6.5 13.5a6 6 0 0 1 0-3.8V7.1H3.2a10 10 0 0 0 0 9l3.3-2.6Z" />
-      <path fill="#EA4335" d="M12 6.4c1.5 0 2.8.5 3.8 1.5L18.7 5A9.7 9.7 0 0 0 12 2.5a9.9 9.9 0 0 0-8.8 4.6l3.3 2.6A5.9 5.9 0 0 1 12 6.4Z" />
+      <rect width="24" height="24" rx="6" fill="#FC3F1D" />
+      <text
+        x="12"
+        y="17.4"
+        textAnchor="middle"
+        fontSize="14"
+        fontWeight="800"
+        fill="#fff"
+        fontFamily="inherit"
+      >
+        Я
+      </text>
     </svg>
   );
 }
-function AppleMark() {
+function VkMark() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor">
-      <path d="M16.6 12.8c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2-1.1 2.8-2.2.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-.9-2.5-3.8ZM14.3 5.6c.6-.8 1-1.9.9-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1.1.1 2.2-.5 2.8-1.3Z" />
-    </svg>
-  );
-}
-function TelegramMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor">
-      <path d="M21.7 3.3 2.9 10.6c-.9.3-.8 1.6.1 1.9l4.7 1.5 1.8 5.6c.3.8 1.3 1 1.9.4l2.6-2.5 4.8 3.5c.7.5 1.7.1 1.8-.7l2.3-15.6c.2-1-.7-1.7-1.2-1.4ZM9.4 13.6l8.4-7.5c.4-.3.8.2.5.5l-6.9 6.7-.3 3.2-1.7-2.9Z" />
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5">
+      <rect width="24" height="24" rx="6" fill="#0077FF" />
+      <text
+        x="12"
+        y="16.4"
+        textAnchor="middle"
+        fontSize="9.5"
+        fontWeight="800"
+        letterSpacing="0.5"
+        fill="#fff"
+        fontFamily="inherit"
+      >
+        VK
+      </text>
     </svg>
   );
 }
 
 const SOCIALS = [
-  { name: "Google", Mark: GoogleMark },
-  { name: "Apple", Mark: AppleMark },
-  { name: "Telegram", Mark: TelegramMark },
+  { name: "Яндекс ID", Mark: YandexMark },
+  { name: "VK ID", Mark: VkMark },
 ];
 
 /* ================= overlay ================= */
@@ -444,7 +532,7 @@ function RegisterOverlay({
                     <span className="mono-label text-fog/50">или через</span>
                     <span className="h-px flex-1 bg-line/60" />
                   </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2.5">
+                  <div className="mt-4 grid grid-cols-2 gap-2.5">
                     {SOCIALS.map((s) => (
                       <button
                         key={s.name}
