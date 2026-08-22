@@ -52,7 +52,6 @@ function TasksContent() {
           >
             <LuPlus className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Новая задача</span>
-            <span className="sm:hidden">+</span>
           </button>
         </div>
       </div>
