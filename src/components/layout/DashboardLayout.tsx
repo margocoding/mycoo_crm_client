@@ -7,7 +7,7 @@ import {
 } from 'react-icons/lu';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '../icons';
-import { useLaunch } from '../Register';
+import { useLaunch } from '../shared/auth/register/Register';
 
 interface SidebarProps {
   children: ReactNode;

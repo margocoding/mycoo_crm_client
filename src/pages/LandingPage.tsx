@@ -1,14 +1,14 @@
-import Header from "../components/Header";
-import Hero from "../components/Hero";
-import Problem from "../components/Problem";
-import { WhatIs, HowWorks } from "../components/AboutHow";
-import Features from "../components/Features";
-import Control from "../components/Control";
-import { Value, Audience } from "../components/ValueAudience";
-import { Cases, Testimonials } from "../components/Proof";
-import { Pricing, Faq } from "../components/PricingFaq";
-import { Launch, Footer } from "../components/Finale";
-import { Starfield } from "../components/ambient";
+import Header from "../components/shared/landing/Header";
+import Hero from "../components/shared/landing/Hero";
+import Problem from "../components/shared/landing/Problem";
+import { WhatIs, HowWorks } from "../components/shared/landing/AboutHow";
+import Features from "../components/shared/dashboard/main/Features";
+import Control from "../components/shared/landing/Control";
+import { Value, Audience } from "../components/shared/landing/ValueAudience";
+import { Cases, Testimonials } from "../components/shared/landing/Proof";
+import { Pricing, Faq } from "../components/shared/landing/PricingFaq";
+import { Launch, Footer } from "../components/shared/landing/Finale";
+import { Starfield } from "../components/ui/Ambient";
 
 export default function LandingPage() {
   return (

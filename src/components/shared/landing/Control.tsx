@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { fmtTime, useNow, Reveal } from "../lib/motion";
-import { Bar, Corners, SectionHeading, StatusChip, StatusDot } from "./ambient";
-import { IconCheck } from "./icons";
+import { fmtTime, useNow, Reveal } from "../../../lib/motion";
+import { Bar, Corners, SectionHeading, StatusChip, StatusDot } from "../../ui/Ambient";
+import { IconCheck } from "../../icons";
 
 const LOGS = [
   "[09:41:07] sync: crm · ok",

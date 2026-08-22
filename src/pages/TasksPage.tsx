@@ -1,9 +1,9 @@
 import { useState, ComponentType } from 'react';
 import { useTasks, TasksProvider, ViewMode } from '../context/TasksContext';
-import KanbanBoard from '../components/KanbanBoard';
-import TaskList from '../components/TaskList';
-import TaskCalendar from '../components/TaskCalendar';
-import NewTaskModal from '../components/NewTaskModal';
+import KanbanBoard from '../components/shared/dashboard/tasks/KanbanBoard';
+import TaskList from '../components/shared/dashboard/tasks/TaskList';
+import TaskCalendar from '../components/shared/dashboard/tasks/TaskCalendar';
+import NewTaskModal from '../components/shared/dashboard/tasks/NewTaskModal';
 import { LuKanban, LuList, LuCalendar, LuPlus } from 'react-icons/lu';
 
 function TasksContent() {

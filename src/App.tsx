@@ -1,6 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import DashboardLayout from "./components/layout/DashboardLayout";
-import { LaunchProvider } from "./components/Register";
+import { LaunchProvider } from "./components/shared/auth/register/Register";
 import { TasksProvider } from "./context/TasksContext";
 import "./index.css";
 import DashboardPage from "./pages/DashboardPage";

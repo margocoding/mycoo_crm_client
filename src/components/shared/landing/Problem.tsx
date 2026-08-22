@@ -1,5 +1,5 @@
-import { Reveal } from "../lib/motion";
-import { Corners, SectionHeading } from "./ambient";
+import { Reveal } from "../../../lib/motion";
+import { Corners, SectionHeading } from "../../ui/Ambient";
 
 const FLOW = ["Информация", "Встречи", "Решения", "Задачи", "Исполнение", "Контроль"];
 const BROKEN_AFTER = new Set([0, 2, 4]);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Logo, IconX } from "./icons";
-import { StatusDot } from "./ambient";
-import { useLaunch } from "./Register";
+import { Logo, IconX } from "../../icons";
+import { StatusDot } from "../../ui/Ambient";
+import { useLaunch } from "../auth/register/Register";
 
 const NAV = [
   { href: "#about", label: "О системе" },

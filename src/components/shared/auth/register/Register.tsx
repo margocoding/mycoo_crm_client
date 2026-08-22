@@ -10,8 +10,8 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Logo, IconCheck } from "./icons";
-import { StatusChip, StatusDot } from "./ambient";
+import { Logo, IconCheck } from "../../../icons";
+import { StatusChip, StatusDot } from "../../../ui/Ambient";
 import { OnboardingOverlay, type Profile } from "./Onboarding";
 import { DiagnosticsOverlay } from "./Diagnostics";
 import { useNavigate } from "react-router-dom";
@@ -98,7 +98,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
         onFinish={(em) => {
           setEmail(em);
           setRegOpen(false);
-          setObOpen(true);
+          navigate('/dashboard/main')
         }}
       />
       <OnboardingOverlay

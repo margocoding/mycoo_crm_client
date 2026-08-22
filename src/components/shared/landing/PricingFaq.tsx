@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Reveal } from "../lib/motion";
-import { Corners, SectionHeading, StatusChip } from "./ambient";
-import { IconCheck } from "./icons";
-import { useLaunch } from "./Register";
+import { Reveal } from "../../../lib/motion";
+import { Corners, SectionHeading, StatusChip } from "../../ui/Ambient";
+import { IconCheck } from "../../icons";
+import { useLaunch } from "../auth/register/Register";
 
 /* ============ ТАРИФЫ ============ */
 

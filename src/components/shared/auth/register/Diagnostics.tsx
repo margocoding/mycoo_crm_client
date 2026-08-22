@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Logo, IconCheck, IconArrow } from "./icons";
-import { StatusChip, StatusDot } from "./ambient";
-import { useCountUp, useReducedMotion } from "../lib/motion";
+import { Logo, IconCheck, IconArrow } from "../../../icons";
+import { StatusChip, StatusDot } from "../../../ui/Ambient";
+import { useCountUp, useReducedMotion } from "../../../../lib/motion";
 import type { Profile } from "./Onboarding";
 
 /* ================= data ================= */

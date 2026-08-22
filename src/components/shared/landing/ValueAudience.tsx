@@ -1,6 +1,6 @@
-import { Reveal, useReducedMotion } from "../lib/motion";
-import { Corners, SectionHeading, StatusChip } from "./ambient";
-import { IconArrow } from "./icons";
+import { Reveal, useReducedMotion } from "../../../lib/motion";
+import { Corners, SectionHeading, StatusChip } from "../../ui/Ambient";
+import { IconArrow } from "../../icons";
 
 /* ============ ЦЕННОСТЬ ============ */
 
