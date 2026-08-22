@@ -14,8 +14,8 @@ import { Logo, IconCheck } from "./icons";
 import { StatusChip, StatusDot } from "./ambient";
 import { OnboardingOverlay, type Profile } from "./Onboarding";
 import { DiagnosticsOverlay } from "./Diagnostics";
+import { useNavigate } from "react-router-dom";
 
-/* ================= context ================= */
 
 interface LaunchCtxType {
   open: () => void;
@@ -47,10 +47,11 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
 
+  const navigate = useNavigate();
+
   const open = () => {
     if (trialActive) {
-      setView("app");
-      window.scrollTo(0, 0);
+      navigate('/dashboard/main')
     } else {
       setRegOpen(true);
     }

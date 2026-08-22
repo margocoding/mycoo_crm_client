@@ -1,4 +1,11 @@
-import { useState, ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
+import {
+  LuGlobe,
+  LuLayoutDashboard,
+  LuListChecks,
+  LuMenu
+} from 'react-icons/lu';
+import { NavLink } from 'react-router-dom';
 import { Logo } from '../icons';
 import { useLaunch } from '../Register';
 
@@ -7,17 +14,13 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Дашборд', icon: '📊', path: '/dashboard' },
-  { id: 'tasks', label: 'Задачи', icon: '✓', path: '/dashboard/tasks' },
-  { id: 'team', label: 'Команда', icon: '👥', path: '/dashboard/team' },
-  { id: 'reports', label: 'Отчёты', icon: '📈', path: '/dashboard/reports' },
-  { id: 'settings', label: 'Настройки', icon: '⚙️', path: '/dashboard/settings' },
+  { id: 'dashboard', label: 'Дашборд', icon: LuLayoutDashboard, path: '/dashboard/main' },
+  { id: 'tasks', label: 'Задачи', icon: LuListChecks, path: '/dashboard/tasks' }
 ];
 
 export default function DashboardLayout({ children }: SidebarProps) {
   const { exitToSite } = useLaunch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState('dashboard');
 
   return (
     <div className="relative min-h-screen bg-void font-body text-mist">
@@ -43,24 +46,26 @@ export default function DashboardLayout({ children }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="mt-6 px-3 space-y-1">
-          {navItems.map((item) => (
-            <a
-              key={item.id}
-              href={item.path}
-              onClick={() => {
-                setActiveItem(item.id);
-                setIsSidebarOpen(false);
-              }}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                activeItem === item.id
-                  ? 'bg-flux/10 text-snow border border-flux/20'
-                  : 'text-fog/70 hover:text-mist hover:bg-hull/40'
-              }`}
-            >
-              <span className="w-5 h-5 flex items-center justify-center text-base">{item.icon}</span>
-              {item.label}
-            </a>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.id}
+                to={item.path}
+                onClick={() => setIsSidebarOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-flux/10 text-snow border border-flux/20' // Активное состояние с подсветкой
+                      : 'text-fog/70 hover:text-mist hover:bg-hull/40' // Неактивное состояние
+                  }`
+                }
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                {item.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
         {/* Bottom actions */}
@@ -69,7 +74,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
             onClick={exitToSite}
             className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-fog/70 hover:text-mist hover:bg-hull/40 transition-all"
           >
-            <span className="w-5 h-5 flex items-center justify-center text-base">🌐</span>
+            <LuGlobe className="w-5 h-5 shrink-0" />
             На сайт
           </button>
           
@@ -92,11 +97,9 @@ export default function DashboardLayout({ children }: SidebarProps) {
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line/40 bg-void/80 px-4 backdrop-blur-md lg:hidden">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 text-fog/70 hover:text-snow"
+            className="p-2 text-fog/70 hover:text-snow transition-colors"
           >
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-            </svg>
+            <LuMenu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-2">
             <Logo className="h-6 w-6" />
