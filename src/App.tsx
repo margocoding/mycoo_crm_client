@@ -1,4 +1,5 @@
 import "./index.css";
+import { Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import Problem from "./components/Problem";
@@ -12,6 +13,12 @@ import { Launch, Footer } from "./components/Finale";
 import { LaunchProvider, useLaunch } from "./components/Register";
 import Workspace from "./components/Workspace";
 import { Starfield } from "./components/ambient";
+import ProtectedRoute from "./components/ProtectedRoute";
+import LandingPage from "./pages/LandingPage";
+import DashboardPage from "./pages/DashboardPage";
+import TasksPage from "./pages/tasks/TasksPage";
+import DashboardLayout from "./components/layout/DashboardLayout";
+import { TasksProvider } from "./context/TasksContext";
 
 function Landing() {
   return (
@@ -55,10 +62,53 @@ function Shell() {
   return view === "app" ? <Workspace /> : <Landing />;
 }
 
+// Dashboard wrapper with layout and tasks context
+function DashboardWithLayout() {
+  return (
+    <TasksProvider>
+      <DashboardLayout>
+        <DashboardPage />
+      </DashboardLayout>
+    </TasksProvider>
+  );
+}
+
+// Tasks page wrapper with layout
+function TasksWithLayout() {
+  return (
+    <TasksProvider>
+      <DashboardLayout>
+        <TasksPage />
+      </DashboardLayout>
+    </TasksProvider>
+  );
+}
+
 export default function App() {
   return (
     <LaunchProvider>
-      <Shell />
+      <Routes>
+        {/* Публичный маршрут - лендинг */}
+        <Route path="/" element={<LandingPage />} />
+        
+        {/* Защищенные маршруты - дашборд и вложенные страницы */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardWithLayout />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/tasks"
+          element={
+            <ProtectedRoute>
+              <TasksWithLayout />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
     </LaunchProvider>
   );
 }
