@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useTasks, Task } from '../context/TasksContext';
-import { IconX, IconCheck } from './icons';
+import { useTasks, Task } from '../../../../context/TasksContext';
+import { IconX, IconCheck } from '../../../icons';
 
 interface NewTaskModalProps {
   isOpen: boolean;

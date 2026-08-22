@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Reveal, useCountUp, useInView, useReducedMotion } from "../lib/motion";
+import { Reveal, useCountUp, useInView, useReducedMotion } from "../../lib/motion";
 
 /* ---------------- starfield ---------------- */
 

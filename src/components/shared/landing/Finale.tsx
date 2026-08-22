@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Reveal, Decode } from "../lib/motion";
-import { OrbitRings, StatusChip, StatusDot } from "./ambient";
-import { Logo, IconArrow } from "./icons";
-import { useLaunch } from "./Register";
+import { Reveal, Decode } from "../../../lib/motion";
+import { OrbitRings, StatusChip, StatusDot } from "../../ui/Ambient";
+import { Logo, IconArrow } from "../../icons";
+import { useLaunch } from "../auth/register/Register";
 
 /* ============ ФИНАЛЬНЫЙ CTA ============ */
 

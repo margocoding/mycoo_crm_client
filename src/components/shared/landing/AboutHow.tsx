@@ -1,6 +1,6 @@
-import { Reveal, useReducedMotion } from "../lib/motion";
-import { Corners, SectionHeading } from "./ambient";
-import { IconArrow, IconCheck } from "./icons";
+import { Reveal, useReducedMotion } from "../../../lib/motion";
+import { Corners, SectionHeading } from "../../ui/Ambient";
+import { IconArrow, IconCheck } from "../../icons";
 
 /* ============ О СИСТЕМЕ ============ */
 

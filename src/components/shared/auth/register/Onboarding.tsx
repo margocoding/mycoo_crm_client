@@ -6,8 +6,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Logo, IconCheck } from "./icons";
-import { StatusChip, StatusDot } from "./ambient";
+import { Logo, IconCheck } from "../../../icons";
+import { StatusChip, StatusDot } from "../../../ui/Ambient";
 
 /* ================= data ================= */
 

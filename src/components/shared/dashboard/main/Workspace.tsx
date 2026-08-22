@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Logo } from "./icons";
-import { Starfield, StatusDot } from "./ambient";
-import { useCountUp } from "../lib/motion";
-import { useLaunch } from "./Register";
-import type { Profile } from "./Onboarding";
+import { Logo } from "../../../icons";
+import { Starfield, StatusDot } from "../../../ui/Ambient";
+import { useCountUp } from "../../../../lib/motion";
+import { useLaunch } from "../../auth/register/Register";
+import type { Profile } from "../../auth/register/Onboarding";
 
 /* ================= helpers ================= */
 

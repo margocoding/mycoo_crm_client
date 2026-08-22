@@ -1,5 +1,5 @@
-import { Reveal } from "../lib/motion";
-import { Corners, SectionHeading, StatusChip } from "./ambient";
+import { Reveal } from "../../../lib/motion";
+import { Corners, SectionHeading, StatusChip } from "../../ui/Ambient";
 
 /* ============ КЕЙСЫ ============ */
 

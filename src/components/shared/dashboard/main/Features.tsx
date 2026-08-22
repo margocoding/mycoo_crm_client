@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Reveal } from "../lib/motion";
-import { Corners, SectionHeading, StatusChip } from "./ambient";
+import { Reveal } from "../../../../lib/motion";
+import { Corners, SectionHeading, StatusChip } from "../../../ui/Ambient";
 import {
   IconAdvice,
   IconAnalysis,
@@ -9,7 +9,7 @@ import {
   IconDeviation,
   IconProcess,
   IconTask,
-} from "./icons";
+} from "../../../icons";
 
 const SYS = [
   {

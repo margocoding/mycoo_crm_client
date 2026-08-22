@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Decode, fmtTime, useNow } from "../lib/motion";
-import { OrbitRings, StatusChip, StatusDot, CoordTag } from "./ambient";
-import { IconArrow } from "./icons";
-import { useLaunch } from "./Register";
+import { Decode, fmtTime, useNow } from "../../../lib/motion";
+import { OrbitRings, StatusChip, StatusDot, CoordTag } from "../../ui/Ambient";
+import { IconArrow } from "../../icons";
+import { useLaunch } from "../auth/register/Register";
 
 const STATUS_ROWS = [
   { key: "Operations", value: "Stable", tone: "ok" as const },

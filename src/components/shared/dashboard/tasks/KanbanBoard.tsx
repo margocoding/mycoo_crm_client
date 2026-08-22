@@ -1,6 +1,6 @@
-import { Task, useTasks } from '../context/TasksContext';
+import { Task, useTasks } from '../../../../context/TasksContext';
 import { LuX } from 'react-icons/lu';
-import Select from './Select';
+import Select from '../../../ui/Select';
 
 interface KanbanColumnProps {
   status: 'backlog' | 'in-progress' | 'review' | 'done';
