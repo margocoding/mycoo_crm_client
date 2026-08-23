@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Reveal } from "../lib/motion";
 import { Corners, SectionHeading, StatusChip } from "./ambient";
 import { IconCheck } from "./icons";
-import { useLaunch } from "./Register";
+import { useLaunch } from "../hooks";
 
 /* ============ ТАРИФЫ ============ */
 

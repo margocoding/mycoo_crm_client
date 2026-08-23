@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Reveal, Decode } from "../lib/motion";
 import { OrbitRings, StatusChip, StatusDot } from "./ambient";
 import { Logo, IconArrow } from "./icons";
-import { useLaunch } from "./Register";
+import { useLaunch } from "../hooks";
 
 /* ============ ФИНАЛЬНЫЙ CTA ============ */
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Logo } from "./icons";
 import { Starfield, StatusDot } from "./ambient";
 import { useCountUp } from "../lib/motion";
-import { useLaunch } from "./Register";
+import { useLaunch } from "../hooks";
 import type { Profile } from "./Onboarding";
 
 /* ================= helpers ================= */
