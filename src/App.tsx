@@ -6,6 +6,7 @@ import "./index.css";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
+import AIChatPage from "./components/shared/dashboard/ai/AIChatPage";
 
 
 // Dashboard wrapper with layout and tasks context
@@ -30,6 +31,17 @@ function TasksWithLayout() {
   );
 }
 
+// AI Chat page wrapper with layout
+function AIChatWithLayout() {
+  return (
+    <TasksProvider>
+      <DashboardLayout>
+        <AIChatPage />
+      </DashboardLayout>
+    </TasksProvider>
+  );
+}
+
 export default function App() {
   return (
     <LaunchProvider>
@@ -48,6 +60,12 @@ export default function App() {
           path="/dashboard/tasks"
           element={
               <TasksWithLayout />
+          }
+        />
+        <Route
+          path="/dashboard/ai"
+          element={
+              <AIChatWithLayout />
           }
         />
       </Routes>
