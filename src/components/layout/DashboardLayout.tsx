@@ -3,7 +3,8 @@ import {
   LuGlobe,
   LuLayoutDashboard,
   LuListChecks,
-  LuMenu
+  LuMenu,
+  LuBot
 } from 'react-icons/lu';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '../icons';
@@ -15,7 +16,8 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: 'Дашборд', icon: LuLayoutDashboard, path: '/dashboard/main' },
-  { id: 'tasks', label: 'Задачи', icon: LuListChecks, path: '/dashboard/tasks' }
+  { id: 'tasks', label: 'Задачи', icon: LuListChecks, path: '/dashboard/tasks' },
+  { id: 'ai', label: 'AI COO', icon: LuBot, path: '/dashboard/ai' }
 ];
 
 export default function DashboardLayout({ children }: SidebarProps) {
