@@ -4,7 +4,8 @@ import {
   LuLayoutDashboard,
   LuListChecks,
   LuMenu,
-  LuBot
+  LuBot,
+  LuCreditCard
 } from 'react-icons/lu';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '../icons';
@@ -21,7 +22,7 @@ const navItems = [
 ];
 
 export default function DashboardLayout({ children }: SidebarProps) {
-  const { exitToSite } = useLaunch();
+  const { exitToSite, openSubscription } = useLaunch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -72,6 +73,14 @@ export default function DashboardLayout({ children }: SidebarProps) {
 
         {/* Bottom actions */}
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-line/40 space-y-2">
+          <button
+            onClick={openSubscription}
+            className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-flux/80 hover:text-flux hover:bg-flux/10 transition-all border border-flux/20"
+          >
+            <LuCreditCard className="w-5 h-5 shrink-0" />
+            Подписка
+          </button>
+          
           <button
             onClick={exitToSite}
             className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-fog/70 hover:text-mist hover:bg-hull/40 transition-all"

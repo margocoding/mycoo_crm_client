@@ -15,6 +15,7 @@ import { StatusChip, StatusDot } from "../../../ui/Ambient";
 import { OnboardingOverlay, type Profile } from "./Onboarding";
 import { DiagnosticsOverlay } from "./Diagnostics";
 import { useNavigate } from "react-router-dom";
+import SubscriptionModal from "../../../ui/SubscriptionModal";
 
 
 interface LaunchCtxType {
@@ -23,6 +24,7 @@ interface LaunchCtxType {
   view: "site" | "app";
   exitToSite: () => void;
   resetDemo: () => void;
+  openSubscription: () => void;
 }
 
 const LaunchCtx = createContext<LaunchCtxType>({
@@ -31,6 +33,7 @@ const LaunchCtx = createContext<LaunchCtxType>({
   view: "site",
   exitToSite: () => {},
   resetDemo: () => {},
+  openSubscription: () => {},
 });
 export const useLaunch = () => useContext(LaunchCtx);
 
@@ -38,6 +41,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
   const [regOpen, setRegOpen] = useState(false);
   const [obOpen, setObOpen] = useState(false);
   const [diagOpen, setDiagOpen] = useState(false);
+  const [subOpen, setSubOpen] = useState(false);
   const [view, setView] = useState<"site" | "app">(() =>
     typeof localStorage !== "undefined" && localStorage.getItem("mycoo_trial_start")
       ? "app"
@@ -55,6 +59,10 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
     } else {
       setRegOpen(true);
     }
+  };
+
+  const openSubscription = () => {
+    setSubOpen(true);
   };
 
   const enterWorkspace = () => {
@@ -90,8 +98,9 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LaunchCtx.Provider value={{ open, trialActive, view, exitToSite, resetDemo }}>
+    <LaunchCtx.Provider value={{ open, trialActive, view, exitToSite, resetDemo, openSubscription }}>
       {children}
+      <SubscriptionModal isOpen={subOpen} onClose={() => setSubOpen(false)} />
       <RegisterOverlay
         open={regOpen}
         onClose={() => setRegOpen(false)}
