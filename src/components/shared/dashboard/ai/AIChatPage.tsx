@@ -1,204 +1,314 @@
-import { useState, useRef, useEffect } from "react";
-import { LuSend, LuPaperclip, LuBot, LuUser, LuSparkles } from "react-icons/lu";
-import { Logo } from "../../../icons";
+import { useEffect, useRef, useState } from "react";
+import {
+  LuBot,
+  LuChevronDown,
+  LuFileText,
+  LuPaperclip,
+  LuSend,
+  LuSparkles,
+  LuX,
+  LuBuilding2,
+  LuTarget,
+  LuListTodo,
+  LuCalendarDays,
+  LuDatabase,
+  LuClock3,
+} from "react-icons/lu";
 import { Starfield } from "../../../ui/Ambient";
 
-// Типы для сообщений
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  files?: File[];
 }
 
-// Предопределённые подсказки для быстрого старта
 const QUICK_PROMPTS = [
-  "Что сейчас больше всего тормозит мою компанию?",
-  "Подготовь план совещания на неделю",
-  "Напиши письмо команде о новых целях",
-  "Проанализируй последние показатели",
+  {
+    title: "Найти проблемы",
+    description: "Что сейчас больше всего тормозит компанию?",
+    icon: LuSparkles,
+  },
+  {
+    title: "Анализ показателей",
+    description: "Проанализируй последние показатели",
+    icon: LuTarget,
+  },
+  {
+    title: "План совещания",
+    description: "Подготовь план совещания на неделю",
+    icon: LuCalendarDays,
+  },
+  {
+    title: "Письмо команде",
+    description: "Напиши письмо команде о новых целях",
+    icon: LuFileText,
+  },
 ];
 
-// Поддерживаемые форматы файлов
 const SUPPORTED_FORMATS = ["PDF", "DOCX", "XLSX", "PPTX"];
 
+const INITIAL_MESSAGE: Message = {
+  id: "welcome",
+  role: "assistant",
+  content:
+    "Я анализирую цели, задачи, встречи, документы и показатели компании, чтобы помогать принимать операционные решения.",
+  timestamp: new Date(),
+};
+
 export default function AIChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: `Привет! Я AI COO — ваш персональный операционный помощник.
-
-Я знаю вашу компанию, цели, сотрудников, задачи и встречи. 
-Могу помочь с:
-• Ответами по документам компании
-• Рекомендациями
-• Подготовкой совещаний
-• Анализом ситуации
-• Написанием писем
-• Подготовкой обратной связи
-• Поиском информации
-
-Загрузите документы (PDF, DOCX, XLSX, PPTX) или задайте вопрос прямо сейчас.`,
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isContextOpen, setIsContextOpen] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Автопрокрутка к последнему сообщению
+  const hasConversation = messages.length > 0;
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!hasConversation) return;
 
-  // Обработка отправки сообщения
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() && uploadedFiles.length === 0) return;
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [messages, isLoading, hasConversation]);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: inputValue.trim(),
-      timestamp: new Date(),
-    };
+  useEffect(() => {
+    const textarea = textareaRef.current;
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setIsLoading(true);
+    if (!textarea) return;
 
-    // Симуляция ответа AI (здесь будет интеграция с бэкендом/RAG)
-    setTimeout(() => {
-      let aiResponse = "";
-      
-      if (uploadedFiles.length > 0) {
-        aiResponse = `📎 Получено файлов: ${uploadedFiles.length}
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+  }, [inputValue]);
 
-Файлы загружены и добавлены в базу знаний:
-${uploadedFiles.map((f) => `• ${f.name}`).join("\n")}
+  const resetTextareaHeight = () => {
+    if (!textareaRef.current) return;
 
-Теперь я могу использовать информацию из этих документов для ответов на ваши вопросы. Задавайте вопросы по содержанию файлов!`;
-        setUploadedFiles([]);
-      } else if (inputValue.toLowerCase().includes("тормоз") || inputValue.toLowerCase().includes("проблем")) {
-        aiResponse = `Анализ ситуации за последние 14 дней:
+    textareaRef.current.style.height = "44px";
+  };
 
-Выявлено 3 повторяющиеся проблемы:
+  const handleFileUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files || []);
 
-1. **Задачи часто зависят от собственника** — критический риск
-   Влияние: 47% задач заблокированы ожиданием решения
+    if (!files.length) return;
+
+    const validFiles = files.filter((file) => {
+      const extension = file.name.split(".").pop()?.toUpperCase();
+
+      return (
+        extension && SUPPORTED_FORMATS.includes(extension)
+      );
+    });
+
+    if (validFiles.length !== files.length) {
+      alert(
+        `Поддерживаемые форматы: ${SUPPORTED_FORMATS.join(", ")}`,
+      );
+    }
+
+    setUploadedFiles((prev) => {
+      const existing = new Set(
+        prev.map(
+          (file) =>
+            `${file.name}-${file.size}-${file.lastModified}`,
+        ),
+      );
+
+      const uniqueFiles = validFiles.filter(
+        (file) =>
+          !existing.has(
+            `${file.name}-${file.size}-${file.lastModified}`,
+          ),
+      );
+
+      return [...prev, ...uniqueFiles];
+    });
+
+    event.target.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles((prev) =>
+      prev.filter((_, fileIndex) => fileIndex !== index),
+    );
+  };
+
+  const getAIResponse = (
+    text: string,
+    files: File[],
+  ): string => {
+    const normalizedText = text.toLowerCase();
+
+    if (files.length > 0) {
+      return `Получено файлов: ${files.length}
+
+Файлы подготовлены для анализа:
+
+${files.map((file) => `• ${file.name}`).join("\n")}
+
+После подключения RAG я смогу использовать содержимое этих документов при ответах на вопросы.`;
+    }
+
+    if (
+      normalizedText.includes("тормоз") ||
+      normalizedText.includes("проблем")
+    ) {
+      return `Анализ ситуации за последние 14 дней показывает 3 системных риска.
+
+1. **Зависимость от собственника** — критический риск
+   Влияние: 47% задач заблокированы ожиданием решения.
 
 2. **Нет единой системы контроля** — средний риск
-   Влияние: 23% задач выполняются с отклонением от сроков
+   Влияние: 23% задач выполняются с отклонением от сроков.
 
 3. **Договорённости после встреч не фиксируются** — средний риск
-   Влияние: 8 протоколов встреч требуют подтверждения
+   Влияние: 8 протоколов встреч требуют подтверждения.
 
-Рекомендация: Начните с внедрения обязательного протоколирования встреч и назначения ответственных за каждую задачу.`;
-      } else if (inputValue.toLowerCase().includes("совещ") || inputValue.toLowerCase().includes("план")) {
-        aiResponse = `План совещания на неделю:
+Рекомендация: начать с обязательного протоколирования встреч и назначения ответственного за каждую задачу.`;
+    }
 
-**Понедельник 10:00** — Планёрка по операциям
+    if (
+      normalizedText.includes("совещ") ||
+      normalizedText.includes("план")
+    ) {
+      return `План совещаний на неделю:
+
+**Понедельник · 10:00**
+Планёрка по операциям
 • Обзор показателей за прошлую неделю
-• Приоритеты на текущую неделю
+• Приоритеты текущей недели
 • Блокирующие факторы
 
-**Среда 12:30** — Продажи: план недели
+**Среда · 12:30**
+Продажи
 • Выполнение плана продаж
 • Работа с воронкой
 • Ключевые сделки
 
-**Пятница 15:00** — Финансовый срез
-• Cash flow за неделю
+**Пятница · 15:00**
+Финансовый срез
+• Cash flow
 • План-факт анализ
-• Прогноз на следующую неделю
+• Прогноз на следующую неделю`;
+    }
 
-Нужно добавить что-то ещё?`;
-      } else if (inputValue.toLowerCase().includes("письм") || inputValue.toLowerCase().includes("напиш")) {
-        aiResponse = `Черновик письма команде:
+    if (
+      normalizedText.includes("письм") ||
+      normalizedText.includes("напиш")
+    ) {
+      return `Черновик письма команде:
 
----
 Тема: Новые цели компании на ближайший квартал
 
 Коллеги, добрый день!
 
-На основе анализа текущей ситуации и стратегических приоритетов, определяю следующие цели:
+На основе анализа текущей ситуации и стратегических приоритетов определяем следующие цели:
 
-1. **Главная цель**: Увеличить выручку с 50 до 100 млн ₽
-   
-2. **Приоритеты квартала**:
-   - Оптимизация операционных процессов
-   - Развитие команды руководителей
-   - Внедрение системы контроля задач
+1. **Главная цель:** увеличить выручку с 50 до 100 млн ₽.
 
-Прошу ознакомиться и подготовить планы по вашим направлениям до конца недели.
+2. **Приоритеты квартала:**
+   • Оптимизация операционных процессов
+   • Развитие команды руководителей
+   • Внедрение системы контроля задач
 
-MyCOO автоматически отслеживает прогресс по этим целям.
+Прошу ознакомиться с целями и подготовить планы по вашим направлениям до конца недели.
 
 С уважением,
-Руководитель
----
-
-Отредактируйте текст при необходимости.`;
-      } else {
-        aiResponse = `Понял ваш вопрос. 
-
-Для предоставления точного ответа мне нужно проанализировать данные вашей компании:
-
-• Цели и показатели
-• Текущие задачи и их статус
-• Историю встреч и договорённости
-• Документы и регламенты
-
-Загрузите соответствующие документы или уточните вопрос, чтобы я мог дать более конкретную рекомендацию на основе данных MyCOO.`;
-      }
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: aiResponse,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  // Обработка загрузки файлов
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    
-    // Проверка форматов
-    const validFiles = files.filter((file) => {
-      const ext = file.name.split(".").pop()?.toUpperCase();
-      return ext && SUPPORTED_FORMATS.includes(ext);
-    });
-
-    if (validFiles.length !== files.length) {
-      alert(`Поддерживаемые форматы: ${SUPPORTED_FORMATS.join(", ")}`);
+Руководитель`;
     }
 
-    setUploadedFiles((prev) => [...prev, ...validFiles]);
+    return `Понял ваш вопрос.
+
+Чтобы дать точный ответ, мне нужно сопоставить запрос с данными компании:
+
+• Целями и показателями
+• Текущими задачами
+• Историей встреч
+• Договорённостями
+• Документами и регламентами
+
+Задайте более конкретный вопрос или загрузите документы, которые нужно проанализировать.`;
   };
 
-  // Обработка нажатия Enter
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleSendMessage = async () => {
+    const text = inputValue.trim();
+
+    if ((!text && !uploadedFiles.length) || isLoading) {
+      return;
+    }
+
+    const files = [...uploadedFiles];
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+      timestamp: new Date(),
+      files,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setUploadedFiles([]);
+    resetTextareaHeight();
+    setIsLoading(true);
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1200);
+    });
+
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: getAIResponse(text, files),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, assistantMessage]);
+    setIsLoading(false);
+  };
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
+      event.preventDefault();
       handleSendMessage();
     }
   };
 
-  // Обработка быстрых подсказок
   const handleQuickPrompt = (prompt: string) => {
     setInputValue(prompt);
+    textareaRef.current?.focus();
   };
 
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
   return (
-    <div className="relative min-h-screen bg-void font-body text-mist">
+    <div className="relative min-h-full bg-void font-body text-mist">
       <Starfield />
+
       <div
         className="pointer-events-none fixed inset-0 -z-20"
         style={{
@@ -206,236 +316,592 @@ MyCOO автоматически отслеживает прогресс по э
             "radial-gradient(ellipse 70% 50% at 30% -10%, rgba(30,58,138,0.25), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 20%, rgba(139,133,248,0.09), transparent 65%), linear-gradient(180deg, #04070f 0%, #060b18 55%, #04070f 100%)",
         }}
       />
+
       <div className="noise-overlay" />
 
-      {/* Заголовок страницы */}
-      <header className="sticky top-0 z-40 header-solid">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-5 md:px-8">
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
-              <LuBot className="h-5 w-5 text-ion" />
+      <header className="header-solid sticky top-0 z-40 border-b border-line/40">
+        <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-4 px-3 sm:px-5 lg:px-7">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
+              <LuBot className="h-4 w-4 text-ion" />
             </div>
-            <div>
-              <h1 className="font-display text-[14px] font-bold tracking-[0.22em] text-snow">
-                AI COO
-              </h1>
-              <p className="mono-label text-[9px] text-fog/60">Ваш операционный помощник</p>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-[13px] font-bold tracking-[0.2em] text-snow">
+                  AI COO
+                </h1>
+
+                <span className="hidden rounded border border-flux/30 bg-flux/5 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.14em] text-flux sm:inline-flex">
+                  RAG
+                </span>
+              </div>
+
+              <p className="mono-label truncate text-[8px] text-fog/45 sm:text-[9px]">
+                Operations intelligence
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded border border-flux/40 bg-flux/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-flux">
-              <LuSparkles className="h-3 w-3" />
-              RAG активен
-            </span>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-lg border border-line/50 bg-hull/20 px-2.5 py-1.5 sm:flex">
+              <span
+                className="dot-live"
+                style={{
+                  backgroundColor: "var(--color-ok)",
+                }}
+              />
+              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-fog/65">
+                12 sources
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsContextOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line/60 bg-hull/25 px-2.5 py-1.5 text-[10px] text-fog/75 transition-colors hover:border-flux/40 hover:text-flux"
+            >
+              <LuDatabase className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Контекст</span>
+              <LuChevronDown className="h-3 w-3" />
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 pb-6 pt-6 md:px-6">
-        <div className="grid h-[calc(100vh-8rem)] grid-cols-1 gap-4 lg:grid-cols-4">
-          {/* Левая панель — База знаний */}
-          <aside className="hidden lg:block lg:col-span-1">
-            <div className="step-in glass corner relative rounded-xl p-4" style={{ animationDelay: "0.1s" }}>
-              <h2 className="font-display text-[12px] font-bold uppercase tracking-[0.14em] text-mist mb-3">
-                База знаний
-              </h2>
-              
-              <div className="space-y-3">
-                <div className="rounded-lg border border-line/50 bg-hull/30 p-3">
-                  <p className="mono-label text-[9px] text-fog/50 mb-2">Источники данных</p>
-                  <ul className="space-y-1.5">
-                    <li className="flex items-center gap-2 text-[11px] text-mist">
-                      <span className="dot-live" style={{ backgroundColor: "var(--color-ok)" }} />
-                      Методология MyCOO
-                    </li>
-                    <li className="flex items-center gap-2 text-[11px] text-mist">
-                      <span className="dot-live" style={{ backgroundColor: "var(--color-ok)" }} />
-                      Документы пользователя
-                    </li>
-                    <li className="flex items-center gap-2 text-[11px] text-mist">
-                      <span className="dot-live" style={{ backgroundColor: "var(--color-ok)" }} />
-                      История компании
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="rounded-lg border border-line/50 bg-hull/30 p-3">
-                  <p className="mono-label text-[9px] text-fog/50 mb-2">Загруженные файлы</p>
-                  {uploadedFiles.length > 0 ? (
-                    <ul className="space-y-1">
-                      {uploadedFiles.slice(0, 5).map((file, i) => (
-                        <li key={i} className="text-[10px] text-fog truncate">
-                          • {file.name}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-[10px] text-fog/50">Нет загруженных файлов</p>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-line/60 bg-hull/25 px-3 py-2 text-[11px] font-medium text-mist transition-colors hover:border-flux/50 hover:text-flux"
-                >
-                  <LuPaperclip className="h-3.5 w-3.5" />
-                  Добавить файл
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".pdf,.docx,.xlsx,.pptx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </div>
+      <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1440px] flex-col px-2 py-2 sm:px-4 sm:py-4 lg:px-6">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line/50 bg-hull/15 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
+          <div className="flex h-9 shrink-0 items-center gap-2 overflow-x-auto border-b border-line/40 px-3 scrollbar-none sm:h-10 sm:px-4">
+            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/60">
+              <LuBuilding2 className="h-3.5 w-3.5 text-ion/70" />
+              <span className="font-medium text-mist/80">
+                Acme Corporation
+              </span>
             </div>
-          </aside>
 
-          {/* Основная область чата */}
-          <div className="lg:col-span-3 flex flex-col">
-            {/* Область сообщений */}
-            <div className="step-in glass corner relative flex-1 overflow-y-auto rounded-xl p-4 mb-4" style={{ animationDelay: "0.15s" }}>
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    {message.role === "assistant" && (
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
-                        <LuBot className="h-4 w-4 text-ion" />
+            <span className="h-3 w-px shrink-0 bg-line/60" />
+
+            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
+              <LuTarget className="h-3 w-3" />
+              4 goals
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
+              <LuListTodo className="h-3 w-3" />
+              28 tasks
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
+              <LuCalendarDays className="h-3 w-3" />
+              3 meetings
+            </div>
+
+            <div className="ml-auto hidden shrink-0 items-center gap-1.5 text-[8px] text-fog/35 md:flex">
+              <span
+                className="dot-live"
+                style={{
+                  backgroundColor: "var(--color-ok)",
+                }}
+              />
+              Synced 4 min ago
+            </div>
+          </div>
+
+          <section className="relative min-h-0 flex-1 overflow-hidden">
+            <div className="h-full overflow-y-auto px-3 py-5 sm:px-6 sm:py-8 lg:px-10">
+              {!hasConversation ? (
+                <div className="flex min-h-full items-center justify-center">
+                  <div className="w-full max-w-3xl">
+                    <div className="mb-8 text-center sm:mb-10">
+                      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-ion/30 bg-ion/10 shadow-[0_0_40px_-15px_rgba(56,189,248,0.7)]">
+                        <LuSparkles className="h-6 w-6 text-ion" />
                       </div>
-                    )}
-                    
-                    <div
-                      className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                        message.role === "user"
-                          ? "bg-flux/10 border border-flux/20 text-snow"
-                          : "bg-hull/30 border border-line/50 text-mist"
-                      }`}
-                    >
-                      <div className="whitespace-pre-wrap text-[13px] leading-relaxed">
-                        {message.content}
-                      </div>
-                      <p className="mono-label mt-2 text-[8px] text-fog/40">
-                        {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+
+                      <p className="mono-label mb-2 text-[9px] uppercase tracking-[0.22em] text-flux/70">
+                        Operations intelligence
+                      </p>
+
+                      <h2 className="font-display text-2xl font-bold tracking-tight text-snow sm:text-3xl">
+                        Чем займёмся сегодня?
+                      </h2>
+
+                      <p className="mx-auto mt-3 max-w-xl text-[12px] leading-relaxed text-fog/55 sm:text-[13px]">
+                        Я анализирую данные вашей компании и помогаю
+                        находить проблемы, принимать решения и
+                        готовить следующие шаги.
                       </p>
                     </div>
 
-                    {message.role === "user" && (
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-flux to-ion">
-                        <LuUser className="h-4 w-4 text-void" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-                
-                {isLoading && (
-                  <div className="flex gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
-                      <LuBot className="h-4 w-4 text-ion" />
-                    </div>
-                    <div className="bg-hull/30 border border-line/50 rounded-lg px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="dot-live" style={{ backgroundColor: "var(--color-flux)" }} />
-                        <span className="text-[12px] text-fog/70">AI анализирует...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
+                    <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
+                      {QUICK_PROMPTS.map(
+                        ({
+                          title,
+                          description,
+                          icon: Icon,
+                        }) => (
+                          <button
+                            key={title}
+                            onClick={() =>
+                              handleQuickPrompt(description)
+                            }
+                            className="group rounded-xl border border-line/50 bg-hull/25 p-3.5 text-left transition-all duration-200 hover:border-flux/35 hover:bg-hull/40 sm:p-4"
+                          >
+                            <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg border border-line/50 bg-hull/40 text-fog/60 transition-colors group-hover:border-flux/30 group-hover:text-flux">
+                              <Icon className="h-4 w-4" />
+                            </div>
 
-            {/* Область ввода */}
-            <div className="step-in glass corner relative rounded-xl p-4" style={{ animationDelay: "0.2s" }}>
-              {/* Быстрые подсказки */}
-              {messages.length <= 2 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {QUICK_PROMPTS.map((prompt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleQuickPrompt(prompt)}
-                      className="mono-label rounded border border-line/60 bg-hull/25 px-2.5 py-1.5 text-[9px] text-fog/70 transition-colors hover:border-flux/50 hover:text-flux"
-                    >
-                      {prompt.length > 35 ? prompt.slice(0, 35) + "..." : prompt}
-                    </button>
-                  ))}
+                            <p className="text-[11px] font-semibold text-mist">
+                              {title}
+                            </p>
+
+                            <p className="mt-1 text-[10px] leading-relaxed text-fog/45">
+                              {description}
+                            </p>
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mx-auto w-full max-w-4xl space-y-6">
+                  {messages.map((message) => {
+                    const isUser = message.role === "user";
+
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex gap-2.5 sm:gap-3 ${
+                          isUser
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        {!isUser && (
+                          <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ion/40 bg-ion/10 sm:h-8 sm:w-8">
+                            <LuBot className="h-3.5 w-3.5 text-ion sm:h-4 sm:w-4" />
+                          </div>
+                        )}
+
+                        <div
+                          className={`min-w-0 ${
+                            isUser
+                              ? "max-w-[88%] sm:max-w-[75%]"
+                              : "max-w-[92%] sm:max-w-[82%]"
+                          }`}
+                        >
+                          {!isUser && (
+                            <div className="mb-1.5 flex items-center gap-2">
+                              <span className="font-display text-[9px] font-bold tracking-[0.12em] text-ion">
+                                AI COO
+                              </span>
+
+                              <span className="text-[8px] text-fog/30">
+                                {formatTime(message.timestamp)}
+                              </span>
+                            </div>
+                          )}
+
+                          <div
+                            className={`rounded-xl border px-3.5 py-3 sm:px-4 sm:py-3.5 ${
+                              isUser
+                                ? "border-flux/20 bg-flux/10 text-snow"
+                                : "border-line/50 bg-hull/30 text-mist"
+                            }`}
+                          >
+                            {message.content && (
+                              <div className="whitespace-pre-wrap text-[12px] leading-[1.7] sm:text-[13px]">
+                                {message.content}
+                              </div>
+                            )}
+
+                            {message.files &&
+                              message.files.length > 0 && (
+                                <div
+                                  className={`space-y-2 ${
+                                    message.content
+                                      ? "mt-3"
+                                      : ""
+                                  }`}
+                                >
+                                  {message.files.map(
+                                    (file) => (
+                                      <div
+                                        key={`${file.name}-${file.size}-${file.lastModified}`}
+                                        className="flex min-w-0 items-center gap-2.5 rounded-lg border border-line/50 bg-void/20 px-3 py-2"
+                                      >
+                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-flux/10 text-flux">
+                                          <LuFileText className="h-3.5 w-3.5" />
+                                        </div>
+
+                                        <div className="min-w-0">
+                                          <p className="truncate text-[10px] font-medium text-mist">
+                                            {file.name}
+                                          </p>
+
+                                          <p className="text-[8px] uppercase tracking-[0.08em] text-fog/35">
+                                            {(
+                                              file.size /
+                                              1024 /
+                                              1024
+                                            ).toFixed(1)}{" "}
+                                            MB
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+                          </div>
+
+                          {isUser && (
+                            <p className="mt-1.5 text-right text-[8px] text-fog/30">
+                              {formatTime(message.timestamp)}
+                            </p>
+                          )}
+                        </div>
+
+                        {isUser && (
+                          <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-flux to-ion sm:h-8 sm:w-8">
+                            <span className="text-[10px] font-bold text-void">
+                              U
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {isLoading && (
+                    <div className="flex gap-2.5 sm:gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ion/40 bg-ion/10 sm:h-8 sm:w-8">
+                        <LuBot className="h-3.5 w-3.5 text-ion sm:h-4 sm:w-4" />
+                      </div>
+
+                      <div>
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <span className="font-display text-[9px] font-bold tracking-[0.12em] text-ion">
+                            AI COO
+                          </span>
+                        </div>
+
+                        <div className="rounded-xl border border-line/50 bg-hull/30 px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="dot-live"
+                              style={{
+                                backgroundColor:
+                                  "var(--color-flux)",
+                              }}
+                            />
+                            <span className="text-[10px] text-fog/60">
+                              Анализирую данные...
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+          </section>
+
+          <div className="shrink-0 border-t border-line/40 bg-void/20 p-2.5 sm:p-3">
+            <div className="mx-auto w-full max-w-4xl">
+              {!hasConversation && (
+                <div className="mb-2.5 flex gap-2 overflow-x-auto scrollbar-none">
+                  {QUICK_PROMPTS.map(
+                    ({ title, description, icon: Icon }) => (
+                      <button
+                        key={title}
+                        onClick={() =>
+                          handleQuickPrompt(description)
+                        }
+                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line/50 bg-hull/20 px-2.5 py-1.5 text-[9px] text-fog/60 transition-colors hover:border-flux/30 hover:text-flux"
+                      >
+                        <Icon className="h-3 w-3" />
+                        {title}
+                      </button>
+                    ),
+                  )}
                 </div>
               )}
 
-              {/* Отображение загруженных файлов */}
               {uploadedFiles.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {uploadedFiles.map((file, i) => (
+                <div className="mb-2.5 flex gap-2 overflow-x-auto scrollbar-none">
+                  {uploadedFiles.map((file, index) => (
                     <div
-                      key={i}
-                      className="flex items-center gap-2 rounded border border-flux/30 bg-flux/5 px-2.5 py-1.5"
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      className="flex max-w-[240px] shrink-0 items-center gap-2 rounded-lg border border-flux/25 bg-flux/5 px-2.5 py-1.5"
                     >
-                      <LuPaperclip className="h-3 w-3 text-flux" />
-                      <span className="text-[10px] text-mist">{file.name}</span>
+                      <LuFileText className="h-3 w-3 shrink-0 text-flux" />
+
+                      <span className="truncate text-[9px] text-mist">
+                        {file.name}
+                      </span>
+
                       <button
-                        onClick={() => setUploadedFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-fog/50 hover:text-crit"
+                        onClick={() => removeFile(index)}
+                        className="shrink-0 text-fog/40 transition-colors hover:text-crit"
+                        aria-label={`Удалить ${file.name}`}
                       >
-                        ×
+                        <LuX className="h-3 w-3" />
                       </button>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Поле ввода */}
-              <div className="flex items-end gap-3">
+              <div className="flex items-end gap-2 rounded-xl border border-line/60 bg-hull/30 p-1.5 transition-colors focus-within:border-flux/30">
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="shrink-0 rounded-lg border border-line/60 bg-hull/25 p-2.5 text-fog/70 transition-colors hover:border-flux/50 hover:text-flux"
+                  onClick={openFilePicker}
+                  className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-fog/60 transition-colors hover:bg-hull/60 hover:text-flux"
                   title="Прикрепить файл"
+                  aria-label="Прикрепить файл"
                 >
-                  <LuPaperclip className="h-5 w-5" />
+                  <LuPaperclip className="h-4 w-4" />
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".pdf,.docx,.xlsx,.pptx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                
+
                 <textarea
+                  ref={textareaRef}
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={(event) =>
+                    setInputValue(event.target.value)
+                  }
                   onKeyDown={handleKeyDown}
-                  placeholder="Задайте вопрос AI COO или загрузите документы..."
+                  placeholder="Задайте вопрос AI COO..."
                   rows={1}
-                  className="flex-1 resize-none rounded-lg border border-line/60 bg-hull/25 px-3 py-2.5 text-[13px] text-mist placeholder:text-fog/40 focus:border-flux/50 focus:outline-none focus:ring-1 focus:ring-flux/20"
-                  style={{ minHeight: "44px", maxHeight: "120px" }}
+                  disabled={isLoading}
+                  className="min-h-[40px] max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2 text-[12px] leading-5 text-mist outline-none placeholder:text-fog/35 disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px]"
                 />
-                
+
                 <button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim() && uploadedFiles.length === 0}
-                  className="shrink-0 rounded-lg bg-flux px-4 py-2.5 text-[13px] font-bold text-void shadow-[0_0_26px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-flux"
+                  disabled={
+                    isLoading ||
+                    (!inputValue.trim() &&
+                      uploadedFiles.length === 0)
+                  }
+                  className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-flux text-void shadow-[0_0_26px_-8px_rgba(56,189,248,0.7)] transition-all duration-200 hover:bg-ice disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Отправить сообщение"
                 >
-                  <LuSend className="h-5 w-5" />
+                  <LuSend className="h-4 w-4" />
                 </button>
               </div>
 
-              <p className="mono-label mt-2 text-[8px] text-fog/35">
-                Поддерживаемые форматы: {SUPPORTED_FORMATS.join(", ")}
-              </p>
+              <div className="mt-1.5 flex items-center justify-between gap-3 px-1">
+                <p className="mono-label truncate text-[7px] text-fog/25 sm:text-[8px]">
+                  {SUPPORTED_FORMATS.join(" · ")}
+                </p>
+
+                <p className="hidden shrink-0 text-[8px] text-fog/25 sm:block">
+                  Enter — отправить · Shift + Enter — новая строка
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <p className="mono-label mt-6 text-center text-fog/35">
-          AI COO · RAG система · Данные обрабатываются локально
+        <p className="mono-label hidden pt-3 text-center text-[8px] text-fog/25 sm:block">
+          AI COO · Company intelligence workspace
         </p>
       </main>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".pdf,.docx,.xlsx,.pptx"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      {isContextOpen && (
+        <div className="fixed inset-0 z-[60]">
+          <button
+            className="absolute inset-0 bg-void/70 backdrop-blur-sm"
+            onClick={() => setIsContextOpen(false)}
+            aria-label="Закрыть контекст"
+          />
+
+          <aside className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-line/60 bg-[#060b18] shadow-2xl sm:w-[360px]">
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-line/50 px-4">
+              <div>
+                <p className="font-display text-[11px] font-bold tracking-[0.16em] text-snow">
+                  CONTEXT
+                </p>
+
+                <p className="mt-0.5 text-[9px] text-fog/40">
+                  Контекст AI COO
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsContextOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-line/50 text-fog/60 transition-colors hover:border-line hover:text-mist"
+                aria-label="Закрыть"
+              >
+                <LuX className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-5">
+                <section>
+                  <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
+                    Company
+                  </p>
+
+                  <div className="rounded-xl border border-line/50 bg-hull/25 p-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-ion/30 bg-ion/10">
+                        <LuBuilding2 className="h-4 w-4 text-ion" />
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] font-semibold text-mist">
+                          Acme Corporation
+                        </p>
+
+                        <p className="mt-0.5 text-[9px] text-fog/40">
+                          Current workspace
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
+                    Company data
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      {
+                        label: "Goals",
+                        value: "4",
+                        icon: LuTarget,
+                      },
+                      {
+                        label: "Tasks",
+                        value: "28",
+                        icon: LuListTodo,
+                      },
+                      {
+                        label: "Meetings",
+                        value: "3",
+                        icon: LuCalendarDays,
+                      },
+                      {
+                        label: "Sources",
+                        value: "12",
+                        icon: LuDatabase,
+                      },
+                    ].map(
+                      ({
+                        label,
+                        value,
+                        icon: Icon,
+                      }) => (
+                        <div
+                          key={label}
+                          className="rounded-xl border border-line/50 bg-hull/20 p-3"
+                        >
+                          <Icon className="mb-2 h-3.5 w-3.5 text-fog/45" />
+
+                          <p className="text-lg font-semibold text-snow">
+                            {value}
+                          </p>
+
+                          <p className="text-[8px] uppercase tracking-[0.1em] text-fog/35">
+                            {label}
+                          </p>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </section>
+
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="mono-label text-[8px] uppercase tracking-[0.16em] text-fog/35">
+                      Knowledge base
+                    </p>
+
+                    <button
+                      onClick={openFilePicker}
+                      className="text-[9px] text-flux transition-colors hover:text-ice"
+                    >
+                      + Add
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {[
+                      "Company Strategy.pdf",
+                      "Financial Report.xlsx",
+                      "Q3 Goals.docx",
+                      "Operations.pptx",
+                    ].map((file) => (
+                      <div
+                        key={file}
+                        className="flex items-center gap-2.5 rounded-lg border border-line/40 bg-hull/15 px-3 py-2.5"
+                      >
+                        <LuFileText className="h-3.5 w-3.5 shrink-0 text-fog/45" />
+
+                        <span className="truncate text-[9px] text-mist/75">
+                          {file}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
+                    RAG status
+                  </p>
+
+                  <div className="rounded-xl border border-flux/15 bg-flux/5 p-3.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="dot-live"
+                        style={{
+                          backgroundColor:
+                            "var(--color-ok)",
+                        }}
+                      />
+
+                      <span className="text-[10px] font-medium text-mist">
+                        Knowledge base active
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-2 text-[8px] text-fog/40">
+                      <LuClock3 className="h-3 w-3" />
+                      Last sync 4 minutes ago
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <div className="shrink-0 border-t border-line/50 p-4">
+              <button
+                onClick={openFilePicker}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-line/60 bg-hull/25 px-3 py-2.5 text-[10px] font-medium text-mist transition-colors hover:border-flux/40 hover:text-flux"
+              >
+                <LuPaperclip className="h-3.5 w-3.5" />
+                Добавить документ
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
