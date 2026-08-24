@@ -32,12 +32,13 @@ const QUICK_PROMPTS = [
   },
   {
     title: "Анализ показателей",
-    description: "Проанализируй последние показатели",
+    description: "Проанализируй текущие показатели",
     icon: LuTarget,
   },
   {
-    title: "План совещания",
-    description: "Подготовь план совещания на неделю",
+    title: "План совещаний",
+    description:
+      "Подготовь повестку еженедельного совещания… (дополните запрос исходя из контекста)",
     icon: LuCalendarDays,
   },
   {
@@ -155,7 +156,7 @@ export default function AIChatPage() {
 
 ${files.map((file) => `• ${file.name}`).join("\n")}
 
-После подключения RAG я смогу использовать содержимое этих документов при ответах на вопросы.`;
+После подключения базы знаний я смогу использовать содержимое этих документов при ответах на вопросы.`;
     }
 
     if (
@@ -328,17 +329,17 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="font-display text-[13px] font-bold tracking-[0.2em] text-snow">
-                  AI COO
+                <h1 className="min-w-0 truncate font-display text-[13px] font-bold tracking-[0.08em] text-snow sm:tracking-[0.12em]">
+                  ИИ-операционный директор
                 </h1>
 
                 <span className="hidden rounded border border-flux/30 bg-flux/5 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.14em] text-flux sm:inline-flex">
-                  RAG
+                  База знаний
                 </span>
               </div>
 
               <p className="mono-label truncate text-[8px] text-fog/45 sm:text-[9px]">
-                Operations intelligence
+                Операционная аналитика
               </p>
             </div>
           </div>
@@ -352,7 +353,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                 }}
               />
               <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-fog/65">
-                12 sources
+                12 источников
               </span>
             </div>
 
@@ -374,25 +375,23 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
             <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/60">
               <LuBuilding2 className="h-3.5 w-3.5 text-ion/70" />
               <span className="font-medium text-mist/80">
-                Acme Corporation
+                Компания «Акме»
               </span>
             </div>
 
             <span className="h-3 w-px shrink-0 bg-line/60" />
 
             <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
-              <LuTarget className="h-3 w-3" />
-              4 goals
+              <LuTarget className="h-3 w-3" />4 цели
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
               <LuListTodo className="h-3 w-3" />
-              28 tasks
+              28 задач
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
-              <LuCalendarDays className="h-3 w-3" />
-              3 meetings
+              <LuCalendarDays className="h-3 w-3" />3 встречи
             </div>
 
             <div className="ml-auto hidden shrink-0 items-center gap-1.5 text-[8px] text-fog/35 md:flex">
@@ -402,7 +401,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                   backgroundColor: "var(--color-ok)",
                 }}
               />
-              Synced 4 min ago
+              Синхронизировано 4 мин назад
             </div>
           </div>
 
@@ -417,7 +416,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                       </div>
 
                       <p className="mono-label mb-2 text-[9px] uppercase tracking-[0.22em] text-flux/70">
-                        Operations intelligence
+                        Операционная аналитика
                       </p>
 
                       <h2 className="font-display text-2xl font-bold tracking-tight text-snow sm:text-3xl">
@@ -492,7 +491,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                           {!isUser && (
                             <div className="mb-1.5 flex items-center gap-2">
                               <span className="font-display text-[9px] font-bold tracking-[0.12em] text-ion">
-                                AI COO
+                                ИИ-операционный директор
                               </span>
 
                               <span className="text-[8px] text-fog/30">
@@ -544,7 +543,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                                               1024 /
                                               1024
                                             ).toFixed(1)}{" "}
-                                            MB
+                                            МБ
                                           </p>
                                         </div>
                                       </div>
@@ -564,7 +563,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                         {isUser && (
                           <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-flux to-ion sm:h-8 sm:w-8">
                             <span className="text-[10px] font-bold text-void">
-                              U
+                              Вы
                             </span>
                           </div>
                         )}
@@ -581,7 +580,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                       <div>
                         <div className="mb-1.5 flex items-center gap-2">
                           <span className="font-display text-[9px] font-bold tracking-[0.12em] text-ion">
-                            AI COO
+                            ИИ-операционный директор
                           </span>
                         </div>
 
@@ -672,7 +671,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                     setInputValue(event.target.value)
                   }
                   onKeyDown={handleKeyDown}
-                  placeholder="Задайте вопрос AI COO..."
+                  placeholder="Задайте вопрос ИИ-операционному директору..."
                   rows={1}
                   disabled={isLoading}
                   className="min-h-[40px] max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2 text-[12px] leading-5 text-mist outline-none placeholder:text-fog/35 disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px]"
@@ -706,7 +705,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
         </div>
 
         <p className="mono-label hidden pt-3 text-center text-[8px] text-fog/25 sm:block">
-          AI COO · Company intelligence workspace
+          ИИ-операционный директор · рабочее пространство операционной аналитики
         </p>
       </main>
 
@@ -731,11 +730,11 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
             <div className="flex h-14 shrink-0 items-center justify-between border-b border-line/50 px-4">
               <div>
                 <p className="font-display text-[11px] font-bold tracking-[0.16em] text-snow">
-                  CONTEXT
+                  КОНТЕКСТ
                 </p>
 
                 <p className="mt-0.5 text-[9px] text-fog/40">
-                  Контекст AI COO
+                  Контекст ИИ-операционного директора
                 </p>
               </div>
 
@@ -752,7 +751,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
               <div className="space-y-5">
                 <section>
                   <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                    Company
+                    Компания
                   </p>
 
                   <div className="rounded-xl border border-line/50 bg-hull/25 p-3.5">
@@ -763,11 +762,11 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
 
                       <div>
                         <p className="text-[11px] font-semibold text-mist">
-                          Acme Corporation
+                          Компания «Акме»
                         </p>
 
                         <p className="mt-0.5 text-[9px] text-fog/40">
-                          Current workspace
+                          Текущее рабочее пространство
                         </p>
                       </div>
                     </div>
@@ -776,28 +775,28 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
 
                 <section>
                   <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                    Company data
+                    Данные компании
                   </p>
 
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       {
-                        label: "Goals",
+                        label: "Цели",
                         value: "4",
                         icon: LuTarget,
                       },
                       {
-                        label: "Tasks",
+                        label: "Задачи",
                         value: "28",
                         icon: LuListTodo,
                       },
                       {
-                        label: "Meetings",
+                        label: "Встречи",
                         value: "3",
                         icon: LuCalendarDays,
                       },
                       {
-                        label: "Sources",
+                        label: "Источники",
                         value: "12",
                         icon: LuDatabase,
                       },
@@ -829,23 +828,23 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                 <section>
                   <div className="mb-2 flex items-center justify-between">
                     <p className="mono-label text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                      Knowledge base
+                      База знаний
                     </p>
 
                     <button
                       onClick={openFilePicker}
                       className="text-[9px] text-flux transition-colors hover:text-ice"
                     >
-                      + Add
+                      + Добавить
                     </button>
                   </div>
 
                   <div className="space-y-1.5">
                     {[
-                      "Company Strategy.pdf",
-                      "Financial Report.xlsx",
-                      "Q3 Goals.docx",
-                      "Operations.pptx",
+                      "Стратегия компании.pdf",
+                      "Финансовый отчёт.xlsx",
+                      "Цели 3-го квартала.docx",
+                      "Операционные процессы.pptx",
                     ].map((file) => (
                       <div
                         key={file}
@@ -863,7 +862,7 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
 
                 <section>
                   <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                    RAG status
+                    Статус базы знаний
                   </p>
 
                   <div className="rounded-xl border border-flux/15 bg-flux/5 p-3.5">
@@ -877,13 +876,13 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                       />
 
                       <span className="text-[10px] font-medium text-mist">
-                        Knowledge base active
+                        База знаний активна
                       </span>
                     </div>
 
                     <div className="mt-3 flex items-center gap-2 text-[8px] text-fog/40">
                       <LuClock3 className="h-3 w-3" />
-                      Last sync 4 minutes ago
+                      Последняя синхронизация 4 минуты назад
                     </div>
                   </div>
                 </section>
