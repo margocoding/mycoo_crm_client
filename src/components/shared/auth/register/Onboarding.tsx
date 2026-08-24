@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Logo, IconCheck } from "../../../icons";
 import { StatusChip, StatusDot } from "../../../ui/Ambient";
+import { Modal } from "../../../ui/Modal";
 
 /* ================= data ================= */
 
@@ -286,83 +287,25 @@ export function OnboardingOverlay({
 
   const progress = useMemo(() => [6, 30, 55, 80, 100][step] ?? 6, [step]);
 
-  if (!open) return null;
-
-  const inputCls =
-    "w-full rounded-md border border-line bg-void/70 px-4 py-3 text-[14px] text-snow placeholder:text-fog/45 outline-none transition-all duration-300 focus:border-flux/60 focus:shadow-[0_0_20px_-8px_rgba(56,189,248,0.65)]";
-
-  const summary: [string, string][] = [
-    ["компания", p.company],
-    ["отрасль", p.industry],
-    ["стадия", STAGES.find((s) => s.v === p.stage)?.t ?? "—"],
-    ...(p.site.trim() ? ([["сайт", p.site]] as [string, string][]) : []),
-    ["сотрудники", p.employees],
-    ["руководители", p.managers],
-    ["оборот", p.revenue || "не указан"],
-    ["собственник", `${p.ownerName} · ${p.ownerRole}`],
-    ["email", p.ownerEmail],
-    ["главная цель", p.goal],
-    ["проблема сейчас", p.problem],
-    ...(p.p1.trim() ? ([["приоритет 01", p.p1]] as [string, string][]) : []),
-    ...(p.p2.trim() ? ([["приоритет 02", p.p2]] as [string, string][]) : []),
-    ...(p.p3.trim() ? ([["приоритет 03", p.p3]] as [string, string][]) : []),
-  ];
-
   return (
-    <div
-      className="fixed inset-0 z-[75] overflow-y-auto bg-void/85 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Знакомство с компанией"
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      ariaLabel="Знакомство с компанией"
+      title={
+        <>
+          MYCOO <span className="text-fog/60">/</span>{" "}
+          <span className="text-ion">ONBOARDING</span>
+        </>
+      }
+      subtitle={<>бриф компании · ~5 минут · {step + 1}/5</>}
+      statusChip={{ tone: step === 4 ? "ok" : "ion", text: step === 4 ? "sync" : "data intake" }}
+      showProgress
+      progress={progress}
+      progressColor="var(--color-ion)"
+      maxWidth="max-w-5xl"
     >
-      <div
-        className="flex min-h-full items-center justify-center p-4"
-        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      >
-      <div className="corner glass step-in relative w-full rounded-xl shadow-[0_0_90px_-20px_rgba(139,133,248,0.35)]">
-        <span className="cx pointer-events-none absolute inset-0" />
-
-        {/* header */}
-        <div className="flex items-center justify-between gap-4 border-b border-line/70 px-5 py-4 md:px-7">
-          <div className="flex items-center gap-3">
-            <Logo className="h-7 w-7" />
-            <div>
-              <p className="font-display text-[13px] font-bold tracking-[0.18em] text-snow">
-                MYCOO <span className="text-fog/60">/</span>{" "}
-                <span className="text-ion">ONBOARDING</span>
-              </p>
-              <p className="mono-label text-fog/50">
-                бриф компании · ~5 минут · {step + 1}/5
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:block">
-              <StatusChip tone={step === 4 ? "ok" : "ion"}>
-                {step === 4 ? "sync" : "data intake"}
-              </StatusChip>
-            </span>
-            <button
-              onClick={onClose}
-              aria-label="Закрыть"
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-line text-fog transition-all duration-300 hover:border-crit/60 hover:text-crit"
-            >
-              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* progress */}
-        <div className="h-0.5 w-full bg-hull/60">
-          <div
-            className="h-full bg-ion shadow-[0_0_12px_rgba(139,133,248,0.8)] transition-all duration-700 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
-        <div className="grid md:grid-cols-[240px_1fr]">
+      <div className="grid md:grid-cols-[240px_1fr]">
           {/* rail */}
           <aside className="hidden border-r border-line/60 p-6 md:block">
             <p className="mono-label mb-5 text-fog/60">маршрут брифа</p>
@@ -869,9 +812,6 @@ export function OnboardingOverlay({
               </div>
             )}
           </div>
-        </div>
-      </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

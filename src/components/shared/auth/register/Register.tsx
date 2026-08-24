@@ -12,6 +12,7 @@ import {
 } from "react";
 import { Logo, IconCheck } from "../../../icons";
 import { StatusChip, StatusDot } from "../../../ui/Ambient";
+import { Modal } from "../../../ui/Modal";
 import { OnboardingOverlay, type Profile } from "./Onboarding";
 import { DiagnosticsOverlay } from "./Diagnostics";
 import { useNavigate } from "react-router-dom";
@@ -371,63 +372,27 @@ function RegisterOverlay({
     "w-full rounded-md border border-line bg-void/70 px-4 py-3.5 text-[14.5px] text-snow placeholder:text-fog/45 outline-none transition-all duration-300 focus:border-flux/60 focus:shadow-[0_0_22px_-8px_rgba(56,189,248,0.65)]";
 
   return (
-    <div
-      className="fixed inset-0 z-[70] overflow-y-auto bg-void/85 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Регистрация MyCOO"
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      ariaLabel="Регистрация MyCOO"
+      title={
+        <>
+          MYCOO <span className="text-fog/60">/</span>{" "}
+          <span className="text-flux">CREW REGISTRATION</span>
+        </>
+      }
+      subtitle={
+        <>
+          ses {reqId} · mission start {Math.min(step * 25, 100)}%
+        </>
+      }
+      statusChip={{ tone: step === 4 ? "ok" : "flux", text: step === 4 ? "onboard" : "secure channel" }}
+      showProgress
+      progress={Math.min(step * 25, 100)}
+      className=""
     >
-      <div
-        className="flex min-h-full items-center justify-center p-4"
-        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      >
-      <div
-        ref={panelRef}
-        className="corner glass step-in relative w-full max-w-4xl rounded-xl shadow-[0_0_90px_-20px_rgba(56,189,248,0.35)]"
-      >
-        <span className="cx pointer-events-none absolute inset-0" />
-
-        {/* panel header */}
-        <div className="flex items-center justify-between gap-4 border-b border-line/70 px-5 py-4 md:px-7">
-          <div className="flex items-center gap-3">
-            <Logo className="h-7 w-7" />
-            <div>
-              <p className="font-display text-[13px] font-bold tracking-[0.18em] text-snow">
-                MYCOO <span className="text-fog/60">/</span>{" "}
-                <span className="text-flux">CREW REGISTRATION</span>
-              </p>
-              <p className="mono-label text-fog/50">
-                ses {reqId} · mission start {Math.min(step * 25, 100)}%
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:block">
-              <StatusChip tone={step === 4 ? "ok" : "flux"}>
-                {step === 4 ? "onboard" : "secure channel"}
-              </StatusChip>
-            </span>
-            <button
-              onClick={onClose}
-              aria-label="Закрыть регистрацию"
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-line text-fog transition-all duration-300 hover:border-crit/60 hover:text-crit"
-            >
-              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* progress hairline */}
-        <div className="h-0.5 w-full bg-hull/60">
-          <div
-            className="h-full bg-flux shadow-[0_0_12px_rgba(56,189,248,0.8)] transition-all duration-700 ease-out"
-            style={{ width: `${Math.min(step * 25, 100)}%` }}
-          />
-        </div>
-
-        <div className="grid md:grid-cols-[240px_1fr]">
+      <div className="grid md:grid-cols-[240px_1fr]">
           {/* phase rail */}
           <aside className="hidden border-r border-line/60 p-6 md:block">
             <p className="mono-label mb-5 text-fog/60">фазы запуска</p>
@@ -873,8 +838,6 @@ function RegisterOverlay({
             )}
           </div>
         </div>
-      </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

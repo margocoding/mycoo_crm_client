@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Logo, IconCheck, IconArrow } from "../../../icons";
 import { StatusChip, StatusDot } from "../../../ui/Ambient";
+import { Modal } from "../../../ui/Modal";
 import { useCountUp, useReducedMotion } from "../../../../lib/motion";
 import type { Profile } from "./Onboarding";
 
@@ -286,101 +287,62 @@ export function DiagnosticsOverlay({
   const CIRC = 2 * Math.PI * R;
   const offset = CIRC * (1 - score / 100);
 
-  if (!open) return null;
-
-  const toneDot: Record<Risk["tone"], string> = {
-    crit: "var(--color-crit)",
-    warn: "var(--color-warn)",
-    ok: "var(--color-ok)",
-  };
-  const toneName: Record<Risk["tone"], string> = {
-    crit: "критично",
-    warn: "внимание",
-    ok: "норма",
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-[80] overflow-y-auto bg-void/85 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Экспресс-диагностика MyCOO"
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      ariaLabel="Экспресс-диагностика MyCOO"
+      title={
+        <>
+          MYCOO <span className="text-fog/60">/</span>{" "}
+          <span className="text-ion">EXPRESS SCAN</span>
+        </>
+      }
+      subtitle={
+        <>
+          {profile?.company ? `объект: ${profile.company}` : "экспресс-диагностика"}
+        </>
+      }
+      statusChip={{ tone: phase === "profile" ? "ok" : "ion", text: phase === "profile" ? "profile ready" : "ai interview" }}
+      maxWidth="max-w-3xl"
     >
-      <div
-        className="flex min-h-full items-center justify-center p-4"
-        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      >
-        <div className="corner glass step-in relative w-full max-w-3xl rounded-xl shadow-[0_0_90px_-20px_rgba(139,133,248,0.4)]">
-          <span className="cx pointer-events-none absolute inset-0" />
+      {/* progress */}
+      <div className="flex gap-1 px-5 pt-4 md:px-7 mb-6">
+        {QUESTIONS.map((qq, i) => {
+          const done = answers[qq.id] && (answers[qq.id].opt !== undefined || answers[qq.id].text.trim() || answers[qq.id].skip);
+          return (
+            <span
+              key={qq.id}
+              className={`h-1 flex-1 rounded-full transition-all duration-500 ${
+                phase !== "ask"
+                  ? "bg-ion"
+                  : i < idx || done
+                    ? "bg-ion/70"
+                    : i === idx
+                      ? "bg-ion/30"
+                      : "bg-hull"
+              }`}
+            />
+          );
+        })}
+      </div>
 
-          {/* header */}
-          <div className="flex items-center justify-between gap-4 border-b border-line/70 px-5 py-4 md:px-7">
-            <div className="flex items-center gap-3">
-              <Logo className="h-7 w-7" />
-              <div>
-                <p className="font-display text-[13px] font-bold tracking-[0.18em] text-snow">
-                  MYCOO <span className="text-fog/60">/</span>{" "}
-                  <span className="text-ion">EXPRESS SCAN</span>
-                </p>
-                <p className="mono-label text-fog/50">
-                  {profile?.company ? `объект: ${profile.company}` : "экспресс-диагностика"}
-                </p>
-              </div>
+      {/* content */}
+      <div className="p-6 md:p-8">
+        {/* ---------- ASK ---------- */}
+        {phase === "ask" && (
+          <div key={q.id} className="step-in">
+            <div className="flex items-baseline justify-between gap-4">
+              <p className="mono-label text-ion">
+                вопрос {String(idx + 1).padStart(2, "0")} / {QUESTIONS.length}
+              </p>
+              <p className="mono-label hidden text-fog/45 sm:block">
+                {profile?.ownerName ? `отвечает: ${profile.ownerName}` : "выберите вариант или опишите словами"}
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:block">
-                <StatusChip tone={phase === "profile" ? "ok" : "ion"}>
-                  {phase === "profile" ? "profile ready" : "ai interview"}
-                </StatusChip>
-              </span>
-              <button
-                onClick={onClose}
-                aria-label="Закрыть"
-                className="flex h-9 w-9 items-center justify-center rounded-md border border-line text-fog transition-all duration-300 hover:border-crit/60 hover:text-crit"
-              >
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* progress */}
-          <div className="flex gap-1 px-5 pt-4 md:px-7">
-            {QUESTIONS.map((qq, i) => {
-              const done = answers[qq.id] && (answers[qq.id].opt !== undefined || answers[qq.id].text.trim() || answers[qq.id].skip);
-              return (
-                <span
-                  key={qq.id}
-                  className={`h-1 flex-1 rounded-full transition-all duration-500 ${
-                    phase !== "ask"
-                      ? "bg-ion"
-                      : i < idx || done
-                        ? "bg-ion/70"
-                        : i === idx
-                          ? "bg-ion/30"
-                          : "bg-hull"
-                  }`}
-                />
-              );
-            })}
-          </div>
-
-          <div className="p-6 md:p-8">
-            {/* ---------- ASK ---------- */}
-            {phase === "ask" && (
-              <div key={q.id} className="step-in">
-                <div className="flex items-baseline justify-between gap-4">
-                  <p className="mono-label text-ion">
-                    вопрос {String(idx + 1).padStart(2, "0")} / {QUESTIONS.length}
-                  </p>
-                  <p className="mono-label hidden text-fog/45 sm:block">
-                    {profile?.ownerName ? `отвечает: ${profile.ownerName}` : "выберите вариант или опишите словами"}
-                  </p>
-                </div>
-                <h3 className="font-display mt-3 text-lg font-bold leading-snug text-snow md:text-[22px]">
-                  {q.q}
-                </h3>
+            <h3 className="font-display mt-3 text-lg font-bold leading-snug text-snow md:text-[22px]">
+              {q.q}
+            </h3>
 
                 <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
                   {q.opts.map((o, i) => {
@@ -579,8 +541,6 @@ export function DiagnosticsOverlay({
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

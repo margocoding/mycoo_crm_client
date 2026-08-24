@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LuX, LuCheck, LuCreditCard, LuFileText } from "react-icons/lu";
 import { Reveal } from "../../lib/motion";
+import { Modal } from "./Modal";
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -44,8 +45,6 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
   const [selectedPlan, setSelectedPlan] = useState<string>("MISSION");
   const [paymentMethod, setPaymentMethod] = useState<"robokassa" | "invoice" | null>(null);
 
-  if (!isOpen) return null;
-
   const getPrice = (planId: string) => {
     const key = `${planId}_${billingPeriod.toUpperCase()}` as keyof typeof PRICES;
     return PRICES[key];
@@ -64,33 +63,24 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-void/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="Выбор тарифа MyCOO"
+      title={
+        <>
+          MYCOO <span className="text-fog/60">/</span>{" "}
+          <span className="text-flux">SUBSCRIPTION</span>
+        </>
+      }
+      subtitle={<>подписка MyCOO · выбор тарифа</>}
+      statusChip={{ tone: "flux", text: "billing" }}
+      showProgress={false}
+      maxWidth="max-w-3xl"
+      className=""
+    >
       <Reveal delay={0}>
-        <div className="relative w-full max-w-2xl glass corner rounded-xl border border-line/50 shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-line/40 px-6 py-4">
-            <div>
-              <h2 className="font-display text-[16px] font-bold tracking-[0.18em] text-snow">
-                Выбор тарифа
-              </h2>
-              <p className="mono-label text-[9px] text-fog/60">
-                Подписка MyCOO
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-2 text-fog/60 transition-colors hover:text-snow"
-            >
-              <LuX className="h-5 w-5" />
-            </button>
-          </div>
+        <div className="relative w-full glass corner rounded-xl border border-line/50 shadow-2xl">
 
           {/* Body */}
           <div className="px-6 py-5">
@@ -260,6 +250,6 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
           </div>
         </div>
       </Reveal>
-    </div>
+    </Modal>
   );
 }
