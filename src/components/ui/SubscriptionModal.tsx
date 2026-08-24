@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LuX, LuCheck, LuCreditCard, LuFileText } from "react-icons/lu";
-import { Reveal } from "../../../lib/motion";
+import { Reveal } from "../../lib/motion";
 
 interface SubscriptionModalProps {
   isOpen: boolean;
