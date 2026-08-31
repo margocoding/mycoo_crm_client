@@ -5,7 +5,6 @@ import { useCountUp } from "../../../../lib/motion";
 import { useLaunch } from "../../auth/register/Register";
 import type { Profile } from "../../auth/register/Onboarding";
 
-/* ================= helpers ================= */
 
 function load<T>(key: string, fallback: T): T {
   try {
