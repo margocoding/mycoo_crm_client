@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Logo, IconCheck, IconArrow } from "../../../icons";
-import { StatusChip, StatusDot } from "../../../ui/Ambient";
+import { LuCheck, LuArrowRight } from "react-icons/lu";
 import { Modal } from "../../../ui/Modal";
-import { useCountUp, useReducedMotion } from "../../../../lib/motion";
-import type { Profile } from "./Onboarding";
-
-/* ================= data ================= */
+import { useReducedMotion } from "../../../../lib/motion";
+import { toneDot } from "../../../../lib/tone";
+import RiskItem from "../../../ui/RiskItem";
+import Dial from "../../../ui/Dial";
+import Button from "../../../ui/Button";
+import { Profile } from "./Onboarding/Onboarding";
 
 interface Opt {
   t: string;
@@ -18,96 +19,15 @@ interface Q {
 }
 
 const QUESTIONS: Q[] = [
-  {
-    id: "q1",
-    q: "Как сейчас ставятся задачи?",
-    opts: [
-      { t: "Устно, в моменте", s: 0.2 },
-      { t: "В мессенджерах и чатах", s: 0.45 },
-      { t: "В таск-трекере", s: 0.8 },
-      { t: "На регулярном планировании", s: 1 },
-    ],
-  },
-  {
-    id: "q2",
-    q: "Где фиксируются задачи?",
-    opts: [
-      { t: "В памяти и переписке", s: 0.2 },
-      { t: "В таблицах", s: 0.5 },
-      { t: "В таск-системе", s: 0.85 },
-      { t: "В единой системе компании", s: 1 },
-    ],
-  },
-  {
-    id: "q3",
-    q: "Кто контролирует выполнение?",
-    opts: [
-      { t: "Собственник лично", s: 0.2 },
-      { t: "Руководители вручную", s: 0.6 },
-      { t: "Есть регулярная отчётность", s: 0.9 },
-      { t: "Система плюс руководители", s: 1 },
-    ],
-  },
-  {
-    id: "q4",
-    q: "Как проходят совещания?",
-    opts: [
-      { t: "Ситуативно, без повестки", s: 0.3 },
-      { t: "Регулярно, без протоколов", s: 0.5 },
-      { t: "С протоколами, без продолжения", s: 0.7 },
-      { t: "С протоколами и задачами по итогам", s: 1 },
-    ],
-  },
-  {
-    id: "q5",
-    q: "Как принимаются решения?",
-    opts: [
-      { t: "Интуитивно, по ситуации", s: 0.3 },
-      { t: "После обсуждения с руководителями", s: 0.7 },
-      { t: "Фиксируются и доводятся до команды", s: 0.9 },
-      { t: "Фиксируются с ответственными и сроками", s: 1 },
-    ],
-  },
-  {
-    id: "q6",
-    q: "Какие показатели контролируются еженедельно?",
-    opts: [
-      { t: "Практически никакие", s: 0.2 },
-      { t: "Только выручка", s: 0.5 },
-      { t: "Финансовые и операционные", s: 0.8 },
-      { t: "Полный набор метрик с ответственными", s: 1 },
-    ],
-  },
-  {
-    id: "q7",
-    q: "Что чаще всего приходится контролировать лично собственнику?",
-    opts: [
-      { t: "Практически всё", s: 0.1 },
-      { t: "Ключевые задачи руководителей", s: 0.4 },
-      { t: "Только отклонения", s: 0.8 },
-      { t: "Почти ничего — работает система", s: 1 },
-    ],
-  },
-  {
-    id: "q8",
-    q: "Превращаются ли договорённости после встреч в задачи?",
-    opts: [
-      { t: "Почти никогда", s: 0.1 },
-      { t: "Иногда, если напомнить", s: 0.5 },
-      { t: "Обычно да", s: 0.8 },
-      { t: "Всегда, со сроками и ответственными", s: 1 },
-    ],
-  },
-  {
-    id: "q9",
-    q: "Как быстро вы узнаёте о проблемах в процессах?",
-    opts: [
-      { t: "Когда уже «горят» сроки", s: 0.2 },
-      { t: "Постфактум, на планёрках", s: 0.4 },
-      { t: "В течение дня", s: 0.75 },
-      { t: "В реальном времени", s: 1 },
-    ],
-  },
+  { id: "q1", q: "Как сейчас ставятся задачи?", opts: [{ t: "Устно, в моменте", s: 0.2 }, { t: "В мессенджерах и чатах", s: 0.45 }, { t: "В таск-трекере", s: 0.8 }, { t: "На регулярном планировании", s: 1 }] },
+  { id: "q2", q: "Где фиксируются задачи?", opts: [{ t: "В памяти и переписке", s: 0.2 }, { t: "В таблицах", s: 0.5 }, { t: "В таск-системе", s: 0.85 }, { t: "В единой системе компании", s: 1 }] },
+  { id: "q3", q: "Кто контролирует выполнение?", opts: [{ t: "Собственник лично", s: 0.2 }, { t: "Руководители вручную", s: 0.6 }, { t: "Есть регулярная отчётность", s: 0.9 }, { t: "Система плюс руководители", s: 1 }] },
+  { id: "q4", q: "Как проходят совещания?", opts: [{ t: "Ситуативно, без повестки", s: 0.3 }, { t: "Регулярно, без протоколов", s: 0.5 }, { t: "С протоколами, без продолжения", s: 0.7 }, { t: "С протоколами и задачами по итогам", s: 1 }] },
+  { id: "q5", q: "Как принимаются решения?", opts: [{ t: "Интуитивно, по ситуации", s: 0.3 }, { t: "После обсуждения с руководителями", s: 0.7 }, { t: "Фиксируются и доводятся до команды", s: 0.9 }, { t: "Фиксируются с ответственными и сроками", s: 1 }] },
+  { id: "q6", q: "Какие показатели контролируются еженедельно?", opts: [{ t: "Практически никакие", s: 0.2 }, { t: "Только выручка", s: 0.5 }, { t: "Финансовые и операционные", s: 0.8 }, { t: "Полный набор метрик с ответственными", s: 1 }] },
+  { id: "q7", q: "Что чаще всего приходится контролировать лично собственнику?", opts: [{ t: "Практически всё", s: 0.1 }, { t: "Ключевые задачи руководителей", s: 0.4 }, { t: "Только отклонения", s: 0.8 }, { t: "Почти ничего — работает система", s: 1 }] },
+  { id: "q8", q: "Превращаются ли договорённости после встреч в задачи?", opts: [{ t: "Почти никогда", s: 0.1 }, { t: "Иногда, если напомнить", s: 0.5 }, { t: "Обычно да", s: 0.8 }, { t: "Всегда, со сроками и ответственными", s: 1 }] },
+  { id: "q9", q: "Как быстро вы узнаёте о проблемах в процессах?", opts: [{ t: "Когда уже «горят» сроки", s: 0.2 }, { t: "Постфактум, на планёрках", s: 0.4 }, { t: "В течение дня", s: 0.75 }, { t: "В реальном времени", s: 1 }] },
 ];
 
 const SCAN_LINES = [
@@ -129,8 +49,6 @@ interface Risk {
   t: string;
 }
 
-/* ================= scoring ================= */
-
 function computeProfile(answers: Record<string, Answer>) {
   const vals = QUESTIONS.map((q) => {
     const a = answers[q.id];
@@ -149,18 +67,11 @@ function computeProfile(answers: Record<string, Answer>) {
     risks.push({ tone: "crit", t: "Задачи часто зависят от собственника" });
   if (pick("q2") !== undefined && pick("q2")! <= 1)
     risks.push({ tone: "warn", t: "Нет единой системы контроля" });
-  if (
-    (pick("q8") !== undefined && pick("q8")! <= 1) ||
-    (pick("q4") !== undefined && pick("q4")! <= 1)
-  )
+  if ((pick("q8") !== undefined && pick("q8")! <= 1) || (pick("q4") !== undefined && pick("q4")! <= 1))
     risks.push({ tone: "warn", t: "Договорённости после встреч не фиксируются" });
   if (pick("q5") !== undefined && pick("q5")! <= 0 && risks.length < 3)
     risks.push({ tone: "warn", t: "Решения не фиксируются с ответственными" });
-  if (
-    pick("q3") !== undefined &&
-    pick("q3")! >= 2 &&
-    (pick("q1") !== undefined && pick("q1")! >= 2)
-  )
+  if (pick("q3") !== undefined && pick("q3")! >= 2 && pick("q1") !== undefined && pick("q1")! >= 2)
     risks.push({ tone: "ok", t: "Структура руководителей сформирована" });
 
   if (risks.filter((r) => r.tone !== "ok").length === 0)
@@ -173,12 +84,10 @@ function computeProfile(answers: Record<string, Answer>) {
 
 const band = (s: number) =>
   s < 55
-    ? { label: "Управление держится на ручном контроле", tone: "var(--color-crit)" }
+    ? { label: "Управление держится на ручном контроле", tone: toneDot.crit }
     : s < 75
-      ? { label: "База есть — нужен единый операционный контур", tone: "var(--color-warn)" }
-      : { label: "Операционный контур почти замкнут", tone: "var(--color-ok)" };
-
-/* ================= overlay ================= */
+      ? { label: "База есть — нужен единый операционный контур", tone: toneDot.warn }
+      : { label: "Операционный контур почти замкнут", tone: toneDot.ok };
 
 export function DiagnosticsOverlay({
   open,
@@ -211,7 +120,7 @@ export function DiagnosticsOverlay({
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: globalThis.KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
@@ -219,7 +128,6 @@ export function DiagnosticsOverlay({
     };
   }, [open, onClose]);
 
-  /* scan animation */
   useEffect(() => {
     if (phase !== "scan") return;
     if (reduced) {
@@ -239,14 +147,11 @@ export function DiagnosticsOverlay({
     [phase, answers]
   );
 
-  /* persist profile */
   useEffect(() => {
     if (!result) return;
     try {
       localStorage.setItem("mycoo_mgmt_profile", JSON.stringify(result));
-    } catch {
-      /* demo mode */
-    }
+    } catch {}
   }, [result]);
 
   const q = QUESTIONS[idx];
@@ -268,6 +173,7 @@ export function DiagnosticsOverlay({
       setPhase("scan");
     }
   };
+
   const goBack = () => {
     if (idx === 0) return;
     commit({ opt: a?.opt, text, skip: false });
@@ -275,17 +181,13 @@ export function DiagnosticsOverlay({
     setIdx(n);
     setText(answers[QUESTIONS[n].id]?.text ?? "");
   };
+
   const skip = () => {
     commit({ text: "", skip: true });
     setText("");
     if (idx < QUESTIONS.length - 1) setIdx(idx + 1);
     else setPhase("scan");
   };
-
-  const score = useCountUp(result?.score ?? 0, phase === "profile", 1600);
-  const R = 54;
-  const CIRC = 2 * Math.PI * R;
-  const offset = CIRC * (1 - score / 100);
 
   return (
     <Modal
@@ -294,20 +196,17 @@ export function DiagnosticsOverlay({
       ariaLabel="Экспресс-диагностика MyCOO"
       title={
         <>
-          MYCOO <span className="text-fog/60">/</span>{" "}
-          <span className="text-ion">EXPRESS SCAN</span>
+          MYCOO <span className="text-fog/60">/</span> <span className="text-ion">EXPRESS SCAN</span>
         </>
       }
-      subtitle={
-        <>
-          {profile?.company ? `объект: ${profile.company}` : "экспресс-диагностика"}
-        </>
-      }
-      statusChip={{ tone: phase === "profile" ? "ok" : "ion", text: phase === "profile" ? "profile ready" : "ai interview" }}
+      subtitle={<>{profile?.company ? `объект: ${profile.company}` : "экспресс-диагностика"}</>}
+      statusChip={{
+        tone: phase === "profile" ? "ok" : "ion",
+        text: phase === "profile" ? "profile ready" : "ai interview",
+      }}
       maxWidth="max-w-3xl"
     >
-      {/* progress */}
-      <div className="flex gap-1 px-5 pt-4 md:px-7 mb-6">
+      <div className="mb-6 flex gap-1 px-5 pt-4 md:px-7">
         {QUESTIONS.map((qq, i) => {
           const done = answers[qq.id] && (answers[qq.id].opt !== undefined || answers[qq.id].text.trim() || answers[qq.id].skip);
           return (
@@ -327,9 +226,7 @@ export function DiagnosticsOverlay({
         })}
       </div>
 
-      {/* content */}
       <div className="p-6 md:p-8">
-        {/* ---------- ASK ---------- */}
         {phase === "ask" && (
           <div key={q.id} className="step-in">
             <div className="flex items-baseline justify-between gap-4">
@@ -344,203 +241,142 @@ export function DiagnosticsOverlay({
               {q.q}
             </h3>
 
-                <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
-                  {q.opts.map((o, i) => {
-                    const active = a?.opt === i && !a.skip;
-                    return (
-                      <button
-                        key={o.t}
-                        type="button"
-                        onClick={() => commit({ opt: i, text })}
-                        className={`group flex items-center gap-3 rounded-md border px-4 py-3.5 text-left transition-all duration-300 ${
-                          active
-                            ? "border-ion/70 bg-ion/10 text-snow shadow-[0_0_22px_-8px_rgba(139,133,248,0.8)]"
-                            : "border-line bg-hull/30 text-mist hover:-translate-y-0.5 hover:border-ion/40 hover:text-snow"
-                        }`}
-                      >
-                        <span
-                          className={`font-mono text-[10px] font-bold ${active ? "text-ion" : "text-fog/50"}`}
-                        >
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <span className="text-[13.5px] font-medium leading-snug">{o.t}</span>
-                        {active && (
-                          <span className="ml-auto text-ion">
-                            <IconCheck className="h-4 w-4" />
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <label className="mono-label mb-2 mt-6 block text-fog/60">
-                  или своими словами
-                </label>
-                <textarea
-                  rows={2}
-                  value={text}
-                  onChange={(e) => {
-                    setText(e.target.value);
-                    if (e.target.value.trim()) commit({ text: e.target.value });
-                  }}
-                  placeholder="Например: задачи ставлю лично в Telegram, трекера нет…"
-                  className="w-full resize-none rounded-md border border-line bg-void/70 px-4 py-3 text-[14px] text-snow placeholder:text-fog/40 outline-none transition-all duration-300 focus:border-ion/60 focus:shadow-[0_0_22px_-8px_rgba(139,133,248,0.65)]"
-                />
-
-                <div className="mt-6 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center">
+            <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
+              {q.opts.map((o, i) => {
+                const active = a?.opt === i && !a.skip;
+                return (
                   <button
+                    key={o.t}
                     type="button"
-                    onClick={goBack}
-                    disabled={idx === 0}
-                    className="rounded-md px-4 py-3 text-[13px] font-semibold text-fog transition-colors enabled:hover:text-ion disabled:opacity-30"
+                    onClick={() => commit({ opt: i, text })}
+                    className={`group flex items-center gap-3 rounded-md border px-4 py-3.5 text-left transition-all duration-300 ${
+                      active
+                        ? "border-ion/70 bg-ion/10 text-snow shadow-[0_0_22px_-8px_rgba(139,133,248,0.8)]"
+                        : "border-line bg-hull/30 text-mist hover:-translate-y-0.5 hover:border-ion/40 hover:text-snow"
+                    }`}
                   >
-                    ← Назад
+                    <span className={`font-mono text-[10px] font-bold ${active ? "text-ion" : "text-fog/50"}`}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="text-[13.5px] font-medium leading-snug">{o.t}</span>
+                    {active && <LuCheck className="ml-auto h-4 w-4 text-ion" />}
                   </button>
-                  <button
-                    type="button"
-                    onClick={skip}
-                    className="mono-label text-fog/50 transition-colors hover:text-warn"
-                  >
-                    пропустить
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goNext}
-                    disabled={!answered}
-                    className="btn-primary group inline-flex items-center justify-center gap-2.5 rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 enabled:hover:brightness-110 enabled:hover:shadow-[0_0_44px_-8px_rgba(139,133,248,0.95)] disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none sm:ml-auto"
-                  >
-                    {idx === QUESTIONS.length - 1 ? "Сформировать профиль" : "Далее"}
-                    <IconArrow className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                  </button>
-                </div>
-              </div>
-            )}
+                );
+              })}
+            </div>
 
-            {/* ---------- SCAN ---------- */}
-            {phase === "scan" && (
-              <div className="step-in py-4">
-                <p className="mono-label text-ion">mycoo анализирует</p>
-                <h3 className="font-display mt-2 text-lg font-bold text-snow md:text-xl">
-                  Экспресс-диагностика контура управления
-                </h3>
-                <div className="mt-6 space-y-2.5 rounded-md border border-line/70 bg-void/60 p-5 font-mono text-[12.5px]">
-                  {SCAN_LINES.map((l, i) => (
-                    <p
-                      key={l}
-                      className="log-in flex items-center gap-2.5 text-fog/85"
-                      style={{ animationDelay: `${i * 0.42}s` }}
-                    >
-                      {i < scanLine ? (
-                        <span className="text-ok">▸</span>
-                      ) : i === scanLine ? (
-                        <span className="pulse-glow text-ion">●</span>
-                      ) : (
-                        <span className="text-fog/25">·</span>
-                      )}
-                      {l}
-                    </p>
-                  ))}
-                </div>
-                <p className="mono-label mt-4 text-fog/45">
-                  ~9 ответов · без передачи данных · демо-режим
-                </p>
-              </div>
-            )}
+            <label className="mono-label mb-2 mt-6 block text-fog/60">или своими словами</label>
+            <textarea
+              rows={2}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (e.target.value.trim()) commit({ text: e.target.value });
+              }}
+              placeholder="Например: задачи ставлю лично в Telegram, трекера нет…"
+              className="w-full resize-none rounded-md border border-line bg-void/70 px-4 py-3 text-[14px] text-snow placeholder:text-fog/40 outline-none transition-all duration-300 focus:border-ion/60 focus:shadow-[0_0_22px_-8px_rgba(139,133,248,0.65)]"
+            />
 
-            {/* ---------- PROFILE ---------- */}
-            {phase === "profile" && result && (
-              <div className="step-in">
-                <p className="mono-label text-ok">диагностика завершена</p>
-                <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">
-                  Ваш управленческий профиль
-                </h3>
-
-                <div className="mt-6 grid items-center gap-7 sm:grid-cols-[190px_1fr]">
-                  {/* dial */}
-                  <div className="relative mx-auto w-[190px]">
-                    <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
-                      <circle cx="70" cy="70" r={R} fill="none" stroke="var(--color-hull)" strokeWidth="9" />
-                      <circle
-                        cx="70"
-                        cy="70"
-                        r={R}
-                        fill="none"
-                        stroke="url(#diag-grad)"
-                        strokeWidth="9"
-                        strokeLinecap="round"
-                        strokeDasharray={CIRC}
-                        strokeDashoffset={offset}
-                        style={{ transition: "stroke-dashoffset 1.6s cubic-bezier(0.22,1,0.36,1)", filter: "drop-shadow(0 0 8px rgba(139,133,248,0.5))" }}
-                      />
-                      <defs>
-                        <linearGradient id="diag-grad" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor="var(--color-flux)" />
-                          <stop offset="100%" stopColor="var(--color-ion)" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="inset-0 flex flex-col items-center justify-center">
-                      <span className="font-display text-4xl font-bold text-snow">{score}</span>
-                      <span className="mono-label mt-1 text-fog/60">/ 100 · управляемость</span>
-                    </div>
-                  </div>
-
-                  {/* risks */}
-                  <div>
-                    <p className="mono-label mb-3 text-fog/60">основные риски и точки роста</p>
-                    <ul className="space-y-2.5">
-                      {result.risks.map((r, i) => (
-                        <li
-                          key={r.t}
-                          className="log-in flex items-center gap-3 rounded-md border border-line/60 bg-hull/30 px-3.5 py-3"
-                          style={{ animationDelay: `${0.3 + i * 0.18}s` }}
-                        >
-                          <StatusDot color={toneDot[r.tone]} />
-                          <span className="text-[13.5px] font-medium text-mist">{r.t}</span>
-                          <span
-                            className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]"
-                            style={{ color: toneDot[r.tone] }}
-                          >
-                            {toneName[r.tone]}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mt-4 text-[13px] font-semibold" style={{ color: band(result.score).tone }}>
-                      {band(result.score).label}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-7 rounded-md border border-line/70 bg-void/60 px-4 py-3.5">
-                  <p className="text-[13px] leading-relaxed text-fog">
-                    Профиль сохранён — MyCOO будет учитывать его в ежедневной работе.
-                    Уже сейчас видно, где система снимет с вас ручное управление.
-                  </p>
-                </div>
-
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    onClick={onLaunch}
-                    className="btn-primary group inline-flex items-center justify-center gap-2.5 rounded-md bg-flux px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_44px_-8px_rgba(56,189,248,0.95)]"
-                  >
-                    Запустить trial · 10 дней
-                    <IconArrow className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="inline-flex items-center justify-center rounded-md border border-line px-6 py-3.5 text-[13.5px] font-semibold text-mist transition-all duration-300 hover:border-flux/50 hover:text-snow"
-                  >
-                    Вернуться на сайт
-                  </button>
-                </div>
-                <p className="mono-label mt-4 text-fog/45">
-                  trial стартует после онбординга — вы уже знаете, что именно тестируете
-                </p>
-              </div>
-            )}
+            <div className="mt-6 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center">
+              <Button variant="ghost" onClick={goBack} disabled={idx === 0}>
+                ← Назад
+              </Button>
+              <button
+                type="button"
+                onClick={skip}
+                className="mono-label text-fog/50 transition-colors hover:text-warn"
+              >
+                пропустить
+              </button>
+              <Button
+                tone="ion"
+                onClick={goNext}
+                disabled={!answered}
+                iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />}
+                className="sm:ml-auto"
+              >
+                {idx === QUESTIONS.length - 1 ? "Сформировать профиль" : "Далее"}
+              </Button>
+            </div>
           </div>
+        )}
+
+        {phase === "scan" && (
+          <div className="step-in py-4">
+            <p className="mono-label text-ion">mycoo анализирует</p>
+            <h3 className="font-display mt-2 text-lg font-bold text-snow md:text-xl">
+              Экспресс-диагностика контура управления
+            </h3>
+            <div className="mt-6 space-y-2.5 rounded-md border border-line/70 bg-void/60 p-5 font-mono text-[12.5px]">
+              {SCAN_LINES.map((l, i) => (
+                <p
+                  key={l}
+                  className="log-in flex items-center gap-2.5 text-fog/85"
+                  style={{ animationDelay: `${i * 0.42}s` }}
+                >
+                  {i < scanLine ? (
+                    <span className="text-ok">▸</span>
+                  ) : i === scanLine ? (
+                    <span className="pulse-glow text-ion">●</span>
+                  ) : (
+                    <span className="text-fog/25">·</span>
+                  )}
+                  {l}
+                </p>
+              ))}
+            </div>
+            <p className="mono-label mt-4 text-fog/45">~9 ответов · без передачи данных · демо-режим</p>
+          </div>
+        )}
+
+        {phase === "profile" && result && (
+          <div className="step-in">
+            <p className="mono-label text-ok">диагностика завершена</p>
+            <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">
+              Ваш управленческий профиль
+            </h3>
+
+            <div className="mt-6 grid items-center gap-7 sm:grid-cols-[190px_1fr]">
+              <Dial value={result.score} label="/ 100" sub="управляемость" animated={phase === "profile"} />
+
+              <div>
+                <p className="mono-label mb-3 text-fog/60">основные риски и точки роста</p>
+                <ul className="space-y-2.5">
+                  {result.risks.map((r, i) => (
+                    <RiskItem key={r.t} tone={r.tone} text={r.t} delay={0.3 + i * 0.18} />
+                  ))}
+                </ul>
+                <p className="mt-4 text-[13px] font-semibold" style={{ color: band(result.score).tone }}>
+                  {band(result.score).label}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-7 rounded-md border border-line/70 bg-void/60 px-4 py-3.5">
+              <p className="text-[13px] leading-relaxed text-fog">
+                Профиль сохранён — MyCOO будет учитывать его в ежедневной работе. Уже сейчас
+                видно, где система снимет с вас ручное управление.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Button
+                tone="flux"
+                onClick={onLaunch}
+                iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />}
+              >
+                Запустить trial · 10 дней
+              </Button>
+              <Button variant="secondary" onClick={onClose}>
+                Вернуться на сайт
+              </Button>
+            </div>
+            <p className="mono-label mt-4 text-fog/45">
+              trial стартует после онбординга — вы уже знаете, что именно тестируете
+            </p>
+          </div>
+        )}
+      </div>
     </Modal>
   );
 }

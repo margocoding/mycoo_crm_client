@@ -1,13 +1,16 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { IconCheck } from "../../../icons";
-import { StatusDot } from "../../../ui/Ambient";
-import { Modal } from "../../../ui/Modal";
+import Button from "@/components/ui/Button";
+import Chip from "@/components/ui/Chip";
+import FormField from "@/components/ui/FormField";
+import Input from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import Segmented from "@/components/ui/Segmented";
+import ValidationError from "@/components/ui/ValidationError";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LuCheck, LuArrowRight, LuLock } from "react-icons/lu";
+import OnboardingFooter from "./OnboardingFooter";
+import Textarea from "@/components/ui/Textarea";
+import { StatusDot } from "@/components/ui/Ambient";
+import { toneDot } from "@/lib/tone";
 
 const PHASES = [
   { id: "00", code: "BRIEF", label: "Знакомство" },
@@ -96,79 +99,6 @@ const EMPTY: Profile = {
   p3: "",
 };
 
-const inputCls =
-  "w-full rounded-md border border-line bg-hull/30 px-3.5 py-2.5 text-[13px] text-snow placeholder:text-fog/40 focus:border-ion/50 focus:outline-none focus:ring-1 focus:ring-ion/50 transition-all duration-300";
-
-function Label({ children, optional }: { children: ReactNode; optional?: boolean }) {
-  return (
-    <label className="mono-label mb-2 flex items-center gap-2 text-fog/75">
-      {children}
-      {optional && (
-        <span className="rounded border border-line px-1.5 py-0.5 text-[8.5px] tracking-[0.14em] text-fog/50">
-          опционально
-        </span>
-      )}
-    </label>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-md border px-3.5 py-2.5 text-[13px] font-medium transition-all duration-300 ${
-        active
-          ? "border-flux/70 bg-flux/10 text-ice shadow-[0_0_18px_-6px_rgba(56,189,248,0.7)]"
-          : "border-line bg-hull/30 text-fog hover:-translate-y-0.5 hover:border-flux/40 hover:text-mist"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Seg({
-  options,
-  value,
-  onChange,
-  label,
-}: {
-  options: string[];
-  value: string;
-  onChange: (v: string) => void;
-  label: string;
-}) {
-  return (
-    <div className="grid auto-cols-fr grid-flow-col gap-1.5" role="radiogroup" aria-label={label}>
-      {options.map((o) => (
-        <button
-          key={o}
-          type="button"
-          role="radio"
-          aria-checked={value === o}
-          onClick={() => onChange(o)}
-          className={`rounded-md border px-2 py-2.5 text-center text-[12.5px] font-semibold transition-all duration-300 ${
-            value === o
-              ? "border-flux/70 bg-flux/10 text-ice shadow-[0_0_16px_-6px_rgba(56,189,248,0.7)]"
-              : "border-line bg-hull/30 text-fog hover:border-flux/40 hover:text-mist"
-          }`}
-        >
-          {o}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function OnboardingOverlay({
   open,
   onClose,
@@ -178,7 +108,7 @@ export function OnboardingOverlay({
   open: boolean;
   onClose: () => void;
   regEmail: string;
-  onFinish?: (p: Profile) => void;
+  onFinish: (p: Profile) => void;
 }) {
   const [step, setStep] = useState(0);
   const [p, setP] = useState<Profile>(EMPTY);
@@ -221,13 +151,17 @@ export function OnboardingOverlay({
       setSynced(true);
       try {
         localStorage.setItem("mycoo_profile", JSON.stringify(p));
-      } catch {
-      }
+      } catch {}
     }, 2300);
     return () => clearTimeout(t);
   }, [step, open, synced]);
 
   const prioCount = [p.p1, p.p2, p.p3].filter((x) => x.trim()).length;
+
+  const fail = (m: string) => {
+    setErr(m);
+    setAttempt((a) => a + 1);
+  };
 
   const next = () => {
     if (step === 1) {
@@ -258,11 +192,6 @@ export function OnboardingOverlay({
     setStep((s) => s + 1);
   };
 
-  const fail = (m: string) => {
-    setErr(m);
-    setAttempt((a) => a + 1);
-  };
-
   const insertExample = (text: string) => {
     setP((prev) => {
       if (!prev.goal.trim()) return { ...prev, goal: text };
@@ -289,7 +218,7 @@ export function OnboardingOverlay({
       ["Масштаб", `${p.employees || "—"} сотр. · ${p.managers || "—"} рук.`],
       ["Стадия", stageLabel],
       ["Оборот", p.revenue || "не указан"],
-      ["Контакт", `${p.ownerName} (${roleValue || "—" })`],
+      ["Контакт", `${p.ownerName} (${roleValue || "—"})`],
       ["Email", p.ownerEmail],
       ["Главная цель", p.goal],
       ["Главная проблема", p.problem],
@@ -306,8 +235,7 @@ export function OnboardingOverlay({
       ariaLabel="Знакомство с компанией"
       title={
         <>
-          MYCOO <span className="text-fog/60">/</span>{" "}
-          <span className="text-ion">ONBOARDING</span>
+          MYCOO <span className="text-fog/60">/</span> <span className="text-ion">ONBOARDING</span>
         </>
       }
       subtitle={<>бриф компании · ~5 минут · {step + 1}/5</>}
@@ -335,7 +263,7 @@ export function OnboardingOverlay({
                           : "border-line bg-void text-fog/50"
                     }`}
                   >
-                    {state === "done" ? <IconCheck className="h-3 w-3" /> : ph.id}
+                    {state === "done" ? <LuCheck className="h-3 w-3" /> : ph.id}
                   </span>
                   <div>
                     <p
@@ -375,10 +303,7 @@ export function OnboardingOverlay({
                     Давайте познакомимся с вашей компанией. Это займёт около 5 минут.
                   </p>
                   <p className="mt-3 flex items-start gap-2 text-[13px] leading-relaxed text-fog">
-                    <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-ok" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="5" y="10" width="14" height="10" rx="2" />
-                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                    </svg>
+                    <LuLock className="mt-0.5 h-4 w-4 shrink-0 text-ok" />
                     Нужны только данные, которые действительно используются системой.
                   </p>
                 </div>
@@ -405,18 +330,10 @@ export function OnboardingOverlay({
               </div>
 
               <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <button
-                  onClick={() => setStep(1)}
-                  className="btn-primary group inline-flex items-center gap-2.5 rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_44px_-8px_rgba(139,133,248,0.95)]"
-                >
+                <Button iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />} onClick={() => setStep(1)}>
                   Начать знакомство
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 12h14M13 6.5 18.5 12 13 17.5" />
-                  </svg>
-                </button>
-                <span className="mono-label text-fog/45">
-                  оборот и сайт — по желанию
-                </span>
+                </Button>
+                <span className="mono-label text-fog/45">оборот и сайт — по желанию</span>
               </div>
             </div>
           )}
@@ -430,32 +347,27 @@ export function OnboardingOverlay({
 
               <div className="mt-6 grid gap-5">
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <Label>название</Label>
-                    <input
-                      ref={companyRef}
-                      autoFocus
-                      autoComplete="off"
-                      value={p.company}
-                      onChange={(e) => set("company")(e.target.value)}
-                      placeholder="ООО «Вектор»"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <Label optional>сайт</Label>
-                    <input
-                      autoComplete="off"
-                      value={p.site}
-                      onChange={(e) => set("site")(e.target.value)}
-                      placeholder="company.ru"
-                      className={inputCls}
-                    />
-                  </div>
+                  <Input
+                    ref={companyRef}
+                    label="название"
+                    autoFocus
+                    autoComplete="off"
+                    value={p.company}
+                    onChange={(e) => set("company")(e.target.value)}
+                    placeholder="ООО «Вектор»"
+                  />
+                  <Input
+                    label="сайт"
+                    optional
+                    autoComplete="off"
+                    value={p.site}
+                    onChange={(e) => set("site")(e.target.value)}
+                    placeholder="company.ru"
+                  />
                 </div>
 
                 <div>
-                  <Label>отрасль</Label>
+                  <FormField>отрасль</FormField>
                   <div className="flex flex-wrap gap-2">
                     {INDUSTRIES.map((ind) => (
                       <Chip key={ind} active={p.industry === ind} onClick={() => set("industry")(ind)}>
@@ -464,30 +376,40 @@ export function OnboardingOverlay({
                     ))}
                   </div>
                   {p.industry === "Другое" && (
-                    <input
+                    <Input
                       autoFocus
                       autoComplete="off"
                       value={p.industryOther}
                       onChange={(e) => set("industryOther")(e.target.value)}
                       placeholder="Чем занимается компания — опишите своими словами"
-                      className={`${inputCls} mt-3`}
+                      wrapperClassName="mt-3"
                     />
                   )}
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
-                    <Label>сотрудников</Label>
-                    <Seg label="Количество сотрудников" options={EMPLOYEES} value={p.employees} onChange={set("employees")} />
+                    <FormField>сотрудников</FormField>
+                    <Segmented
+                      label="Количество сотрудников"
+                      options={EMPLOYEES}
+                      value={p.employees}
+                      onChange={set("employees")}
+                    />
                   </div>
                   <div>
-                    <Label>руководителей</Label>
-                    <Seg label="Количество руководителей" options={MANAGERS} value={p.managers} onChange={set("managers")} />
+                    <FormField>руководителей</FormField>
+                    <Segmented
+                      label="Количество руководителей"
+                      options={MANAGERS}
+                      value={p.managers}
+                      onChange={set("managers")}
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <Label optional>примерный оборот</Label>
+                  <FormField optional>примерный оборот</FormField>
                   <div className="flex flex-wrap gap-2">
                     {REVENUE.map((r) => (
                       <Chip key={r} active={p.revenue === r} onClick={() => set("revenue")(r)}>
@@ -498,7 +420,7 @@ export function OnboardingOverlay({
                 </div>
 
                 <div>
-                  <Label>стадия бизнеса</Label>
+                  <FormField>стадия бизнеса</FormField>
                   <div className="grid gap-2.5 sm:grid-cols-2">
                     {STAGES.map((s) => (
                       <button
@@ -521,23 +443,8 @@ export function OnboardingOverlay({
                 </div>
               </div>
 
-              {err && (
-                <p className="mt-4 flex items-center gap-2 font-mono text-[11px] text-crit">
-                  <StatusDot color="var(--color-crit)" /> {err}
-                </p>
-              )}
-
-              <div className="mt-7 flex items-center gap-3">
-                <button
-                  onClick={next}
-                  className="btn-primary rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 hover:brightness-110"
-                >
-                  Далее →
-                </button>
-                <button onClick={() => setStep(0)} className="rounded-md px-4 py-3 text-[13px] font-semibold text-fog transition-colors hover:text-ion">
-                  ← назад
-                </button>
-              </div>
+              <ValidationError message={err} />
+              <OnboardingFooter onNext={next} onBack={() => setStep(0)} />
             </div>
           )}
 
@@ -547,25 +454,20 @@ export function OnboardingOverlay({
               <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">
                 Кто принимает решения
               </h3>
-              <p className="mt-2 text-[13.5px] text-fog">
-                MyCOO эскалирует ключевые решения именно вам.
-              </p>
+              <p className="mt-2 text-[13.5px] text-fog">MyCOO эскалирует ключевые решения именно вам.</p>
 
               <div className="mt-6 grid gap-5">
+                <Input
+                  ref={ownerRef}
+                  label="имя"
+                  autoFocus
+                  autoComplete="off"
+                  value={p.ownerName}
+                  onChange={(e) => set("ownerName")(e.target.value)}
+                  placeholder="Как к вам обращаться"
+                />
                 <div>
-                  <Label>имя</Label>
-                  <input
-                    ref={ownerRef}
-                    autoFocus
-                    autoComplete="off"
-                    value={p.ownerName}
-                    onChange={(e) => set("ownerName")(e.target.value)}
-                    placeholder="Как к вам обращаться"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <Label>должность</Label>
+                  <FormField>должность</FormField>
                   <div className="flex flex-wrap gap-2">
                     {ROLES.map((r) => (
                       <Chip key={r} active={p.ownerRole === r} onClick={() => set("ownerRole")(r)}>
@@ -574,88 +476,64 @@ export function OnboardingOverlay({
                     ))}
                   </div>
                   {p.ownerRole === "Другое" && (
-                    <input
+                    <Input
                       autoFocus
                       autoComplete="off"
                       value={p.roleOther}
                       onChange={(e) => set("roleOther")(e.target.value)}
                       placeholder="Ваша должность — например, коммерческий директор"
-                      className={`${inputCls} mt-3`}
+                      wrapperClassName="mt-3"
                     />
                   )}
                 </div>
-                <div>
-                  <Label>email</Label>
-                  <input
-                    type="email"
-                    autoComplete="off"
-                    value={p.ownerEmail}
-                    onChange={(e) => set("ownerEmail")(e.target.value)}
-                    placeholder="you@company.ru"
-                    className={inputCls}
-                  />
-                  {regEmail && p.ownerEmail === regEmail && (
-                    <p className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-ok">
-                      <IconCheck className="h-3 w-3" /> подставлен из регистрации
-                    </p>
-                  )}
-                </div>
+                <Input
+                  label="email"
+                  type="email"
+                  autoComplete="off"
+                  value={p.ownerEmail}
+                  onChange={(e) => set("ownerEmail")(e.target.value)}
+                  placeholder="you@company.ru"
+                  hint={
+                    regEmail && p.ownerEmail === regEmail ? (
+                      <span className="flex items-center gap-1.5 font-mono text-[11px] text-ok">
+                        <LuCheck className="h-3 w-3" /> подставлен из регистрации
+                      </span>
+                    ) : undefined
+                  }
+                />
               </div>
 
-              {err && (
-                <p className="mt-4 flex items-center gap-2 font-mono text-[11px] text-crit">
-                  <StatusDot color="var(--color-crit)" /> {err}
-                </p>
-              )}
-
-              <div className="mt-7 flex items-center gap-3">
-                <button
-                  onClick={next}
-                  className="btn-primary rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 hover:brightness-110"
-                >
-                  Далее →
-                </button>
-                <button onClick={() => setStep(1)} className="rounded-md px-4 py-3 text-[13px] font-semibold text-fog transition-colors hover:text-ion">
-                  ← назад
-                </button>
-              </div>
+              <ValidationError message={err} />
+              <OnboardingFooter onNext={next} onBack={() => setStep(1)} />
             </div>
           )}
 
           {step === 3 && (
             <div key={`g-${attempt}`} className={attempt ? "shake" : "step-in"}>
               <p className="mono-label text-ion">шаг 03 · цели</p>
-              <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">
-                Куда летим
-              </h3>
+              <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">Куда летим</h3>
 
               <div className="mt-6 grid gap-5">
-                <div>
-                  <Label>главная цель компании</Label>
-                  <textarea
-                    ref={goalRef}
-                    rows={2}
-                    autoFocus
-                    value={p.goal}
-                    onChange={(e) => set("goal")(e.target.value)}
-                    placeholder="Например: увеличить выручку с 50 до 100 млн ₽"
-                    className={`${inputCls} resize-none`}
-                  />
-                </div>
-                <div>
-                  <Label>главная проблема сейчас</Label>
-                  <textarea
-                    rows={2}
-                    value={p.problem}
-                    onChange={(e) => set("problem")(e.target.value)}
-                    placeholder="Что мешает двигаться быстрее"
-                    className={`${inputCls} resize-none`}
-                  />
-                </div>
+                <Textarea
+                  ref={goalRef}
+                  label="главная цель компании"
+                  rows={2}
+                  autoFocus
+                  value={p.goal}
+                  onChange={(e) => set("goal")(e.target.value)}
+                  placeholder="Например: увеличить выручку с 50 до 100 млн ₽"
+                />
+                <Textarea
+                  label="главная проблема сейчас"
+                  rows={2}
+                  value={p.problem}
+                  onChange={(e) => set("problem")(e.target.value)}
+                  placeholder="Что мешает двигаться быстрее"
+                />
 
                 <div>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label>3 главных приоритета</Label>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <FormField>3 главных приоритета</FormField>
                     <span className="font-mono text-[10.5px] text-fog/60">
                       заполнено {prioCount} / 3
                     </span>
@@ -663,14 +541,18 @@ export function OnboardingOverlay({
                   <div className="grid gap-3">
                     {(["p1", "p2", "p3"] as const).map((k, i) => (
                       <div key={k} className="flex items-center gap-3">
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-mono text-[10px] font-bold ${p[k].trim() ? "border-ok/50 text-ok" : "border-line text-fog/50"}`}>
+                        <span
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-mono text-[10px] font-bold ${
+                            p[k].trim() ? "border-ok/50 text-ok" : "border-line text-fog/50"
+                          }`}
+                        >
                           {String(i + 1).padStart(2, "0")}
                         </span>
-                        <input
+                        <Input
                           value={p[k]}
                           onChange={(e) => set(k)(e.target.value)}
                           placeholder={`Приоритет ${i + 1}`}
-                          className={inputCls}
+                          wrapperClassName="flex-1"
                         />
                       </div>
                     ))}
@@ -681,47 +563,31 @@ export function OnboardingOverlay({
                   <p className="mono-label text-fog/60">примеры — нажмите, чтобы подставить</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {EXAMPLES.map((ex) => (
-                      <button
-                        key={ex}
-                        type="button"
-                        onClick={() => insertExample(ex)}
-                        className="rounded-full border border-ion/30 bg-ion/5 px-3.5 py-1.5 text-[12px] text-mist transition-all duration-300 hover:-translate-y-0.5 hover:border-ion/70 hover:text-snow hover:shadow-[0_6px_18px_-8px_rgba(139,133,248,0.6)]"
-                      >
+                      <Button key={ex} variant="pill" onClick={() => insertExample(ex)}>
                         «{ex}»
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {err && (
-                <p className="mt-4 flex items-center gap-2 font-mono text-[11px] text-crit">
-                  <StatusDot color="var(--color-crit)" /> {err}
-                </p>
-              )}
-
-              <div className="mt-7 flex items-center gap-3">
-                <button
-                  onClick={next}
-                  className="btn-primary rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 hover:brightness-110"
-                >
-                  Передать MyCOO →
-                </button>
-                <button onClick={() => setStep(2)} className="rounded-md px-4 py-3 text-[13px] font-semibold text-fog transition-colors hover:text-ion">
-                  ← назад
-                </button>
-              </div>
+              <ValidationError message={err} />
+              <OnboardingFooter onNext={next} onBack={() => setStep(2)} nextLabel="Передать MyCOO" />
             </div>
           )}
 
           {step === 4 && (
             <div className="step-in">
               <div className="flex items-start gap-4">
-                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all duration-700 ${synced ? "border-ok/50 bg-ok/10 shadow-[0_0_28px_-6px_rgba(52,211,153,0.5)]" : "border-ion/50 bg-ion/10"}`}>
+                <span
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all duration-700 ${
+                    synced
+                      ? "border-ok/50 bg-ok/10 shadow-[0_0_28px_-6px_rgba(52,211,153,0.5)]"
+                      : "border-ion/50 bg-ion/10"
+                  }`}
+                >
                   {synced ? (
-                    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--color-ok)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path className="draw-path" d="m5 12.5 4.5 4.5L19 7.5" />
-                    </svg>
+                    <LuCheck className="h-6 w-6 text-ok [&>path]:draw-path" strokeWidth={2} />
                   ) : (
                     <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-ion shadow-[0_0_16px_rgba(139,133,248,0.9)]" />
                   )}
@@ -742,9 +608,13 @@ export function OnboardingOverlay({
                   { t: "операционная модель сформирована", d: 1.5 },
                   { t: "mycoo готов к первой телеметрии", d: 2.0 },
                 ].map((l) => (
-                  <p key={l.t} className="log-in flex items-center gap-2.5 text-fog/85" style={{ animationDelay: `${l.d}s` }}>
+                  <p
+                    key={l.t}
+                    className="log-in flex items-center gap-2.5 text-fog/85"
+                    style={{ animationDelay: `${l.d}s` }}
+                  >
                     <span className="text-ion">▸</span> {l.t}
-                    {l.t.includes("телеметрии") && <StatusDot />}
+                    {l.t.includes("телеметрии") && <StatusDot color={toneDot.ok} />}
                   </p>
                 ))}
               </div>
@@ -755,12 +625,15 @@ export function OnboardingOverlay({
                     <div className="mb-3 flex items-center justify-between">
                       <p className="mono-label text-fog/60">бриф · {p.company}</p>
                       <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-ok">
-                        <StatusDot /> сохранён
+                        <StatusDot color={toneDot.ok} /> сохранён
                       </span>
                     </div>
                     <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                       {summary.map(([k, v]) => (
-                        <div key={k} className="flex items-baseline justify-between gap-3 border-b border-line/40 pb-1.5">
+                        <div
+                          key={k}
+                          className="flex items-baseline justify-between gap-3 border-b border-line/40 pb-1.5"
+                        >
                           <dt className="mono-label shrink-0 text-fog/55">{k}</dt>
                           <dd className="text-right text-[12.5px] font-medium text-mist" title={v}>
                             {v}
@@ -771,7 +644,8 @@ export function OnboardingOverlay({
                   </div>
 
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <button
+                    <Button
+                      iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />}
                       onClick={() =>
                         onFinish?.({
                           ...p,
@@ -785,25 +659,18 @@ export function OnboardingOverlay({
                               : p.ownerRole,
                         })
                       }
-                      className="btn-primary group inline-flex items-center justify-center gap-2.5 rounded-md bg-ion px-6 py-3.5 text-[14px] font-bold text-void shadow-[0_0_30px_-8px_rgba(139,133,248,0.7)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_44px_-8px_rgba(139,133,248,0.95)]"
                     >
                       Перейти к экспресс-диагностике
-                      <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 12h14M13 6.5 18.5 12 13 17.5" />
-                      </svg>
-                    </button>
-                    <a
+                    </Button>
+                    <Button
+                      variant="secondary"
                       href={`mailto:hello@mycoo.ai?subject=MyCOO бриф · ${encodeURIComponent(p.company)}`}
-                      className="inline-flex items-center justify-center rounded-md border border-line px-6 py-3.5 text-[13.5px] font-semibold text-mist transition-all duration-300 hover:border-ion/50 hover:text-snow"
                     >
                       Отправить бриф оператору
-                    </a>
-                    <button
-                      onClick={onClose}
-                      className="mono-label text-fog/50 transition-colors hover:text-flux sm:ml-auto"
-                    >
+                    </Button>
+                    <Button variant="ghost" mono onClick={onClose} className="sm:ml-auto">
                       позже
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
