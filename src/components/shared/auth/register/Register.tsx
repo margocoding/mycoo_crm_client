@@ -13,7 +13,7 @@ import {
 import { Logo, IconCheck } from "../../../icons";
 import { StatusChip, StatusDot } from "../../../ui/Ambient";
 import { Modal } from "../../../ui/Modal";
-import { OnboardingOverlay, type Profile } from "./Onboarding";
+import { OnboardingOverlay, type Profile } from "./Onboarding/Onboarding";
 import { DiagnosticsOverlay } from "./Diagnostics";
 import { useNavigate } from "react-router-dom";
 import SubscriptionModal from "../../../ui/SubscriptionModal";
@@ -76,6 +76,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
     setTrialActive(true);
     setDiagOpen(false);
     setView("app");
+    navigate('/dashboard/main')
     window.scrollTo(0, 0);
   };
 
@@ -96,6 +97,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setView("site");
     window.scrollTo(0, 0);
+    navigate('/')
   };
 
   return (
@@ -108,7 +110,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
         onFinish={(em) => {
           setEmail(em);
           setRegOpen(false);
-          navigate('/dashboard/main')
+          setObOpen(true)
         }}
       />
       <OnboardingOverlay
