@@ -7,65 +7,51 @@ import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
 import AIChatPage from "./components/shared/dashboard/ai/AIChatPage";
-
-
-// Dashboard wrapper with layout and tasks context
-function DashboardWithLayout() {
-  return (
-    <TasksProvider>
-      <DashboardLayout>
-        <DashboardPage />
-      </DashboardLayout>
-    </TasksProvider>
-  );
-}
-
-// Tasks page wrapper with layout
-function TasksWithLayout() {
-  return (
-    <TasksProvider>
-      <DashboardLayout>
-        <TasksPage />
-      </DashboardLayout>
-    </TasksProvider>
-  );
-}
-
-// AI Chat page wrapper with layout
-function AIChatWithLayout() {
-  return (
-    <TasksProvider>
-      <DashboardLayout>
-        <AIChatPage />
-      </DashboardLayout>
-    </TasksProvider>
-  );
-}
+import CallsPage from "./pages/CallsPage";
 
 export default function App() {
   return (
     <LaunchProvider>
       <Routes>
-        {/* Публичный маршрут - лендинг */}
         <Route path="/" element={<LandingPage />} />
-        
-        
         <Route
           path="/dashboard/main"
           element={
-              <DashboardWithLayout />
+            <TasksProvider>
+              <DashboardLayout>
+                <DashboardPage />
+              </DashboardLayout>
+            </TasksProvider>
           }
         />
         <Route
           path="/dashboard/tasks"
           element={
-              <TasksWithLayout />
+            <TasksProvider>
+              <DashboardLayout>
+                <TasksPage />
+              </DashboardLayout>
+            </TasksProvider>
           }
         />
         <Route
           path="/dashboard/ai"
           element={
-              <AIChatWithLayout />
+            <TasksProvider>
+              <DashboardLayout>
+                <AIChatPage />
+              </DashboardLayout>
+            </TasksProvider>
+          }
+        />
+        <Route
+          path="/dashboard/calls"
+          element={
+            <TasksProvider>
+              <DashboardLayout>
+                <CallsPage />
+              </DashboardLayout>
+            </TasksProvider>
           }
         />
       </Routes>
