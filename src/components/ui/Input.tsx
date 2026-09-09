@@ -9,9 +9,13 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "classN
   label?: ReactNode;
   optional?: boolean;
   error?: string;
+  warn?: string;
+  ok?: string;
   hint?: ReactNode;
   iconLeft?: ReactNode;
   iconRight?: ReactNode;
+  addonRight?: ReactNode;
+  className?: string;
   wrapperClassName?: string;
 }
 
@@ -21,9 +25,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       label,
       optional,
       error,
+      warn,
+      ok,
       hint,
       iconLeft,
       iconRight,
+      addonRight,
+      className = "",
       wrapperClassName = "",
       id,
       ...rest
@@ -31,6 +39,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     ref
   ) => {
     const inputId = id ?? (typeof label === "string" ? `inp-${label}` : undefined);
+    const hasRight = Boolean(iconRight) || Boolean(addonRight);
+
     return (
       <div className={wrapperClassName}>
         {label && (
@@ -43,32 +53,57 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             )}
           </label>
         )}
+
         <div className="relative">
           {iconLeft && (
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fog/50">
               {iconLeft}
             </span>
           )}
+
           <input
             ref={ref}
             id={inputId}
-            className={`${INPUT_CLS} ${iconLeft ? "pl-9" : ""} ${iconRight ? "pr-9" : ""} ${
-              error ? "border-crit/60 focus:border-crit focus:ring-crit/50" : ""
-            }`}
+            className={`${INPUT_CLS} ${iconLeft ? "pl-9" : ""} ${hasRight ? "pr-9" : ""} ${
+              error
+                ? "border-crit/60 focus:border-crit focus:ring-crit/50"
+                : warn
+                  ? "border-warn/60 focus:border-warn focus:ring-warn/50"
+                  : ""
+            } ${className}`}
             {...rest}
           />
+
           {iconRight && (
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fog/50">
               {iconRight}
             </span>
           )}
+
+          {addonRight && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2">{addonRight}</span>
+          )}
         </div>
+
         {error && (
           <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-crit">
             <StatusDot color={toneDot.crit} /> {error}
           </p>
         )}
-        {hint && !error && (
+
+        {warn && !error && (
+          <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-warn">
+            <StatusDot color={toneDot.warn} /> {warn}
+          </p>
+        )}
+
+        {ok && !error && !warn && (
+          <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-ok">
+            <StatusDot color={toneDot.ok} /> {ok}
+          </p>
+        )}
+
+        {hint && !error && !warn && !ok && (
           <p className="mt-1.5 text-[11px] text-fog/60">{hint}</p>
         )}
       </div>

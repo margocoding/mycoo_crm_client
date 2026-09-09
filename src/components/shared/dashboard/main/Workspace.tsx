@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Logo } from "../../../icons";
 import { Starfield, StatusDot } from "../../../ui/Ambient";
 import { useCountUp } from "../../../../lib/motion";
-import { useLaunch } from "../../auth/register/Register";
 import type { Profile } from "../../auth/register/Onboarding/Onboarding";
+import { useLaunch } from "@/store/launch.store";
 
 
 function load<T>(key: string, fallback: T): T {

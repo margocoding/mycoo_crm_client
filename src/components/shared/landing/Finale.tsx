@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Reveal, Decode } from "../../../lib/motion";
 import { OrbitRings, StatusChip, StatusDot } from "../../ui/Ambient";
-import { Logo, IconArrow } from "../../icons";
-import { useLaunch } from "../auth/register/Register";
-
-/* ============ ФИНАЛЬНЫЙ CTA ============ */
+import { FiArrowRight } from "react-icons/fi";
+import Button from "../../ui/Button";
+import { useModalRouter } from "@/hooks/useModalRouter";
 
 export function Launch() {
-  const { open: openLaunch } = useLaunch();
+  const { openModal } = useModalRouter();
+  const launch = () => openModal("auth", { step: "email" });
 
   return (
     <section id="launch" className="relative overflow-hidden border-t border-line/50 py-28 md:py-36">
@@ -53,7 +53,6 @@ export function Launch() {
               </span>
             </div>
 
-            {/* launch steps */}
             <ol className="mb-6 space-y-2 text-left font-mono text-[11.5px] text-fog/85">
               <li className="flex items-center gap-3">
                 <span className="text-flux">▸</span> шаг 01 · регистрация по email
@@ -72,14 +71,17 @@ export function Launch() {
               </li>
             </ol>
 
-            <button
-              type="button"
-              onClick={openLaunch}
-              className="btn-primary group inline-flex w-full items-center justify-center gap-3 rounded-md bg-flux px-6 py-4 text-[14px] font-bold text-void shadow-[0_0_36px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_52px_-8px_rgba(56,189,248,0.95)]"
+            <Button
+              variant="primary"
+              tone="flux"
+              onClick={launch}
+              className="group w-full !px-6 !py-4"
+              iconRight={
+                <FiArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
+              }
             >
               Запустить своего цифрового операционного директора
-              <IconArrow className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
-            </button>
+            </Button>
 
             <p className="mono-label mt-4 text-fog/45">
               trial стартует после онбординга · демо-режим без передачи данных
@@ -90,8 +92,6 @@ export function Launch() {
     </section>
   );
 }
-
-/* ============ FOOTER ============ */
 
 const FOOT_NAV = [
   { href: "#about", label: "О системе" },
@@ -108,6 +108,8 @@ const FOOT_NAV2 = [
 
 export function Footer() {
   const [legalNote, setLegalNote] = useState("");
+  const { openModal } = useModalRouter();
+  const launch = () => openModal("auth", { step: "email" });
 
   const legal = (doc: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -118,10 +120,8 @@ export function Footer() {
     <footer className="relative border-t border-line/60 bg-void/80">
       <div className="mx-auto max-w-7xl px-5 py-14 md:px-8">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
-          {/* brand */}
           <div>
             <a href="#top" className="flex items-center gap-3">
-              <Logo className="h-8 w-8" />
               <span className="font-display text-[16px] font-bold tracking-[0.22em] text-snow">MYCOO</span>
             </a>
             <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed text-fog">
@@ -136,7 +136,6 @@ export function Footer() {
             </div>
           </div>
 
-          {/* nav */}
           <div>
             <h4 className="mono-label mb-4 text-fog/70">Навигация</h4>
             <ul className="space-y-2.5">
@@ -162,7 +161,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* contacts */}
           <div>
             <h4 className="mono-label mb-4 text-fog/70">Контакты</h4>
             <ul className="space-y-2.5 text-[13.5px]">
@@ -175,11 +173,19 @@ export function Footer() {
             </ul>
             <div className="mt-6 space-y-2">
               <div className="flex gap-5">
-                <a href="#" onClick={legal("Политика конфиденциальности")} className="text-[12.5px] text-fog underline decoration-line underline-offset-4 transition-colors hover:text-flux">
+                <a
+                  href="#"
+                  onClick={legal("Политика конфиденциальности")}
+                  className="text-[12.5px] text-fog underline decoration-line underline-offset-4 transition-colors hover:text-flux"
+                >
                   Политика конфиденциальности
                 </a>
               </div>
-              <a href="#" onClick={legal("Пользовательское соглашение")} className="text-[12.5px] text-fog underline decoration-line underline-offset-4 transition-colors hover:text-flux">
+              <a
+                href="#"
+                onClick={legal("Пользовательское соглашение")}
+                className="text-[12.5px] text-fog underline decoration-line underline-offset-4 transition-colors hover:text-flux"
+              >
                 Пользовательское соглашение
               </a>
               {legalNote && (
@@ -189,6 +195,15 @@ export function Footer() {
                 </p>
               )}
             </div>
+
+            <Button
+              variant="primary"
+              tone="flux"
+              onClick={launch}
+              className="mt-6 w-full"
+            >
+              Запустить MyCOO
+            </Button>
           </div>
         </div>
 
@@ -196,9 +211,7 @@ export function Footer() {
           <p className="font-mono text-[11px] text-fog/60">
             © {new Date().getFullYear()} MyCOO · Цифровой операционный директор
           </p>
-          <p className="mono-label text-fog/40">
-            компания = корабль · mycoo = mission control
-          </p>
+          <p className="mono-label text-fog/40">компания = корабль · mycoo = mission control</p>
         </div>
       </div>
     </footer>

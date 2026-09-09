@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Decode, fmtTime, useNow } from "../../../lib/motion";
 import { OrbitRings, StatusChip, StatusDot, CoordTag } from "../../ui/Ambient";
-import { IconArrow } from "../../icons";
-import { useLaunch } from "../auth/register/Register";
+import { FiArrowRight } from "react-icons/fi";
+import Button from "../../ui/Button";
+import { useModalRouter } from "@/hooks/useModalRouter";
 
 const STATUS_ROWS = [
   { key: "Operations", value: "Stable", tone: "ok" as const },
@@ -49,7 +50,6 @@ function MissionConsole() {
       <span className="cx absolute inset-0 pointer-events-none" />
       <div className="scanline" />
 
-      {/* console header */}
       <div className="mb-5 flex items-center justify-between gap-3 border-b border-line/70 pb-4">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-crit/70" />
@@ -57,12 +57,9 @@ function MissionConsole() {
           <span className="h-2.5 w-2.5 rounded-full bg-ok/70" />
         </div>
         <span className="mono-label text-fog">mission status</span>
-        <span className="font-mono text-[11px] text-fog">
-          SYNC {fmtTime(now)}
-        </span>
+        <span className="font-mono text-[11px] text-fog">SYNC {fmtTime(now)}</span>
       </div>
 
-      {/* status rows */}
       <ul className="space-y-2.5">
         {STATUS_ROWS.map((r, i) => (
           <li
@@ -72,9 +69,7 @@ function MissionConsole() {
           >
             <span className="flex items-center gap-2.5">
               <StatusDot color={toneDot[r.tone]} />
-              <span className="font-mono text-[12px] tracking-wide text-mist">
-                {r.key}
-              </span>
+              <span className="font-mono text-[12px] tracking-wide text-mist">{r.key}</span>
             </span>
             <span
               className="font-mono text-[12px] font-medium"
@@ -86,7 +81,6 @@ function MissionConsole() {
         ))}
       </ul>
 
-      {/* AI COO block */}
       <div className="mt-4 rounded-lg border border-ion/25 bg-ion/8 p-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="mono-label text-ion">AI COO</span>
@@ -105,7 +99,6 @@ function MissionConsole() {
         </p>
       </div>
 
-      {/* mini actions */}
       <div className="mt-4 grid grid-cols-2 gap-2">
         {["Согласовать", "Делегировать"].map((a) => (
           <button
@@ -121,15 +114,15 @@ function MissionConsole() {
 }
 
 export default function Hero() {
-  const { open: openLaunch } = useLaunch();
+  const { openModal } = useModalRouter();
+  const launch = () => openModal("auth", { step: "email" });
+
   return (
     <section id="top" className="relative overflow-hidden pt-[72px]">
-      {/* ambient */}
       <div className="bg-grid absolute inset-0 -z-10" />
       <div className="pointer-events-none absolute -top-40 right-[-160px] -z-10 opacity-70 md:opacity-100">
         <OrbitRings size={720} />
       </div>
-      {/* planet horizon */}
       <div
         className="horizon -z-10"
         style={{
@@ -146,7 +139,6 @@ export default function Hero() {
       <CoordTag text="ALT 408 KM · LINK 99.98%" className="absolute right-6 bottom-40 hidden xl:block" />
 
       <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-28 pt-14 md:px-8 md:pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
-        {/* left */}
         <div>
           <div className="mb-7 flex flex-wrap items-center gap-3">
             <StatusChip tone="ok">system online</StatusChip>
@@ -155,11 +147,7 @@ export default function Hero() {
 
           <h1 className="font-display text-[clamp(1.85rem,4.8vw,3.55rem)] font-bold leading-[1.08] tracking-tight text-snow">
             <Decode text="Ваш цифровой" delay={150} className="block" />
-            <Decode
-              text="операционный"
-              delay={600}
-              className="block text-flux text-glow"
-            />
+            <Decode text="операционный" delay={600} className="block text-flux text-glow" />
             <Decode text="директор" delay={1050} className="block" />
           </h1>
 
@@ -172,14 +160,17 @@ export default function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col gap-3.5 sm:flex-row sm:items-center">
-            <button
-              type="button"
-              onClick={openLaunch}
-              className="btn-primary group inline-flex items-center justify-center gap-3 rounded-md bg-flux px-6 py-4 text-[14px] font-bold text-void shadow-[0_0_36px_-8px_rgba(56,189,248,0.7)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_52px_-8px_rgba(56,189,248,0.95)]"
+            <Button
+              variant="primary"
+              tone="flux"
+              onClick={launch}
+              className="group !px-6 !py-4"
+              iconRight={
+                <FiArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              }
             >
               Запустить своего цифрового операционного директора
-              <IconArrow className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </button>
+            </Button>
             <a
               href="#how"
               className="inline-flex items-center justify-center gap-2 rounded-md border border-line px-6 py-4 text-[14px] font-semibold text-mist transition-all duration-300 hover:border-flux/50 hover:text-snow"
@@ -188,7 +179,6 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* telemetry strip */}
           <div className="mt-12 grid max-w-xl grid-cols-3 divide-x divide-line/70 border-y border-line/70">
             {[
               { k: "Циклов анализа", v: "24/7" },
@@ -196,18 +186,13 @@ export default function Hero() {
               { k: "Контекст компании", v: "∞" },
             ].map((t) => (
               <div key={t.k} className="px-4 py-4 first:pl-0">
-                <div className="font-display text-lg font-semibold text-snow md:text-xl">
-                  {t.v}
-                </div>
-                <div className="mono-label mt-1 text-fog/70 normal-case tracking-[0.14em]">
-                  {t.k}
-                </div>
+                <div className="font-display text-lg font-semibold text-snow md:text-xl">{t.v}</div>
+                <div className="mono-label mt-1 text-fog/70 normal-case tracking-[0.14em]">{t.k}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* right — mission console */}
         <div className="drift relative">
           <MissionConsole />
           <div className="absolute -bottom-5 -left-5 hidden rounded-md border border-line bg-void/80 px-3 py-2 backdrop-blur md:block">

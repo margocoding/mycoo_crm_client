@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { Logo, IconX } from "../../icons";
+import { Logo } from "../../icons";
 import { StatusDot } from "../../ui/Ambient";
-import { useLaunch } from "../auth/register/Register";
+import { FiX, FiMenu } from "react-icons/fi";
+import Button from "../../ui/Button";
+import { useLaunch } from "@/store/launch.store";
+import { useModalRouter } from "@/hooks/useModalRouter";
 
 const NAV = [
   { href: "#about", label: "О системе" },
@@ -16,7 +19,10 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
-  const { open: openLaunch, trialActive } = useLaunch();
+  const { trialActive } = useLaunch();
+  const { openModal } = useModalRouter();
+
+  const launch = () => openModal("auth", { step: "email" });
 
   useEffect(() => {
     const onScroll = () => {
@@ -41,7 +47,6 @@ export default function Header() {
           scrolled ? "h-14" : "h-18"
         }`}
       >
-        {/* brand */}
         <a href="#top" className="group flex items-center gap-3">
           <Logo className="h-7 w-7 transition-transform duration-500 group-hover:rotate-45" />
           <span className="font-display text-[15px] font-bold tracking-[0.22em] text-snow">
@@ -53,7 +58,6 @@ export default function Header() {
           </span>
         </a>
 
-        {/* nav */}
         <nav className="hidden items-center gap-7 lg:flex">
           {NAV.map((n) => (
             <a
@@ -67,32 +71,25 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={openLaunch}
-            className="btn-primary hidden rounded-md bg-flux px-4 py-2.5 text-[13px] font-bold text-void shadow-[0_0_24px_-6px_rgba(56,189,248,0.55)] transition-all duration-300 hover:bg-ice hover:shadow-[0_0_34px_-6px_rgba(56,189,248,0.8)] sm:inline-block"
+          <Button
+            variant="primary"
+            tone="flux"
+            onClick={launch}
+            className="hidden !px-4 !py-2.5 !text-[13px] sm:inline-flex"
           >
             {trialActive ? "Открыть MyCOO" : "Запустить MyCOO"}
-          </button>
+          </Button>
 
-          {/* burger */}
           <button
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Закрыть меню" : "Открыть меню"}
             className="flex h-10 w-10 items-center justify-center rounded-md border border-line text-mist transition-colors hover:border-flux/50 hover:text-snow lg:hidden"
           >
-            {open ? (
-              <IconX className="h-4 w-4" />
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                <path d="M4 7h16M4 12h10M4 17h16" />
-              </svg>
-            )}
+            {open ? <FiX className="h-4 w-4" /> : <FiMenu className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
-      {/* scroll progress */}
       <div className="absolute inset-x-0 bottom-0 h-px bg-line/40">
         <div
           className="h-full bg-gradient-to-r from-flux/40 via-flux to-ion"
@@ -100,7 +97,6 @@ export default function Header() {
         />
       </div>
 
-      {/* mobile menu */}
       <div
         className={`overflow-hidden border-b border-line bg-void/95 backdrop-blur-xl transition-all duration-500 lg:hidden ${
           open ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
@@ -118,16 +114,17 @@ export default function Header() {
               <span className="font-mono text-[10px] text-fog/50">0{i + 1}</span>
             </a>
           ))}
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            tone="flux"
             onClick={() => {
               setOpen(false);
-              openLaunch();
+              launch();
             }}
-            className="mt-3 rounded-md bg-flux px-4 py-3 text-center text-[14px] font-bold text-void"
+            className="mt-3 w-full !py-3 !text-[14px]"
           >
             {trialActive ? "Открыть MyCOO" : "Запустить MyCOO"}
-          </button>
+          </Button>
         </nav>
       </div>
     </header>

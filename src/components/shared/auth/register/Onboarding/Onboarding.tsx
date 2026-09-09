@@ -5,12 +5,14 @@ import Input from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import Segmented from "@/components/ui/Segmented";
 import ValidationError from "@/components/ui/ValidationError";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef } from "react";
 import { LuCheck, LuArrowRight, LuLock } from "react-icons/lu";
 import OnboardingFooter from "./OnboardingFooter";
 import Textarea from "@/components/ui/Textarea";
 import { StatusDot } from "@/components/ui/Ambient";
 import { toneDot } from "@/lib/tone";
+import { useOnboardingFlow } from "@/hooks/useOnboardingFlow";
+import { useOnboardingStore } from "@/store/onboarding.store";
 
 const PHASES = [
   { id: "00", code: "BRIEF", label: "Знакомство" },
@@ -56,192 +58,43 @@ const EXAMPLES = [
   "Настроить работу руководителей",
 ];
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const SITE_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?#].*)?$/i;
-
-export interface Profile {
-  company: string;
-  industry: string;
-  industryOther: string;
-  site: string;
-  employees: string;
-  managers: string;
-  revenue: string;
-  stage: string;
-  ownerName: string;
-  ownerRole: string;
-  roleOther: string;
-  ownerEmail: string;
-  goal: string;
-  problem: string;
-  p1: string;
-  p2: string;
-  p3: string;
-}
-
-const EMPTY: Profile = {
-  company: "",
-  industry: "",
-  industryOther: "",
-  site: "",
-  employees: "",
-  managers: "",
-  revenue: "",
-  stage: "",
-  ownerName: "",
-  ownerRole: "",
-  roleOther: "",
-  ownerEmail: "",
-  goal: "",
-  problem: "",
-  p1: "",
-  p2: "",
-  p3: "",
-};
-
-export function OnboardingOverlay({
-  open,
-  onClose,
-  regEmail,
-  onFinish,
-}: {
-  open: boolean;
-  onClose: () => void;
-  regEmail: string;
-  onFinish: (p: Profile) => void;
-}) {
-  const [step, setStep] = useState(0);
-  const [p, setP] = useState<Profile>(EMPTY);
-  const [err, setErr] = useState("");
-  const [attempt, setAttempt] = useState(0);
-  const [synced, setSynced] = useState(false);
+export function OnboardingOverlay() {
+  const { profile, setField, next, back, complete, open, closeModal, ...flow } = useOnboardingFlow();
 
   const companyRef = useRef<HTMLInputElement>(null);
   const ownerRef = useRef<HTMLInputElement>(null);
   const goalRef = useRef<HTMLTextAreaElement>(null);
 
-  const set = (k: keyof Profile) => (v: string) => {
-    setP((prev) => ({ ...prev, [k]: v }));
-    setErr("");
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    setStep(0);
-    setP({ ...EMPTY, ownerEmail: regEmail });
-    setErr("");
-    setSynced(false);
-  }, [open, regEmail]);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open || step !== 4 || synced) return;
-    const t = setTimeout(() => {
-      setSynced(true);
-      try {
-        localStorage.setItem("mycoo_profile", JSON.stringify(p));
-      } catch {}
-    }, 2300);
-    return () => clearTimeout(t);
-  }, [step, open, synced]);
-
-  const prioCount = [p.p1, p.p2, p.p3].filter((x) => x.trim()).length;
-
-  const fail = (m: string) => {
-    setErr(m);
-    setAttempt((a) => a + 1);
-  };
-
-  const next = () => {
-    if (step === 1) {
-      if (!p.company.trim()) return fail("Укажите название компании — это первая точка контекста.");
-      if (!p.industry) return fail("Выберите отрасль.");
-      if (p.industry === "Другое" && !p.industryOther.trim())
-        return fail("Опишите, чем занимается компания — вы выбрали «Другое».");
-      if (!p.employees) return fail("Укажите количество сотрудников.");
-      if (!p.managers) return fail("Укажите количество руководителей.");
-      if (!p.stage) return fail("Выберите стадию бизнеса.");
-      if (p.site.trim() && !SITE_RE.test(p.site.trim()))
-        return fail("Похоже, адрес сайта некорректен — пример: company.ru");
-    }
-    if (step === 2) {
-      if (!p.ownerName.trim()) return fail("Как к вам обращаться?");
-      if (!p.ownerRole) return fail("Выберите вашу роль.");
-      if (p.ownerRole === "Другое" && !p.roleOther.trim())
-        return fail("Укажите вашу должность — вы выбрали «Другое».");
-      if (!EMAIL_RE.test(p.ownerEmail.trim())) return fail("Email для связи не распознан.");
-    }
-    if (step === 3) {
-      if (!p.goal.trim()) return fail("Сформулируйте главную цель компании.");
-      if (!p.problem.trim()) return fail("Опишите главную проблему сейчас — без неё MyCOO слеп.");
-      if (prioCount < 1) return fail("Добавьте хотя бы один приоритет.");
-    }
-    setErr("");
-    setAttempt(0);
-    setStep((s) => s + 1);
-  };
+  const clearError = useOnboardingStore(state => state.clearError)
 
   const insertExample = (text: string) => {
-    setP((prev) => {
-      if (!prev.goal.trim()) return { ...prev, goal: text };
-      if (!prev.problem.trim()) return { ...prev, problem: text };
-      if (!prev.p1.trim()) return { ...prev, p1: text };
-      if (!prev.p2.trim()) return { ...prev, p2: text };
-      if (!prev.p3.trim()) return { ...prev, p3: text };
-      return prev;
-    });
-    setErr("");
+    if (!profile.goal.trim()) setField("goal", text);
+    else if (!profile.problem.trim()) setField("problem", text);
+    else if (!profile.p1.trim()) setField("p1", text);
+    else if (!profile.p2.trim()) setField("p2", text);
+    else if (!profile.p3.trim()) setField("p3", text);
+    clearError();
   };
 
-  const progress = useMemo(() => [6, 30, 55, 80, 100][step] ?? 6, [step]);
-
-  const summary = useMemo<[string, string][]>(() => {
-    const industryValue = p.industry === "Другое" && p.industryOther?.trim() ? p.industryOther.trim() : p.industry;
-    const roleValue = p.ownerRole === "Другое" && p.roleOther?.trim() ? p.roleOther.trim() : p.ownerRole;
-    const stageLabel = STAGES.find((s) => s.v === p.stage)?.t ?? p.stage;
-
-    const items: [string, string][] = [
-      ["Компания", p.company],
-      ["Сайт", p.site || "—"],
-      ["Отрасль", industryValue || "—"],
-      ["Масштаб", `${p.employees || "—"} сотр. · ${p.managers || "—"} рук.`],
-      ["Стадия", stageLabel],
-      ["Оборот", p.revenue || "не указан"],
-      ["Контакт", `${p.ownerName} (${roleValue || "—"})`],
-      ["Email", p.ownerEmail],
-      ["Главная цель", p.goal],
-      ["Главная проблема", p.problem],
-      ["Приоритеты", [p.p1, p.p2, p.p3].filter(Boolean).join(" · ") || "—"],
-    ];
-
-    return items.filter(([, value]) => value !== "—" && value !== "");
-  }, [p]);
+  if (!open) return null;
 
   return (
     <Modal
       isOpen={open}
-      onClose={onClose}
+      onClose={closeModal}
       ariaLabel="Знакомство с компанией"
       title={
         <>
           MYCOO <span className="text-fog/60">/</span> <span className="text-ion">ONBOARDING</span>
         </>
       }
-      subtitle={<>бриф компании · ~5 минут · {step + 1}/5</>}
-      statusChip={{ tone: step === 4 ? "ok" : "ion", text: step === 4 ? "sync" : "data intake" }}
+      subtitle={<>бриф компании · ~5 минут · {flow.step + 1}/5</>}
+      statusChip={{
+        tone: flow.step === 4 ? "ok" : "ion",
+        text: flow.step === 4 ? "sync" : "data intake",
+      }}
       showProgress
-      progress={progress}
+      progress={flow.progress}
       progressColor="var(--color-ion)"
       maxWidth="max-w-5xl"
     >
@@ -251,7 +104,7 @@ export function OnboardingOverlay({
           <ol className="relative space-y-6">
             <span className="absolute bottom-2 left-[11px] top-2 w-px bg-line/70" />
             {PHASES.map((ph, i) => {
-              const state = i < step ? "done" : i === step ? "active" : "idle";
+              const state = i < flow.step ? "done" : i === flow.step ? "active" : "idle";
               return (
                 <li key={ph.code} className="relative flex items-center gap-3.5">
                   <span
@@ -284,13 +137,13 @@ export function OnboardingOverlay({
           <div className="mt-9 rounded-md border border-line/60 bg-hull/30 p-3.5">
             <p className="mono-label text-fog/50">приватность</p>
             <p className="mt-1.5 text-[11.5px] leading-relaxed text-fog/80">
-              Демо-режим: данные остаются в вашем браузере и не передаются.
+              Данные отправляются в защищённый контур MyCOO.
             </p>
           </div>
         </aside>
 
         <div className="min-h-[460px] p-6 md:p-8">
-          {step === 0 && (
+          {flow.step === 0 && (
             <div className="step-in">
               <div className="flex items-start gap-4">
                 <span className="relative mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
@@ -330,7 +183,10 @@ export function OnboardingOverlay({
               </div>
 
               <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <Button iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />} onClick={() => setStep(1)}>
+                <Button
+                  iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />}
+                  onClick={() => next()}
+                >
                   Начать знакомство
                 </Button>
                 <span className="mono-label text-fog/45">оборот и сайт — по желанию</span>
@@ -338,8 +194,8 @@ export function OnboardingOverlay({
             </div>
           )}
 
-          {step === 1 && (
-            <div key={`c-${attempt}`} className={attempt ? "shake" : "step-in"}>
+          {flow.step === 1 && (
+            <div key={`c-${flow.attempt}`} className={flow.attempt ? "shake" : "step-in"}>
               <p className="mono-label text-ion">шаг 01 · компания</p>
               <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">
                 Расскажите о компании
@@ -352,16 +208,16 @@ export function OnboardingOverlay({
                     label="название"
                     autoFocus
                     autoComplete="off"
-                    value={p.company}
-                    onChange={(e) => set("company")(e.target.value)}
+                    value={profile.company}
+                    onChange={(e) => setField("company", e.target.value)}
                     placeholder="ООО «Вектор»"
                   />
                   <Input
                     label="сайт"
                     optional
                     autoComplete="off"
-                    value={p.site}
-                    onChange={(e) => set("site")(e.target.value)}
+                    value={profile.site}
+                    onChange={(e) => setField("site", e.target.value)}
                     placeholder="company.ru"
                   />
                 </div>
@@ -370,17 +226,17 @@ export function OnboardingOverlay({
                   <FormField>отрасль</FormField>
                   <div className="flex flex-wrap gap-2">
                     {INDUSTRIES.map((ind) => (
-                      <Chip key={ind} active={p.industry === ind} onClick={() => set("industry")(ind)}>
+                      <Chip key={ind} active={profile.industry === ind} onClick={() => setField("industry", ind)}>
                         {ind}
                       </Chip>
                     ))}
                   </div>
-                  {p.industry === "Другое" && (
+                  {profile.industry === "Другое" && (
                     <Input
                       autoFocus
                       autoComplete="off"
-                      value={p.industryOther}
-                      onChange={(e) => set("industryOther")(e.target.value)}
+                      value={profile.industryOther}
+                      onChange={(e) => setField("industryOther", e.target.value)}
                       placeholder="Чем занимается компания — опишите своими словами"
                       wrapperClassName="mt-3"
                     />
@@ -393,8 +249,8 @@ export function OnboardingOverlay({
                     <Segmented
                       label="Количество сотрудников"
                       options={EMPLOYEES}
-                      value={p.employees}
-                      onChange={set("employees")}
+                      value={profile.employees}
+                      onChange={(v) => setField("employees", v)}
                     />
                   </div>
                   <div>
@@ -402,8 +258,8 @@ export function OnboardingOverlay({
                     <Segmented
                       label="Количество руководителей"
                       options={MANAGERS}
-                      value={p.managers}
-                      onChange={set("managers")}
+                      value={profile.managers}
+                      onChange={(v) => setField("managers", v)}
                     />
                   </div>
                 </div>
@@ -412,7 +268,7 @@ export function OnboardingOverlay({
                   <FormField optional>примерный оборот</FormField>
                   <div className="flex flex-wrap gap-2">
                     {REVENUE.map((r) => (
-                      <Chip key={r} active={p.revenue === r} onClick={() => set("revenue")(r)}>
+                      <Chip key={r} active={profile.revenue === r} onClick={() => setField("revenue", r)}>
                         {r}
                       </Chip>
                     ))}
@@ -426,14 +282,14 @@ export function OnboardingOverlay({
                       <button
                         key={s.v}
                         type="button"
-                        onClick={() => set("stage")(s.v)}
+                        onClick={() => setField("stage", s.v)}
                         className={`rounded-lg border p-3.5 text-left transition-all duration-300 ${
-                          p.stage === s.v
+                          profile.stage === s.v
                             ? "border-ion/70 bg-ion/10 shadow-[0_0_20px_-8px_rgba(139,133,248,0.7)]"
                             : "border-line bg-hull/30 hover:border-ion/40"
                         }`}
                       >
-                        <p className={`font-display text-[13.5px] font-semibold ${p.stage === s.v ? "text-snow" : "text-mist"}`}>
+                        <p className={`font-display text-[13.5px] font-semibold ${profile.stage === s.v ? "text-snow" : "text-mist"}`}>
                           {s.t}
                         </p>
                         <p className="mt-1 text-[12px] leading-relaxed text-fog">{s.d}</p>
@@ -443,13 +299,13 @@ export function OnboardingOverlay({
                 </div>
               </div>
 
-              <ValidationError message={err} />
-              <OnboardingFooter onNext={next} onBack={() => setStep(0)} />
+              <ValidationError message={flow.error} />
+              <OnboardingFooter onNext={next} onBack={() => back(0)} />
             </div>
           )}
 
-          {step === 2 && (
-            <div key={`o-${attempt}`} className={attempt ? "shake" : "step-in"}>
+          {flow.step === 2 && (
+            <div key={`o-${flow.attempt}`} className={flow.attempt ? "shake" : "step-in"}>
               <p className="mono-label text-ion">шаг 02 · собственник</p>
               <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">
                 Кто принимает решения
@@ -462,25 +318,25 @@ export function OnboardingOverlay({
                   label="имя"
                   autoFocus
                   autoComplete="off"
-                  value={p.ownerName}
-                  onChange={(e) => set("ownerName")(e.target.value)}
+                  value={profile.ownerName}
+                  onChange={(e) => setField("ownerName", e.target.value)}
                   placeholder="Как к вам обращаться"
                 />
                 <div>
                   <FormField>должность</FormField>
                   <div className="flex flex-wrap gap-2">
                     {ROLES.map((r) => (
-                      <Chip key={r} active={p.ownerRole === r} onClick={() => set("ownerRole")(r)}>
+                      <Chip key={r} active={profile.ownerRole === r} onClick={() => setField("ownerRole", r)}>
                         {r}
                       </Chip>
                     ))}
                   </div>
-                  {p.ownerRole === "Другое" && (
+                  {profile.ownerRole === "Другое" && (
                     <Input
                       autoFocus
                       autoComplete="off"
-                      value={p.roleOther}
-                      onChange={(e) => set("roleOther")(e.target.value)}
+                      value={profile.roleOther}
+                      onChange={(e) => setField("roleOther", e.target.value)}
                       placeholder="Ваша должность — например, коммерческий директор"
                       wrapperClassName="mt-3"
                     />
@@ -490,11 +346,11 @@ export function OnboardingOverlay({
                   label="email"
                   type="email"
                   autoComplete="off"
-                  value={p.ownerEmail}
-                  onChange={(e) => set("ownerEmail")(e.target.value)}
+                  value={profile.ownerEmail}
+                  onChange={(e) => setField("ownerEmail", e.target.value)}
                   placeholder="you@company.ru"
                   hint={
-                    regEmail && p.ownerEmail === regEmail ? (
+                    flow.regEmail && profile.ownerEmail === flow.regEmail ? (
                       <span className="flex items-center gap-1.5 font-mono text-[11px] text-ok">
                         <LuCheck className="h-3 w-3" /> подставлен из регистрации
                       </span>
@@ -503,13 +359,13 @@ export function OnboardingOverlay({
                 />
               </div>
 
-              <ValidationError message={err} />
-              <OnboardingFooter onNext={next} onBack={() => setStep(1)} />
+              <ValidationError message={flow.error} />
+              <OnboardingFooter onNext={next} onBack={() => back(1)} />
             </div>
           )}
 
-          {step === 3 && (
-            <div key={`g-${attempt}`} className={attempt ? "shake" : "step-in"}>
+          {flow.step === 3 && (
+            <div key={`g-${flow.attempt}`} className={flow.attempt ? "shake" : "step-in"}>
               <p className="mono-label text-ion">шаг 03 · цели</p>
               <h3 className="font-display mt-2 text-xl font-bold text-snow md:text-2xl">Куда летим</h3>
 
@@ -519,15 +375,15 @@ export function OnboardingOverlay({
                   label="главная цель компании"
                   rows={2}
                   autoFocus
-                  value={p.goal}
-                  onChange={(e) => set("goal")(e.target.value)}
+                  value={profile.goal}
+                  onChange={(e) => setField("goal", e.target.value)}
                   placeholder="Например: увеличить выручку с 50 до 100 млн ₽"
                 />
                 <Textarea
                   label="главная проблема сейчас"
                   rows={2}
-                  value={p.problem}
-                  onChange={(e) => set("problem")(e.target.value)}
+                  value={profile.problem}
+                  onChange={(e) => setField("problem", e.target.value)}
                   placeholder="Что мешает двигаться быстрее"
                 />
 
@@ -535,7 +391,7 @@ export function OnboardingOverlay({
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <FormField>3 главных приоритета</FormField>
                     <span className="font-mono text-[10.5px] text-fog/60">
-                      заполнено {prioCount} / 3
+                      заполнено {flow.prioCount} / 3
                     </span>
                   </div>
                   <div className="grid gap-3">
@@ -543,14 +399,14 @@ export function OnboardingOverlay({
                       <div key={k} className="flex items-center gap-3">
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-mono text-[10px] font-bold ${
-                            p[k].trim() ? "border-ok/50 text-ok" : "border-line text-fog/50"
+                            profile[k].trim() ? "border-ok/50 text-ok" : "border-line text-fog/50"
                           }`}
                         >
                           {String(i + 1).padStart(2, "0")}
                         </span>
                         <Input
-                          value={p[k]}
-                          onChange={(e) => set(k)(e.target.value)}
+                          value={profile[k]}
+                          onChange={(e) => setField(k, e.target.value)}
                           placeholder={`Приоритет ${i + 1}`}
                           wrapperClassName="flex-1"
                         />
@@ -571,22 +427,22 @@ export function OnboardingOverlay({
                 </div>
               </div>
 
-              <ValidationError message={err} />
-              <OnboardingFooter onNext={next} onBack={() => setStep(2)} nextLabel="Передать MyCOO" />
+              <ValidationError message={flow.error} />
+              <OnboardingFooter onNext={next} onBack={() => back(2)} nextLabel="Передать MyCOO" />
             </div>
           )}
 
-          {step === 4 && (
+          {flow.step === 4 && (
             <div className="step-in">
               <div className="flex items-start gap-4">
                 <span
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all duration-700 ${
-                    synced
+                    flow.synced
                       ? "border-ok/50 bg-ok/10 shadow-[0_0_28px_-6px_rgba(52,211,153,0.5)]"
                       : "border-ion/50 bg-ion/10"
                   }`}
                 >
-                  {synced ? (
+                  {flow.synced ? (
                     <LuCheck className="h-6 w-6 text-ok [&>path]:draw-path" strokeWidth={2} />
                   ) : (
                     <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-ion shadow-[0_0_16px_rgba(139,133,248,0.9)]" />
@@ -595,7 +451,7 @@ export function OnboardingOverlay({
                 <div>
                   <p className="mono-label text-ion">шаг 04 · синхронизация</p>
                   <h3 className="font-display mt-1.5 text-xl font-bold text-snow md:text-2xl">
-                    {synced ? "Контекст принят. Контур собран." : "MyCOO принимает контекст…"}
+                    {flow.synced ? "Контекст принят. Контур собран." : "MyCOO принимает контекст…"}
                   </h3>
                 </div>
               </div>
@@ -603,7 +459,7 @@ export function OnboardingOverlay({
               <div className="mt-6 space-y-2 rounded-md border border-line/70 bg-void/60 p-4 font-mono text-[12px]">
                 {[
                   { t: "контекст компании принят", d: 0.2 },
-                  { t: `масштаб откалиброван · ${p.employees} сотрудников · ${p.managers} руководителей`, d: 0.6 },
+                  { t: `масштаб откалиброван · ${profile.employees} сотрудников · ${profile.managers} руководителей`, d: 0.6 },
                   { t: "цели и приоритеты зафиксированы в контуре", d: 1.0 },
                   { t: "операционная модель сформирована", d: 1.5 },
                   { t: "mycoo готов к первой телеметрии", d: 2.0 },
@@ -619,17 +475,17 @@ export function OnboardingOverlay({
                 ))}
               </div>
 
-              {synced && (
+              {flow.synced && (
                 <div className="step-in mt-5">
                   <div className="rounded-md border border-line/70 bg-hull/30 p-4">
                     <div className="mb-3 flex items-center justify-between">
-                      <p className="mono-label text-fog/60">бриф · {p.company}</p>
+                      <p className="mono-label text-fog/60">бриф · {profile.company}</p>
                       <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-ok">
                         <StatusDot color={toneDot.ok} /> сохранён
                       </span>
                     </div>
                     <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-                      {summary.map(([k, v]) => (
+                      {flow.summary.map(([k, v]) => (
                         <div
                           key={k}
                           className="flex items-baseline justify-between gap-3 border-b border-line/40 pb-1.5"
@@ -646,32 +502,26 @@ export function OnboardingOverlay({
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
                     <Button
                       iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />}
-                      onClick={() =>
-                        onFinish?.({
-                          ...p,
-                          industry:
-                            p.industry === "Другое" && p.industryOther.trim()
-                              ? p.industryOther.trim()
-                              : p.industry,
-                          ownerRole:
-                            p.ownerRole === "Другое" && p.roleOther.trim()
-                              ? p.roleOther.trim()
-                              : p.ownerRole,
-                        })
-                      }
+                      onClick={complete}
+                      disabled={flow.loading}
                     >
-                      Перейти к экспресс-диагностике
+                      {flow.loading ? "Сохранение…" : "Перейти к экспресс-диагностике"}
                     </Button>
                     <Button
                       variant="secondary"
-                      href={`mailto:hello@mycoo.ai?subject=MyCOO бриф · ${encodeURIComponent(p.company)}`}
+                      href={`mailto:hello@mycoo.ai?subject=MyCOO бриф · ${encodeURIComponent(profile.company)}`}
                     >
                       Отправить бриф оператору
                     </Button>
-                    <Button variant="ghost" mono onClick={onClose} className="sm:ml-auto">
+                    <Button variant="ghost" mono onClick={closeModal} className="sm:ml-auto">
                       позже
                     </Button>
                   </div>
+                  {flow.error && (
+                    <p className="mt-3 flex items-center gap-2 font-mono text-[11px] text-crit">
+                      <StatusDot color="var(--color-crit)" /> {flow.error}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
