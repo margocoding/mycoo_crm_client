@@ -2,7 +2,7 @@ import { StatusDot } from "./Ambient";
 import { toneDot } from "../../lib/tone";
 
 interface ValidationErrorProps {
-  message: string;
+  message: string | null;
 }
 
 export default function ValidationError({ message }: ValidationErrorProps) {

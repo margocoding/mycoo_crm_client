@@ -13,7 +13,6 @@ import { Starfield } from "../components/ui/Ambient";
 export default function LandingPage() {
   return (
     <div className="relative min-h-screen bg-void font-body text-mist">
-      {/* ambient background */}
       <Starfield />
       <div
         className="pointer-events-none fixed inset-0 -z-20"

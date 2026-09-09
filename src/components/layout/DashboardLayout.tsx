@@ -10,7 +10,7 @@ import {
 } from 'react-icons/lu';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '../icons';
-import { useLaunch } from '../shared/auth/register/Register';
+import { useLaunch } from '@/store/launch.store';
 
 interface SidebarProps {
   children: ReactNode;

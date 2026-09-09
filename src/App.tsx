@@ -1,16 +1,21 @@
 import { Route, Routes } from "react-router-dom";
 import DashboardLayout from "./components/layout/DashboardLayout";
-import { LaunchProvider } from "./components/shared/auth/register/Register";
 import { TasksProvider } from "./context/TasksContext";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
 import AIChatPage from "./components/shared/dashboard/ai/AIChatPage";
 import CallsPage from "./pages/CallsPage";
+import { AuthOverlay } from "./components/shared/auth/register/AuthOverlay";
+import { OnboardingOverlay } from "./components/shared/auth/register/Onboarding/Onboarding";
+import { DiagnosticsOverlay } from "./components/shared/auth/register/Diagnostics";
 
 export default function App() {
   return (
-    <LaunchProvider>
+    <div>
+      <AuthOverlay />
+      <OnboardingOverlay />
+      <DiagnosticsOverlay />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route
@@ -54,6 +59,6 @@ export default function App() {
           }
         />
       </Routes>
-    </LaunchProvider>
+    </div>
   );
 }

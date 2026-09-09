@@ -1,18 +1,13 @@
-import type { ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "pill";
 type Tone = "flux" | "ion";
 
-interface ButtonProps {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   tone?: Tone;
   iconLeft?: ReactNode;
   iconRight?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  type?: "button" | "submit" | "reset";
   href?: string;
   mono?: boolean;
 }
@@ -59,7 +54,7 @@ export default function Button({
 
   if (href) {
     return (
-      <a href={href} className={cls} {...(rest as React.AnchorHTMLAttributes<HTMLAnchorElement>)}>
+      <a href={href} className={cls} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
         {inner}
       </a>
     );

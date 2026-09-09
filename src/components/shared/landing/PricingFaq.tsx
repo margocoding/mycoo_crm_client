@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Reveal } from "../../../lib/motion";
 import { Corners, SectionHeading, StatusChip } from "../../ui/Ambient";
-import { IconCheck } from "../../icons";
-import { useLaunch } from "../auth/register/Register";
-
-/* ============ ТАРИФЫ ============ */
+import { FiCheck, FiMinus, FiPlus } from "react-icons/fi";
+import Button from "../../ui/Button";
+import { useModalRouter } from "@/hooks/useModalRouter";
 
 const PLANS = [
   {
@@ -53,12 +52,17 @@ const PLANS = [
 ];
 
 export function Pricing() {
-  const { open: openLaunch } = useLaunch();
+  const { openModal } = useModalRouter();
+  const launch = () => openModal("auth", { step: "email" });
+
   return (
     <section id="pricing" className="relative border-t border-line/50 py-24 md:py-32">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] opacity-50"
-        style={{ background: "radial-gradient(ellipse 55% 60% at 50% 0%, rgba(139,133,248,0.1), transparent 70%)" }}
+        style={{
+          background:
+            "radial-gradient(ellipse 55% 60% at 50% 0%, rgba(139,133,248,0.1), transparent 70%)",
+        }}
       />
       <div className="mx-auto max-w-7xl px-5 md:px-8">
         <SectionHeading
@@ -73,8 +77,8 @@ export function Pricing() {
         >
           <p>
             Структура тарифов зафиксирована. Точные условия и стоимость
-            предоставляет команда MyCOO на этапе запуска — мы не публикуем цифры,
-            которые не готовы подтвердить.
+            предоставляет команда MyCOO на этапе запуска — мы не публикуем
+            цифры, которые не готовы подтвердить.
           </p>
         </SectionHeading>
 
@@ -108,7 +112,6 @@ export function Pricing() {
                 <h3 className="font-display mt-4 text-2xl font-bold text-snow">{p.name}</h3>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-fog">{p.desc}</p>
 
-                {/* price */}
                 <div className="my-6 rounded-lg border border-line/70 bg-hull/30 px-5 py-4">
                   <div className="flex items-baseline gap-2">
                     <span className="font-display text-3xl font-bold text-snow">—</span>
@@ -123,33 +126,27 @@ export function Pricing() {
                   {p.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-mist">
                       <span className={`mt-0.5 ${p.recommended ? "text-flux" : "text-ok"}`}>
-                        <IconCheck className="h-4 w-4" />
+                        <FiCheck className="h-4 w-4" />
                       </span>
                       {f}
                     </li>
                   ))}
                   {p.limits.map((l) => (
                     <li key={l} className="flex items-start gap-2.5 text-[13px] text-fog/70">
-                      <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-fog/50" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                        <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
-                        <path d="M9 12h6" />
-                      </svg>
+                      <FiMinus className="mt-0.5 h-4 w-4 shrink-0 text-fog/50" />
                       {l}
                     </li>
                   ))}
                 </ul>
 
-                <button
-                  type="button"
-                  onClick={openLaunch}
-                  className={`btn-primary mt-8 block w-full rounded-md px-5 py-3.5 text-center text-[13.5px] font-bold transition-all duration-300 ${
-                    p.recommended
-                      ? "bg-flux text-void shadow-[0_0_30px_-8px_rgba(56,189,248,0.7)] hover:bg-ice"
-                      : "border border-line text-mist hover:border-flux/60 hover:text-flux"
-                  }`}
+                <Button
+                  variant={p.recommended ? "primary" : "secondary"}
+                  tone={p.recommended ? "flux" : undefined}
+                  onClick={launch}
+                  className="mt-8 w-full"
                 >
                   Запустить MyCOO
-                </button>
+                </Button>
               </article>
             </Reveal>
           ))}
@@ -158,8 +155,6 @@ export function Pricing() {
     </section>
   );
 }
-
-/* ============ FAQ ============ */
 
 const FAQ = [
   {
@@ -226,7 +221,11 @@ function FaqItem({ item, i }: { item: { q: string; a: string }; i: number }) {
           <span className="font-mono text-[11px] font-bold text-flux/70">
             Q{String(i + 1).padStart(2, "0")}
           </span>
-          <span className={`font-display text-[14.5px] font-semibold transition-colors md:text-[15.5px] ${open ? "text-snow" : "text-mist"}`}>
+          <span
+            className={`font-display text-[14.5px] font-semibold transition-colors md:text-[15.5px] ${
+              open ? "text-snow" : "text-mist"
+            }`}
+          >
             {item.q}
           </span>
         </span>
@@ -235,9 +234,9 @@ function FaqItem({ item, i }: { item: { q: string; a: string }; i: number }) {
             open ? "border-flux/60 text-flux" : "border-line text-fog"
           }`}
         >
-          <svg viewBox="0 0 16 16" className={`h-3.5 w-3.5 transition-transform duration-400 ${open ? "rotate-45" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M8 3v10M3 8h10" />
-          </svg>
+          <FiPlus
+            className={`h-3.5 w-3.5 transition-transform duration-400 ${open ? "rotate-45" : ""}`}
+          />
         </span>
       </button>
       <div className={`acc-body ${open ? "open" : ""}`}>

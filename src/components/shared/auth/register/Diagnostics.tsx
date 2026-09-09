@@ -6,7 +6,8 @@ import { toneDot } from "../../../../lib/tone";
 import RiskItem from "../../../ui/RiskItem";
 import Dial from "../../../ui/Dial";
 import Button from "../../../ui/Button";
-import { Profile } from "./Onboarding/Onboarding";
+import { useModalRouter } from "@/hooks/useModalRouter";
+import { useLaunchStore } from "@/store/launch.store";
 
 interface Opt {
   t: string;
@@ -89,17 +90,13 @@ const band = (s: number) =>
       ? { label: "База есть — нужен единый операционный контур", tone: toneDot.warn }
       : { label: "Операционный контур почти замкнут", tone: toneDot.ok };
 
-export function DiagnosticsOverlay({
-  open,
-  onClose,
-  onLaunch,
-  profile,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onLaunch: () => void;
-  profile: Profile | null;
-}) {
+export function DiagnosticsOverlay() {
+  const { state, closeModal } = useModalRouter();
+  const profile = useLaunchStore((s) => s.profile);
+  const launchWorkspace = useLaunchStore((s) => s.launchWorkspace);
+
+  const open = state.modal === "diagnostics";
+
   const reduced = useReducedMotion();
   const [phase, setPhase] = useState<"ask" | "scan" | "profile">("ask");
   const [idx, setIdx] = useState(0);
@@ -120,13 +117,13 @@ export function DiagnosticsOverlay({
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeModal();
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open, closeModal]);
 
   useEffect(() => {
     if (phase !== "scan") return;
@@ -189,10 +186,12 @@ export function DiagnosticsOverlay({
     else setPhase("scan");
   };
 
+  if (!open) return null;
+
   return (
     <Modal
       isOpen={open}
-      onClose={onClose}
+      onClose={closeModal}
       ariaLabel="Экспресс-диагностика MyCOO"
       title={
         <>
@@ -362,12 +361,12 @@ export function DiagnosticsOverlay({
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button
                 tone="flux"
-                onClick={onLaunch}
+                onClick={launchWorkspace}
                 iconRight={<LuArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />}
               >
                 Запустить trial · 10 дней
               </Button>
-              <Button variant="secondary" onClick={onClose}>
+              <Button variant="secondary" onClick={closeModal}>
                 Вернуться на сайт
               </Button>
             </div>
