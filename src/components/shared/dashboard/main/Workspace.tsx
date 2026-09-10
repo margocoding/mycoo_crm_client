@@ -121,7 +121,8 @@ export default function Workspace() {
 
   const goalPct = useCountUp(63, ready, 1500);
   const score = useCountUp(mgmt?.score ?? 0, ready, 1500);
-  const risks = (mgmt?.risks ?? DEFAULT_RISKS).slice(0, 3);
+  const allRisks = mgmt?.risks ?? DEFAULT_RISKS;
+  const risks = allRisks.slice(0, 3);
   const company = profile?.company || "Моя компания";
   const owner = profile?.ownerName || "капитан";
   const goal = profile?.goal || "Увеличить выручку с 50 до 100 млн ₽";
@@ -185,7 +186,7 @@ export default function Workspace() {
               title="Стереть демо-данные и вернуться к началу"
               className="mono-label hidden rounded-md px-3 py-2 text-fog/50 transition-colors hover:text-crit sm:block"
             >
-              сброс демо
+              Выйти
             </button>
           </div>
         </div>
@@ -205,7 +206,7 @@ export default function Workspace() {
                 </span>
               </p>
               <p className="mt-1 text-[12.5px] text-fog/70">
-                Trial запущен после онбординга — MyCOO уже работает с контекстом {company}.
+                Trial запущен после диагностики — MyCOO уже работает с контекстом {company}.
               </p>
             </div>
             <div className="w-full md:w-[300px]">
@@ -353,7 +354,7 @@ export default function Workspace() {
           <Card title="Риски" code="SYS·RISK" delay={0.4} className="lg:col-span-4">
             <p className="flex items-baseline gap-2">
               <span className="font-display text-3xl font-bold text-warn">
-                {risks.filter((r) => r.tone !== "ok").length || 3}
+                {allRisks.filter((r) => r.tone !== "ok").length}
               </span>
               <span className="mono-label text-fog/60">требуют внимания</span>
             </p>
@@ -368,7 +369,7 @@ export default function Workspace() {
                 </li>
               ))}
             </ul>
-            <p className="mono-label mt-4 text-fog/40">источник: экспресс-диагностика + телеметрия</p>
+            <p className="mono-label mt-4 text-fog/40">источник: экспресс-диагностика</p>
           </Card>
 
           {/* AI-рекомендация */}

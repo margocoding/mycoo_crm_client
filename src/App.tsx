@@ -9,10 +9,17 @@ import CallsPage from "./pages/CallsPage";
 import { AuthOverlay } from "./components/shared/auth/register/AuthOverlay";
 import { OnboardingOverlay } from "./components/shared/auth/register/Onboarding/Onboarding";
 import { DiagnosticsOverlay } from "./components/shared/auth/register/Diagnostics";
+import SessionBootstrap from "./components/layout/SessionBootstrap";
+import ProtectedRoute from "./components/layout/ProtectedRoute";
+import SubscriptionModal from "./components/ui/SubscriptionModal";
+import { useModalRouter } from "./hooks/useModalRouter";
 
 export default function App() {
+  const { state, closeModal } = useModalRouter();
   return (
     <div>
+      <SessionBootstrap />
+      <SubscriptionModal isOpen={state.modal === "subscription"} onClose={closeModal} />
       <AuthOverlay />
       <OnboardingOverlay />
       <DiagnosticsOverlay />
@@ -21,41 +28,41 @@ export default function App() {
         <Route
           path="/dashboard/main"
           element={
-            <TasksProvider>
+            <ProtectedRoute><TasksProvider>
               <DashboardLayout>
                 <DashboardPage />
               </DashboardLayout>
-            </TasksProvider>
+            </TasksProvider></ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/tasks"
           element={
-            <TasksProvider>
+            <ProtectedRoute><TasksProvider>
               <DashboardLayout>
                 <TasksPage />
               </DashboardLayout>
-            </TasksProvider>
+            </TasksProvider></ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/ai"
           element={
-            <TasksProvider>
+            <ProtectedRoute><TasksProvider>
               <DashboardLayout>
                 <AIChatPage />
               </DashboardLayout>
-            </TasksProvider>
+            </TasksProvider></ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/calls"
           element={
-            <TasksProvider>
+            <ProtectedRoute><TasksProvider>
               <DashboardLayout>
                 <CallsPage />
               </DashboardLayout>
-            </TasksProvider>
+            </TasksProvider></ProtectedRoute>
           }
         />
       </Routes>

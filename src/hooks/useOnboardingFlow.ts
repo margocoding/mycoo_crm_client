@@ -1,69 +1,42 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useModalRouter } from "./useModalRouter";
 import { useAuthStore } from "@/store/auth.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
+import { useLaunchStore } from "@/store/launch.store";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const SITE_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?#].*)?$/i;
 
 export function useOnboardingFlow() {
-  const { state, closeModal, openModal } = useModalRouter();
-  const regEmail = useAuthStore((s) => s.email);
-  const { profile, loading, error, setField, reset, submit, clearError } = useOnboardingStore();
+  const { state, closeModal: close, openModal } = useModalRouter();
+  const user = useAuthStore((s) => s.user);
+  const regEmail = user?.email ?? "";
+  const launch = useLaunchStore();
+  const { profile, loading, error, setField, restore, saveStep, clearError } = useOnboardingStore();
 
   const [step, setStep] = useState(0);
   const [attempt, setAttempt] = useState(0);
-  const [synced, setSynced] = useState(false);
+  const synced = Boolean(launch.workspace?.onboardingComplete);
 
-  const open = state.modal === "onboarding";
-  const syncedTimeoutRef = useRef<number | null>(null);
+  const open = state.modal === "onboarding" && Boolean(user) && launch.loadedFor === user?.id && !launch.loading && !launch.error;
+  const closeModal = useCallback(() => { if (!useOnboardingStore.getState().loading) close(); }, [close]);
 
   useEffect(() => {
     if (!open) return;
-    reset(regEmail);
-    setStep(0);
+    const workspace = useLaunchStore.getState().workspace;
+    restore(workspace, regEmail);
+    setStep(workspace ? Math.min(workspace.onboardingStep + 1, 4) : 0);
     setAttempt(0);
-    setSynced(false);
-  }, [open, regEmail, reset]);
+  }, [open, regEmail, restore]);
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeModal();
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, closeModal]);
-
-  useEffect(() => {
-    if (!open || step !== 4 || synced) return;
-    syncedTimeoutRef.current = window.setTimeout(() => setSynced(true), 2300);
-    return () => {
-      if (syncedTimeoutRef.current) {
-        window.clearTimeout(syncedTimeoutRef.current);
-        syncedTimeoutRef.current = null;
-      }
-    };
-  }, [step, open, synced]);
-
-  useEffect(
-    () => () => {
-      if (syncedTimeoutRef.current) {
-        window.clearTimeout(syncedTimeoutRef.current);
-      }
-    },
-    []
-  );
 
   const fail = (m: string) => {
     useOnboardingStore.setState({ error: m });
     setAttempt((a) => a + 1);
   };
 
-  const next = () => {
+  const next = async () => {
+    if (useOnboardingStore.getState().loading) return;
     clearError();
     if (step === 1) {
       if (!profile.company.trim()) return fail("Укажите название компании — это первая точка контекста.");
@@ -89,12 +62,16 @@ export function useOnboardingFlow() {
       const prioCount = [profile.p1, profile.p2, profile.p3].filter((x) => x.trim()).length;
       if (prioCount < 1) return fail("Добавьте хотя бы один приоритет.");
     }
-    setAttempt(0);
-    setStep((s) => s + 1);
+    try {
+      if (step >= 1 && step <= 3) await saveStep(step);
+      setAttempt(0);
+      setStep((s) => s + 1);
+    } catch { setAttempt((a) => a + 1); }
   };
 
   const back = useCallback(
     (target: number) => {
+      if (useOnboardingStore.getState().loading) return;
       clearError();
       setStep(target);
     },
@@ -140,12 +117,10 @@ export function useOnboardingFlow() {
     return items.filter(([, value]) => value !== "—" && value !== "");
   }, [profile]);
 
-  const complete = async () => {
-    try {
-      await submit();
-      closeModal();
-      openModal("diagnostics");
-    } catch {}
+  const complete = () => {
+    if (useOnboardingStore.getState().loading) return;
+    if (!useLaunchStore.getState().workspace?.onboardingComplete) return fail("Сначала сохраните все шаги брифа.");
+    openModal("diagnostics");
   };
 
   const progress = useMemo(() => [6, 30, 55, 80, 100][step] ?? 6, [step]);

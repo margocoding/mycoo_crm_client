@@ -3,7 +3,7 @@ import { Reveal } from "../../../lib/motion";
 import { Corners, SectionHeading, StatusChip } from "../../ui/Ambient";
 import { FiCheck, FiMinus, FiPlus } from "react-icons/fi";
 import Button from "../../ui/Button";
-import { useModalRouter } from "@/hooks/useModalRouter";
+import { useLaunch } from "@/store/launch.store";
 
 const PLANS = [
   {
@@ -52,8 +52,8 @@ const PLANS = [
 ];
 
 export function Pricing() {
-  const { openModal } = useModalRouter();
-  const launch = () => openModal("auth", { step: "email" });
+  const { launch } = useLaunch();
+
 
   return (
     <section id="pricing" className="relative border-t border-line/50 py-24 md:py-32">

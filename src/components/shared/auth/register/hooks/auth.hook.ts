@@ -30,6 +30,7 @@ export function useAuthFlow(
   const [step, setStep] = useState(1);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [email, setEmailState] = useState("");
   const [pw, setPwState] = useState("");
   const [pw2, setPw2State] = useState("");
@@ -45,6 +46,9 @@ export function useAuthFlow(
 
   const boxRefs = useRef<(HTMLInputElement | null)[]>([]);
   const failTimeoutRef = useRef<number | null>(null);
+  const busyRef = useRef(false);
+  const verifiedCode = useRef<string | null>(null);
+  const challengeSent = useRef(false);
 
   const mode = modalState.authMode;
   const setAuthEmail = useAuthStore((s) => s.setAuthEmail);
@@ -74,8 +78,11 @@ export function useAuthFlow(
   };
 
   const backToEmail = () => {
+    if (busyRef.current) return;
+    verifiedCode.current = null;
+    challengeSent.current = false;
     updateAuthStep("email");
-    setAuthMode(null as unknown as "login" | "register");
+    setAuthMode(null);
     setSent(false);
     setDigits(EMPTY_DIGITS);
     setCodeErr("");
@@ -85,37 +92,25 @@ export function useAuthFlow(
   useEffect(() => {
     if (!open) return;
 
-    if (modalState.authStep === "code") setStep(2);
-    else if (modalState.authStep === "password") setStep(3);
-    else if (modalState.authStep === "complete") setStep(4);
+    if (modalState.authStep === "code" && challengeSent.current) setStep(2);
+    else if (modalState.authStep === "password" && verifiedCode.current) setStep(3);
+    else if (modalState.authStep === "complete" && useAuthStore.getState().user) setStep(4);
     else setStep(1);
 
     if (modalState.email) setEmailState(modalState.email);
     if (modalState.authMode) setAuthMode(modalState.authMode);
   }, [open, modalState, setAuthMode]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", handleKey);
-    };
-  }, [open, onClose]);
 
   useEffect(() => {
     if (!open) return;
 
     setChecking(false);
     setSubmitting(false);
+    setVerifying(false);
+    busyRef.current = false;
+    verifiedCode.current = null;
+    challengeSent.current = false;
     setPwState("");
     setPw2State("");
     setShowPw(false);
@@ -156,7 +151,7 @@ export function useAuthFlow(
   const submitEmail = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (checking) return;
+    if (busyRef.current) return;
 
     if (!isValidEmail(email)) {
       setEmailErr("Формат email не распознан — проверьте адрес.");
@@ -167,14 +162,18 @@ export function useAuthFlow(
     setEmailErr("");
     setSocialNote("");
     setChecking(true);
+    busyRef.current = true;
 
     try {
-      const { success } = await authApi.checkEmail(email.trim());
+      const normalizedEmail = email.trim().toLowerCase();
+      const { success } = await authApi.checkEmail(normalizedEmail);
+      setEmailState(normalizedEmail);
+      challengeSent.current = true;
 
       const newMode = success ? "login" : "register";
-      setAuthEmail(email.trim());
+      setAuthEmail(normalizedEmail);
       setAuthMode(newMode);
-      updateAuthStep("code", { mode: newMode, email: email.trim() });
+      updateAuthStep("code", { mode: newMode, email: normalizedEmail });
       setSent(true);
       setTimer(RESEND_SECONDS);
       setDigits(EMPTY_DIGITS);
@@ -184,6 +183,7 @@ export function useAuthFlow(
       setAttempt((current) => current + 1);
     } finally {
       setChecking(false);
+      busyRef.current = false;
     }
   };
 
@@ -212,9 +212,13 @@ export function useAuthFlow(
   const submitPw = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (submitting) return;
+    if (busyRef.current) return;
 
     const code = digits.join("");
+    if (verifiedCode.current !== code) {
+      setPwErr("Сначала подтвердите код из письма.");
+      return;
+    }
 
     if (mode === "login") {
       if (pw.length === 0) {
@@ -224,16 +228,19 @@ export function useAuthFlow(
       }
 
       setSubmitting(true);
+      busyRef.current = true;
 
       try {
         const { accessToken, user } = await authApi.login(email, pw, code);
         saveSession(accessToken, user);
-        onClose();
+        updateAuthStep("complete", { mode: "login", email });
+        setStep(4);
       } catch (err) {
         setPwErr(err instanceof Error ? err.message : "Неверный пароль или код");
         setAttempt((current) => current + 1);
       } finally {
         setSubmitting(false);
+        busyRef.current = false;
       }
       return;
     }
@@ -251,6 +258,7 @@ export function useAuthFlow(
     }
 
     setSubmitting(true);
+    busyRef.current = true;
 
     try {
       const { accessToken, user } = await authApi.register(email, pw, code);
@@ -262,31 +270,33 @@ export function useAuthFlow(
       setAttempt((current) => current + 1);
     } finally {
       setSubmitting(false);
+      busyRef.current = false;
     }
   };
 
-  const verify = useCallback((value: string) => {
-    if (value.length === 6) {
-      setCodeErr("");
+  const verify = useCallback(async (value: string) => {
+    if (busyRef.current || value.length !== 6) return;
+    busyRef.current = true;
+    setVerifying(true);
+    setCodeErr("");
+    try {
+      await authApi.verifyCode(email, value);
+      verifiedCode.current = value;
       updateAuthStep("password", { mode: mode || "login", email });
       setStep(3);
-      return;
-    }
-
-    setCodeErr("Код должен состоять из 6 цифр.");
-    setAttempt((current) => current + 1);
-
-    if (failTimeoutRef.current) {
-      window.clearTimeout(failTimeoutRef.current);
-    }
-
-    failTimeoutRef.current = window.setTimeout(() => {
+    } catch (error) {
+      verifiedCode.current = null;
+      setCodeErr(error instanceof Error ? error.message : "Код не подтверждён.");
+      setAttempt((current) => current + 1);
       setDigits(EMPTY_DIGITS);
-      boxRefs.current[0]?.focus();
-    }, 420);
+    } finally {
+      busyRef.current = false;
+      setVerifying(false);
+    }
   }, [mode, email, updateAuthStep]);
 
   const onDigitChange = (index: number, value: string) => {
+    if (busyRef.current) return;
     const clean = value.replace(/\D/g, "");
     const next = [...digits];
     const wasEmpty = digits[index] === "";
@@ -326,6 +336,7 @@ export function useAuthFlow(
   };
 
   const onDigitPaste = (event: ClipboardEvent<HTMLElement>) => {
+    if (busyRef.current) { event.preventDefault(); return; }
     const text = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
 
     if (!text) return;
@@ -344,6 +355,10 @@ export function useAuthFlow(
   };
 
   const resend = async () => {
+    if (busyRef.current || timer > 0) return;
+    busyRef.current = true;
+    setVerifying(true);
+    verifiedCode.current = null;
     try {
       await authApi.resendCode(email);
       setTimer(RESEND_SECONDS);
@@ -353,6 +368,9 @@ export function useAuthFlow(
       boxRefs.current[0]?.focus();
     } catch (err) {
       setCodeErr(err instanceof Error ? err.message : "Ошибка при отправке кода");
+    } finally {
+      busyRef.current = false;
+      setVerifying(false);
     }
   };
 
@@ -361,6 +379,8 @@ export function useAuthFlow(
     mode,
     checking,
     submitting,
+    verifying,
+    busy: checking || submitting || verifying,
     email,
     emailValid: isValidEmail(email),
     emailErr,

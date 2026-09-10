@@ -3,11 +3,11 @@ import { Reveal, Decode } from "../../../lib/motion";
 import { OrbitRings, StatusChip, StatusDot } from "../../ui/Ambient";
 import { FiArrowRight } from "react-icons/fi";
 import Button from "../../ui/Button";
-import { useModalRouter } from "@/hooks/useModalRouter";
+import { useLaunch } from "@/store/launch.store";
 
 export function Launch() {
-  const { openModal } = useModalRouter();
-  const launch = () => openModal("auth", { step: "email" });
+  const { launch } = useLaunch();
+
 
   return (
     <section id="launch" className="relative overflow-hidden border-t border-line/50 py-28 md:py-36">
@@ -58,7 +58,7 @@ export function Launch() {
                 <span className="text-flux">▸</span> шаг 01 · регистрация по email
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-flux">▸</span> шаг 02 · пароль и подтверждение кодом
+                <span className="text-flux">▸</span> шаг 02 · подтверждение кодом и пароль
               </li>
               <li className="flex items-center gap-3">
                 <span className="text-flux">▸</span> шаг 03 · бриф компании · ~5 минут
@@ -84,7 +84,7 @@ export function Launch() {
             </Button>
 
             <p className="mono-label mt-4 text-fog/45">
-              trial стартует после онбординга · демо-режим без передачи данных
+              trial стартует после успешной диагностики
             </p>
           </div>
         </Reveal>
@@ -108,8 +108,7 @@ const FOOT_NAV2 = [
 
 export function Footer() {
   const [legalNote, setLegalNote] = useState("");
-  const { openModal } = useModalRouter();
-  const launch = () => openModal("auth", { step: "email" });
+  const { launch } = useLaunch();
 
   const legal = (doc: string) => (e: React.MouseEvent) => {
     e.preventDefault();

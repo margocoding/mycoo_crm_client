@@ -13,6 +13,7 @@ import { StatusDot } from "@/components/ui/Ambient";
 import { toneDot } from "@/lib/tone";
 import { useOnboardingFlow } from "@/hooks/useOnboardingFlow";
 import { useOnboardingStore } from "@/store/onboarding.store";
+export type { OnboardingProfile as Profile } from "@/store/onboarding.store";
 
 const PHASES = [
   { id: "00", code: "BRIEF", label: "Знакомство" },
@@ -142,7 +143,7 @@ export function OnboardingOverlay() {
           </div>
         </aside>
 
-        <div className="min-h-[460px] p-6 md:p-8">
+        <fieldset disabled={flow.loading} aria-busy={flow.loading} className="min-w-0 min-h-[460px] p-6 md:p-8">
           {flow.step === 0 && (
             <div className="step-in">
               <div className="flex items-start gap-4">
@@ -526,7 +527,7 @@ export function OnboardingOverlay() {
               )}
             </div>
           )}
-        </div>
+        </fieldset>
       </div>
     </Modal>
   );

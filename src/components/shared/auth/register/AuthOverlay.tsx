@@ -8,6 +8,7 @@ import { useAuthFlow } from "./hooks/auth.hook";
 import { AUTH_PHASES } from "@/lib/constants/constants";
 import { useAuthStore } from "@/store/auth.store";
 import { useModalRouter } from "@/hooks/useModalRouter";
+import { useLaunch } from "@/store/launch.store";
 
 const SOCIALS = [
   {
@@ -29,7 +30,8 @@ const SOCIALS = [
 ];
 
 export function AuthOverlay() {
-  const { state, closeModal, updateAuthStep, openModal } = useModalRouter();
+  const { state, closeModal, updateAuthStep } = useModalRouter();
+  const { launch, loading } = useLaunch();
   const user = useAuthStore((s) => s.user);
 
   const open = state.modal === "auth";
@@ -40,14 +42,13 @@ export function AuthOverlay() {
   const progress = Math.min(flow.step * 25, 100);
 
   const startOnboarding = () => {
-    closeModal();
-    openModal("onboarding");
+    if (user) void launch();
   };
 
   return (
     <Modal
       isOpen={open}
-      onClose={closeModal}
+      onClose={() => { if (!flow.busy) closeModal(); }}
       ariaLabel="Авторизация MyCOO"
       title={
         <>
@@ -74,7 +75,7 @@ export function AuthOverlay() {
       showProgress
       progress={progress}
     >
-      <div className="grid md:grid-cols-[240px_1fr]">
+      <fieldset disabled={flow.busy} aria-busy={flow.busy} className="min-w-0 grid md:grid-cols-[240px_1fr]">
         <aside className="hidden border-r border-line/60 p-6 md:block">
           <p className="mono-label mb-5 text-fog/60">фазы доступа</p>
 
@@ -132,7 +133,7 @@ export function AuthOverlay() {
           <div className="mt-9 rounded-md border border-line/60 bg-hull/30 p-3.5">
             <p className="mono-label text-fog/50">sys note</p>
             <p className="mt-1.5 text-[11.5px] leading-relaxed text-fog/80">
-              Демо-режим: данные не покидают ваш браузер.
+              Данные аккаунта сохраняются на сервере MyCOO.
             </p>
           </div>
         </aside>
@@ -450,12 +451,11 @@ export function AuthOverlay() {
                   <p className="mono-label text-ok">mission start · complete</p>
 
                   <h3 className="font-display mt-1.5 text-xl font-bold text-snow md:text-2xl">
-                    Операционный контур активен
+                    {flow.mode === "login" ? "Вход выполнен" : "Аккаунт создан"}
                   </h3>
 
                   <p className="mt-2 text-[13.5px] leading-relaxed text-fog">
-                    Аккаунт создан, email подтверждён. Оператор MyCOO свяжется с
-                    вами для конфигурации и запуска.
+                    Email подтверждён. Можно продолжить работу с компанией.
                   </p>
                 </div>
               </div>
@@ -507,12 +507,13 @@ export function AuthOverlay() {
                   variant="primary"
                   tone="ion"
                   onClick={startOnboarding}
+                  disabled={loading}
                   className="group"
                   iconRight={
                     <FiArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                   }
                 >
-                  Начать знакомство с MyCOO
+                  {loading ? "Загрузка…" : flow.mode === "login" ? "Открыть MyCOO" : "Начать знакомство с MyCOO"}
                 </Button>
 
                 <Button variant="secondary" onClick={closeModal}>
@@ -521,12 +522,12 @@ export function AuthOverlay() {
               </div>
 
               <p className="mono-label mt-4 text-fog/45">
-                следующий шаг · бриф компании ~5 минут
+                {flow.mode === "login" ? "продолжить с сохранённого этапа" : "следующий шаг · бриф компании ~5 минут"}
               </p>
             </div>
           )}
         </div>
-      </div>
+      </fieldset>
     </Modal>
   );
 }

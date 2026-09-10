@@ -3,7 +3,7 @@ import { Decode, fmtTime, useNow } from "../../../lib/motion";
 import { OrbitRings, StatusChip, StatusDot, CoordTag } from "../../ui/Ambient";
 import { FiArrowRight } from "react-icons/fi";
 import Button from "../../ui/Button";
-import { useModalRouter } from "@/hooks/useModalRouter";
+import { useLaunch } from "@/store/launch.store";
 
 const STATUS_ROWS = [
   { key: "Operations", value: "Stable", tone: "ok" as const },
@@ -114,8 +114,8 @@ function MissionConsole() {
 }
 
 export default function Hero() {
-  const { openModal } = useModalRouter();
-  const launch = () => openModal("auth", { step: "email" });
+  const { launch } = useLaunch();
+
 
   return (
     <section id="top" className="relative overflow-hidden pt-[72px]">
