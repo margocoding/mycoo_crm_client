@@ -4,7 +4,7 @@ import { StatusDot } from "../../ui/Ambient";
 import { FiX, FiMenu } from "react-icons/fi";
 import Button from "../../ui/Button";
 import { useLaunch } from "@/store/launch.store";
-import { useModalRouter } from "@/hooks/useModalRouter";
+
 
 const NAV = [
   { href: "#about", label: "О системе" },
@@ -19,10 +19,10 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
-  const { trialActive } = useLaunch();
-  const { openModal } = useModalRouter();
+  const { trialActive, launch } = useLaunch();
 
-  const launch = () => openModal("auth", { step: "email" });
+
+
 
   useEffect(() => {
     const onScroll = () => {

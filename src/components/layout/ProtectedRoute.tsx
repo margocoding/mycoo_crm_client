@@ -1,29 +1,15 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuthStore } from "@/store/auth.store";
+import { useLaunchStore } from "@/store/launch.store";
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  // Пока загружается проверка авторизации, показываем загрузку
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-void">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-flux border-t-transparent"></div>
-          <p className="mt-4 font-mono text-sm text-fog">Проверка доступа...</p>
-        </div>
-      </div>
-    );
+export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, error } = useAuthStore();
+  const workspace = useLaunchStore();
+  if (error || workspace.error) return <div className="min-h-screen bg-void" />;
+  if (isLoading || (user && (workspace.loading || workspace.loadedFor !== user.id))) {
+    return <div role="status" className="flex min-h-screen items-center justify-center bg-void text-fog">Проверка доступа…</div>;
   }
-
-  // Если не авторизован, редиректим на лендинг
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
+  if (!user) return <Navigate to="/" replace />;
+  if (!workspace.trialActive) return <Navigate to={workspace.workspace?.onboardingComplete ? "/?diagnostics=true" : "/?onboarding=true"} replace />;
   return <>{children}</>;
 }
