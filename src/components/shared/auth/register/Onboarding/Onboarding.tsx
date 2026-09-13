@@ -510,7 +510,7 @@ export function OnboardingOverlay() {
                     </Button>
                     <Button
                       variant="secondary"
-                      href={`mailto:hello@mycoo.ai?subject=MyCOO бриф · ${encodeURIComponent(profile.company)}`}
+                      href={`mailto:hello@mycoo.io?subject=MyCOO бриф · ${encodeURIComponent(profile.company)}`}
                     >
                       Отправить бриф оператору
                     </Button>

@@ -164,8 +164,8 @@ export function Footer() {
             <h4 className="mono-label mb-4 text-fog/70">Контакты</h4>
             <ul className="space-y-2.5 text-[13.5px]">
               <li>
-                <a href="mailto:hello@mycoo.ai" className="font-mono text-[13px] text-mist transition-colors hover:text-flux">
-                  hello@mycoo.ai
+                <a href="mailto:hello@mycoo.io" className="font-mono text-[13px] text-mist transition-colors hover:text-flux">
+                  hello@mycoo.io
                 </a>
               </li>
               <li className="text-fog">Запуск и внедрение — вместе с командой MyCOO</li>
