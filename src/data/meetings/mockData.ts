@@ -50,12 +50,12 @@ export interface Meeting {
 }
 
 export const teamMembers: TeamMember[] = [
-  { id: "u1", name: "Иван Петров", role: "CEO / Основатель", email: "ivan@mycoo.ru", avatar: "ИП" },
-  { id: "u2", name: "Мария Сидорова", role: "Финансовый директор", email: "maria@mycoo.ru", avatar: "МС" },
-  { id: "u3", name: "Алексей Иванов", role: "CTO", email: "alex@mycoo.ru", avatar: "АИ" },
-  { id: "u4", name: "Елена Козлова", role: "Руководитель отдела продаж", email: "elena@mycoo.ru", avatar: "ЕК" },
-  { id: "u5", name: "Дмитрий Волков", role: "Маркетинг-директор", email: "dmitry@mycoo.ru", avatar: "ДВ" },
-  { id: "u6", name: "Ольга Новикова", role: "HR-директор", email: "olga@mycoo.ru", avatar: "ОН" },
+  { id: "u1", name: "Иван Петров", role: "CEO / Основатель", email: "ivan@mycoo.io", avatar: "ИП" },
+  { id: "u2", name: "Мария Сидорова", role: "Финансовый директор", email: "maria@mycoo.io", avatar: "МС" },
+  { id: "u3", name: "Алексей Иванов", role: "CTO", email: "alex@mycoo.io", avatar: "АИ" },
+  { id: "u4", name: "Елена Козлова", role: "Руководитель отдела продаж", email: "elena@mycoo.io", avatar: "ЕК" },
+  { id: "u5", name: "Дмитрий Волков", role: "Маркетинг-директор", email: "dmitry@mycoo.io", avatar: "ДВ" },
+  { id: "u6", name: "Ольга Новикова", role: "HR-директор", email: "olga@mycoo.io", avatar: "ОН" },
 ];
 
 export const meetings: Meeting[] = [
@@ -66,7 +66,7 @@ export const meetings: Meeting[] = [
     time: "10:00",
     duration: 60,
     participants: ["u1", "u2", "u3", "u4"],
-    emails: ["ivan@mycoo.ru", "maria@mycoo.ru", "alex@mycoo.ru", "elena@mycoo.ru"],
+    emails: ["ivan@mycoo.io", "maria@mycoo.io", "alex@mycoo.io", "elena@mycoo.io"],
     agenda: "1. Бюджет на Q4\n2. Нагрузка отдела продаж\n3. Найм технических специалистов\n4. Дорожная карта продукта",
     status: "completed",
     platform: "zoom",
@@ -153,7 +153,7 @@ export const meetings: Meeting[] = [
     time: "12:30",
     duration: 45,
     participants: ["u1", "u4", "u5"],
-    emails: ["ivan@mycoo.ru", "elena@mycoo.ru", "dmitry@mycoo.ru"],
+    emails: ["ivan@mycoo.io", "elena@mycoo.io", "dmitry@mycoo.io"],
     agenda: "1. Выполнение плана за прошлую неделю\n2. Горячие лиды\n3. Совместная маркетинговая кампания",
     status: "completed",
     platform: "meet",
@@ -215,7 +215,7 @@ export const meetings: Meeting[] = [
     time: "15:00",
     duration: 90,
     participants: ["u1", "u2"],
-    emails: ["ivan@mycoo.ru", "maria@mycoo.ru"],
+    emails: ["ivan@mycoo.io", "maria@mycoo.io"],
     agenda: "1. Cash flow за август\n2. Прогноз на сентябрь\n3. Оптимизация расходов",
     status: "upcoming",
     platform: "yandex",
@@ -228,7 +228,7 @@ export const meetings: Meeting[] = [
     time: "14:00",
     duration: 120,
     participants: ["u1", "u3", "u4", "u5"],
-    emails: ["ivan@mycoo.ru", "alex@mycoo.ru", "elena@mycoo.ru", "dmitry@mycoo.ru"],
+    emails: ["ivan@mycoo.io", "alex@mycoo.io", "elena@mycoo.io", "dmitry@mycoo.io"],
     agenda: "Обсуждение продуктовой дорожной карты и приоритетов на Q4",
     status: "processing",
     platform: "zoom",
