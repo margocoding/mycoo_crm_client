@@ -19,7 +19,8 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const publicAuth = /^\/auth\/(check-email|verify-code|resend-code|login|register)$/.test(config.url ?? "");
-  if (!publicAuth && !config.headers.Authorization) {
+  const publicInvitation = /^\/invitations\//.test(config.url ?? "");
+  if (!publicAuth && !publicInvitation && !config.headers.Authorization) {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }

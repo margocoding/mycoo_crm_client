@@ -2,8 +2,9 @@ import { Modal } from "../../../ui/Modal";
 import { StatusDot } from "../../../ui/Ambient";
 import Button from "../../../ui/Button";
 import Input from "../../../ui/Input";
-import { FiArrowRight, FiCheck, FiEye, FiEyeOff, FiLock, FiMail } from "react-icons/fi";
+import { FiArrowRight, FiCheck, FiMail } from "react-icons/fi";
 import { SiVk, SiYandexcloud } from "react-icons/si";
+import PasswordFields from "./PasswordFields";
 import { useAuthFlow } from "./hooks/auth.hook";
 import { AUTH_PHASES } from "@/lib/constants/constants";
 import { useAuthStore } from "@/store/auth.store";
@@ -321,98 +322,10 @@ export function AuthOverlay() {
               </p>
 
               <form onSubmit={flow.submitPw} className="mt-6" noValidate>
-                <Input
-                  id="auth-pw"
-                  label="пароль"
-                  type={flow.showPw ? "text" : "password"}
-                  autoFocus
-                  autoComplete={flow.mode === "login" ? "current-password" : "new-password"}
-                  value={flow.pw}
-                  onChange={(event) => flow.setPw(event.target.value)}
-                  placeholder="••••••••••"
-                  iconLeft={<FiLock className="h-4 w-4" />}
-                  error={flow.pwErr}
-                  addonRight={
-                    <Button
-                      variant="ghost"
-                      onClick={() => flow.setShowPw(!flow.showPw)}
-                      aria-label={flow.showPw ? "Скрыть пароль" : "Показать пароль"}
-                      className="!p-0 !text-fog/60 hover:!text-flux"
-                    >
-                      {flow.showPw ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
-                    </Button>
-                  }
-                />
-
-                {flow.mode === "register" && (
-                  <>
-                    <div className="mt-3.5">
-                      <div className="h-1 w-full overflow-hidden rounded-full bg-hull/80">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: flow.pw ? flow.strengthMeta.w : "0%",
-                            background: flow.strengthMeta.color,
-                            boxShadow: `0 0 10px ${flow.strengthMeta.color}`,
-                          }}
-                        />
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="mono-label text-fog/50">надёжность</span>
-                        <span
-                          className="font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] transition-colors duration-300"
-                          style={{
-                            color: flow.pw ? flow.strengthMeta.color : "var(--color-fog)",
-                          }}
-                        >
-                          {flow.pw ? flow.strengthMeta.label : "—"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <ul className="mt-4 space-y-2">
-                      {flow.rules.map((rule) => (
-                        <li key={rule.label} className="flex items-center gap-2.5 text-[13px]">
-                          <span
-                            className={`flex h-4.5 w-4.5 items-center justify-center rounded-full border transition-all duration-300 ${
-                              rule.ok
-                                ? "border-ok/60 bg-ok/10 text-ok"
-                                : "border-line text-fog/40"
-                            }`}
-                          >
-                            {rule.ok && <FiCheck className="h-2.5 w-2.5" />}
-                          </span>
-                          <span className={rule.ok ? "text-mist" : "text-fog/70"}>
-                            {rule.label}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="mt-5">
-                      <Input
-                        id="auth-pw2"
-                        label="повторите пароль"
-                        type={flow.showPw ? "text" : "password"}
-                        autoComplete="new-password"
-                        value={flow.pw2}
-                        onChange={(event) => flow.setPw2(event.target.value)}
-                        placeholder="••••••••••"
-                        warn={
-                          flow.pw2.length > 0 && flow.pw2 !== flow.pw
-                            ? "пароли пока не совпадают"
-                            : undefined
-                        }
-                        ok={
-                          flow.pw2.length > 0 && flow.pw2 === flow.pw
-                            ? "совпадает"
-                            : undefined
-                        }
-                      />
-                    </div>
-                  </>
-                )}
+                <PasswordFields mode={flow.mode === "login" ? "login" : "register"}
+                  password={flow.pw} confirmation={flow.pw2}
+                  onPasswordChange={flow.setPw} onConfirmationChange={flow.setPw2}
+                  error={flow.pwErr} disabled={flow.submitting} />
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Button

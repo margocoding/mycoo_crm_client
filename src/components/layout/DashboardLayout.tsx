@@ -6,11 +6,15 @@ import {
   LuMenu,
   LuBot,
   LuCreditCard,
-  LuCalendar
+  LuCalendar,
+  LuUsers
 } from 'react-icons/lu';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Logo } from '../icons';
-import { useLaunch } from '@/store/launch.store';
+import { useLaunch, useLaunchStore } from '@/store/launch.store';
+import { useAuthStore } from '@/store/auth.store';
+import { TeamProvider, useTeam } from '@/components/shared/team/TeamProvider';
+import DepartmentPlaceholder from '@/components/shared/team/DepartmentPlaceholder';
 
 interface SidebarProps {
   children: ReactNode;
@@ -20,11 +24,26 @@ const navItems = [
   { id: 'dashboard', label: 'Дашборд', icon: LuLayoutDashboard, path: '/dashboard/main' },
   { id: 'tasks', label: 'Задачи', icon: LuListChecks, path: '/dashboard/tasks' },
   { id: 'calls', label: 'Встречи', icon: LuCalendar, path: '/dashboard/calls' },
-  { id: 'ai', label: 'AI COO', icon: LuBot, path: '/dashboard/ai' }
+  { id: 'ai', label: 'AI COO', icon: LuBot, path: '/dashboard/ai' },
+  { id: 'team', label: 'Команда', icon: LuUsers, path: '/dashboard/team' }
 ];
 
 export default function DashboardLayout({ children }: SidebarProps) {
-  const { exitToSite, openSubscription } = useLaunch();
+  const workspace = useLaunchStore((s) => s.workspace);
+  const user = useAuthStore((s) => s.user);
+  if (!workspace || !user) return null;
+  return <TeamProvider key={workspace.id + ':' + user.id} workspaceId={workspace.id}>
+    <DashboardShell>{children}</DashboardShell>
+  </TeamProvider>;
+}
+
+function DashboardShell({ children }: SidebarProps) {
+  const { exitToSite, openSubscription, workspace } = useLaunch();
+  const user = useAuthStore((s) => s.user);
+  const { data } = useTeam();
+  const { pathname } = useLocation();
+  const memberPlaceholder = workspace?.ownerId !== user?.id && ['/dashboard/main', '/dashboard/tasks'].includes(pathname);
+  const displayName = user?.name || (workspace?.ownerId === user?.id ? workspace?.ownerName : null) || user?.email || 'Пользователь';
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -46,7 +65,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
           <span className="font-display text-[14px] font-bold tracking-[0.22em] text-snow">MYCOO</span>
         </div>
 
-        <nav className="mt-6 px-3 space-y-1">
+        <nav className="mt-6 max-h-[calc(100dvh-19rem)] overflow-y-auto px-3 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -67,6 +86,12 @@ export default function DashboardLayout({ children }: SidebarProps) {
               </NavLink>
             );
           })}
+          {data?.departments.map((department) => <NavLink key={department.id}
+            to={'/dashboard/team/' + department.id} onClick={() => setIsSidebarOpen(false)}
+            className={({ isActive }) => 'ml-5 block truncate rounded-md border-l px-4 py-2 text-xs ' +
+              (isActive ? 'border-flux text-flux bg-flux/5' : 'border-line text-fog/70 hover:text-snow')}>
+            {department.name}
+          </NavLink>)}
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-line/40 space-y-2">
@@ -88,10 +113,10 @@ export default function DashboardLayout({ children }: SidebarProps) {
           
           <div className="flex items-center gap-3 rounded-lg bg-hull/30 px-3 py-2.5 mt-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-flux to-ion flex items-center justify-center text-xs font-bold text-void">
-              У
+              {displayName.slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-snow truncate">Пользователь</p>
+              <p className="text-sm font-medium text-snow truncate">{displayName}</p>
               <p className="mono-label text-[9px] text-fog/50">Pro тариф</p>
             </div>
           </div>
@@ -102,6 +127,8 @@ export default function DashboardLayout({ children }: SidebarProps) {
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line/40 bg-void/80 px-4 backdrop-blur-md lg:hidden">
           <button
             onClick={() => setIsSidebarOpen(true)}
+            aria-label="Открыть меню"
+            aria-expanded={isSidebarOpen}
             className="p-2 text-fog/70 hover:text-snow transition-colors"
           >
             <LuMenu className="w-6 h-6" />
@@ -115,7 +142,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
 
         <main className="p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
-            {children}
+            {memberPlaceholder ? <DepartmentPlaceholder /> : children}
           </div>
         </main>
       </div>
