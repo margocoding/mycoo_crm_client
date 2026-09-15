@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
+import { passwordRules } from "@/lib/password";
 import { authApi } from "@/api/auth.api";
 import { useAuthStore } from "@/store/auth.store";
 import type { AuthStep } from "@/hooks/useModalRouter";
@@ -34,7 +35,6 @@ export function useAuthFlow(
   const [email, setEmailState] = useState("");
   const [pw, setPwState] = useState("");
   const [pw2, setPw2State] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [digits, setDigits] = useState<string[]>(EMPTY_DIGITS);
   const [emailErr, setEmailErr] = useState("");
   const [pwErr, setPwErr] = useState("");
@@ -113,7 +113,6 @@ export function useAuthFlow(
     challengeSent.current = false;
     setPwState("");
     setPw2State("");
-    setShowPw(false);
     setDigits(EMPTY_DIGITS);
     setEmailErr("");
     setPwErr("");
@@ -187,25 +186,7 @@ export function useAuthFlow(
     }
   };
 
-  const rules = [
-    { ok: pw.length >= 8, label: "не менее 8 символов" },
-    { ok: /\d/.test(pw) && /[a-zа-яё]/i.test(pw), label: "буквы и цифры" },
-    { ok: /[A-ZА-ЯЁ]/.test(pw) && /[a-zа-яё]/.test(pw), label: "разный регистр букв" },
-  ];
-
-  const strength =
-    rules.filter((rule) => rule.ok).length +
-    (pw.length >= 12 ? 1 : 0) +
-    (/[^a-zа-яё0-9]/i.test(pw) ? 1 : 0);
-
-  const strengthMeta =
-    strength <= 1
-      ? { label: "слабый", color: "var(--color-crit)", w: "25%" }
-      : strength === 2
-        ? { label: "средний", color: "var(--color-warn)", w: "50%" }
-        : strength === 4
-          ? { label: "сильный", color: "var(--color-ok)", w: "78%" }
-          : { label: "отличный", color: "var(--color-flux)", w: "100%" };
+  const rules = passwordRules(pw);
 
   const pwValid = rules.every((rule) => rule.ok) && pw2 === pw && pw2.length > 0;
 
@@ -386,10 +367,8 @@ export function useAuthFlow(
     emailErr,
     pw,
     pw2,
-    showPw,
     pwErr,
     rules,
-    strengthMeta,
     pwValid,
     digits,
     codeErr,
@@ -402,7 +381,6 @@ export function useAuthFlow(
     setEmail,
     setPw,
     setPw2,
-    setShowPw,
     showSocialNote,
     submitEmail,
     submitPw,
