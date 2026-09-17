@@ -12,6 +12,8 @@ import { DiagnosticsOverlay } from "./components/shared/auth/register/Diagnostic
 import SessionBootstrap from "./components/layout/SessionBootstrap";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import SubscriptionModal from "./components/ui/SubscriptionModal";
+import TeamPage from "./pages/TeamPage";
+import InvitationPage from "./pages/InvitationPage";
 import { useModalRouter } from "./hooks/useModalRouter";
 
 export default function App() {
@@ -25,6 +27,10 @@ export default function App() {
       <DiagnosticsOverlay />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/invite/:token" element={<InvitationPage />} />
+        <Route path="/dashboard/team/:departmentId?" element={
+          <ProtectedRoute><DashboardLayout><TeamPage /></DashboardLayout></ProtectedRoute>
+        } />
         <Route
           path="/dashboard/main"
           element={

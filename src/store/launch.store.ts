@@ -4,7 +4,7 @@ import { useAuthStore } from "./auth.store";
 import type { OnboardingProfile } from "./onboarding.store";
 import type { Workspace } from "@/types/workspace.types";
 import { workspaceApi } from "@/api/workspace.api";
-import { errorMessage } from "@/api/base.api";
+import { ApiError, errorMessage } from "@/api/base.api";
 import { cacheWorkspace, clearWorkspaceCache, workspaceProfile } from "@/lib/workspace";
 import { useModalRouter } from "@/hooks/useModalRouter";
 
@@ -27,6 +27,8 @@ export const useLaunchStore = create<LaunchStore>((set, get) => ({
   workspace: null, loadedFor: null, trialActive: false, profile: null, loading: false, error: null,
   setWorkspace: (workspace) => {
     cacheWorkspace(workspace);
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) localStorage.setItem("mycoo_workspace:" + userId, workspace.id);
     set({ workspace, loadedFor: useAuthStore.getState().user?.id ?? null, profile: workspaceProfile(workspace),
       trialActive: workspace.isActive && workspace.diagnosticsComplete, error: null });
   },
@@ -44,8 +46,19 @@ export const useLaunchStore = create<LaunchStore>((set, get) => ({
     set({ loading: true, error: null });
     const promise = (async () => {
       try {
-        const status = await workspaceApi.status();
-        const workspace = status.workspaceId ? await workspaceApi.get(status.workspaceId) : null;
+        const selectedId = localStorage.getItem("mycoo_workspace:" + userId);
+        let workspace: Workspace | null = null;
+        if (selectedId) {
+          try { workspace = await workspaceApi.get(selectedId); }
+          catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 404) throw error;
+            localStorage.removeItem("mycoo_workspace:" + userId);
+          }
+        }
+        if (!workspace) {
+          const status = await workspaceApi.status();
+          workspace = status.workspaceId ? await workspaceApi.get(status.workspaceId) : null;
+        }
         if (current !== revision || useAuthStore.getState().user?.id !== userId) return;
         if (workspace) get().setWorkspace(workspace);
         else {
@@ -87,7 +100,7 @@ export function useLaunch() {
     openSubscription: () => openModal("subscription"),
     launchWorkspace: (workspace: Workspace) => {
       store.setWorkspace(workspace);
-      if (workspace.isActive && workspace.diagnosticsComplete) go("/dashboard/main");
+      if (workspace.isActive && workspace.diagnosticsComplete) go("/dashboard/team?setup=1");
     },
   };
 }

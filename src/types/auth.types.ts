@@ -5,7 +5,7 @@ export interface CheckEmailRdo {
 export interface UserRdo {
   id: string;
   email: string;
-  name?: string;
+  name?: string | null;
   createdAt?: string;
 }
 
