@@ -100,7 +100,7 @@ export function OnboardingOverlay() {
       maxWidth="max-w-5xl"
     >
       <div className="grid md:grid-cols-[240px_1fr]">
-        <aside className="hidden border-r border-line/60 p-6 md:block">
+        <aside className="hidden border-r border-line/60 p-6 max-md:p-0 md:block">
           <p className="mono-label mb-5 text-fog/60">маршрут брифа</p>
           <ol className="relative space-y-6">
             <span className="absolute bottom-2 left-[11px] top-2 w-px bg-line/70" />
