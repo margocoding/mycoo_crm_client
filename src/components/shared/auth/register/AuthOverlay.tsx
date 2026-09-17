@@ -139,7 +139,7 @@ export function AuthOverlay() {
           </div>
         </aside>
 
-        <div className="min-h-[420px] p-6 md:p-8">
+        <div className="min-h-[420px] max-sm:p-0 p-6 md:p-8">
           {flow.step === 1 && (
             <div key={`s1-${flow.attempt}`} className={flow.attempt ? "shake" : "step-in"}>
               <p className="mono-label text-flux">шаг 01 · идентификация</p>
@@ -254,7 +254,7 @@ export function AuthOverlay() {
                     autoFocus={index === 0}
                     autoComplete="off"
                     aria-label={`Цифра кода ${index + 1}`}
-                    className={`!h-14 !w-11 !px-0 !py-0 !text-center !font-mono !text-xl !font-bold sm:!w-12 ${
+                    className={`!h-12 !w-10 !px-0 !py-0 !text-center !font-mono !text-xl !font-bold sm:!w-12 ${
                       flow.codeErr ? "!border-crit/60" : digit ? "!border-flux/50" : ""
                     }`}
                   />

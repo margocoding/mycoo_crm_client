@@ -157,7 +157,7 @@ export default function Workspace() {
       <div className="noise-overlay" />
 
       {/* app bar */}
-      <header className="header-solid sticky top-0 z-40">
+      <header className="header-solid sticky top-0 z-40 max-sm:hidden">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-5 md:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Logo className="h-7 w-7 shrink-0" />
