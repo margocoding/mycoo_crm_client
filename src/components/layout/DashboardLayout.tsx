@@ -42,7 +42,7 @@ function DashboardShell({ children }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const { data } = useTeam();
   const { pathname } = useLocation();
-  const memberPlaceholder = workspace?.ownerId !== user?.id && ['/dashboard/main', '/dashboard/tasks'].includes(pathname);
+  const memberPlaceholder = workspace?.ownerId !== user?.id && pathname === '/dashboard/main';
   const displayName = user?.name || (workspace?.ownerId === user?.id ? workspace?.ownerName : null) || user?.email || 'Пользователь';
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 

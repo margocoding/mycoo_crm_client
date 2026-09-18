@@ -1,150 +1,106 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { tasksApi } from '@/api/tasks.api';
+import { ApiError, errorMessage } from '@/api/base.api';
+import type { Task, TaskAssignee, TaskInput, TaskStatus } from '@/types/task.types';
 
-export interface Task {
-  id: string;
-  title: string;
-  assignee: string;
-  dueDate: string;
-  priority: 'low' | 'medium' | 'high';
-  successCriteria: string;
-  status: 'backlog' | 'in-progress' | 'review' | 'done';
-  createdAt: string;
-}
-
+export type { Task } from '@/types/task.types';
 export type ViewMode = 'kanban' | 'list' | 'calendar';
 
 interface TasksContextType {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
+  canManage: boolean;
+  assigneeOptions: TaskAssignee[];
+  loading: boolean;
+  pending: boolean;
+  error: string;
+  reload: () => Promise<void>;
+  addTask: (task: TaskInput) => Promise<boolean>;
+  updateTask: (id: string, task: TaskInput) => Promise<boolean>;
+  setStatus: (id: string, status: TaskStatus) => Promise<boolean>;
+  deleteTask: (id: string) => Promise<boolean>;
+  editingTask: Task | null;
+  setEditingTask: (task: Task | null) => void;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
-  generateSuccessCriteria: (title: string) => Promise<string>;
 }
 
-const TasksContext = createContext<TasksContextType | undefined>(undefined);
+const TasksContext = createContext<TasksContextType | null>(null);
 
-const defaultTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Подготовить коммерческое предложение',
-    assignee: 'Иван',
-    dueDate: '2024-09-15',
-    priority: 'high',
-    successCriteria: 'КП отправлено клиенту и получена обратная связь',
-    status: 'in-progress',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Провести встречу с командой',
-    assignee: 'Анна',
-    dueDate: '2024-09-10',
-    priority: 'medium',
-    successCriteria: 'Все участники согласовали план работ',
-    status: 'done',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Обновить документацию',
-    assignee: 'Петр',
-    dueDate: '2024-09-20',
-    priority: 'low',
-    successCriteria: 'Документация опубликована в базе знаний',
-    status: 'backlog',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    title: 'Настроить аналитику',
-    assignee: 'Мария',
-    dueDate: '2024-09-18',
-    priority: 'high',
-    successCriteria: 'Метрики отображаются в дашборде корректно',
-    status: 'review',
-    createdAt: new Date().toISOString(),
-  },
-];
-
-export function TasksProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const stored = localStorage.getItem('mycoo_tasks');
-      return stored ? JSON.parse(stored) : defaultTasks;
-    } catch {
-      return defaultTasks;
-    }
-  });
-
+export function TasksProvider({ workspaceId, departmentId, assigneeOptions, children }: {
+  workspaceId: string; departmentId: string; assigneeOptions: TaskAssignee[]; children: ReactNode;
+}) {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+  const request = useRef<AbortController | null>(null);
+  const busy = useRef(false);
+
+  const reload = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setLoading(true);
+    try {
+      const result = await tasksApi.list(workspaceId, departmentId, controller.signal);
+      if (!controller.signal.aborted) {
+        setTasks(result.tasks);
+        setCanManage(result.canManage);
+        if (!result.canManage) setEditingTask(null);
+        setError('');
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setTasks([]);
+        if (error instanceof ApiError && [401, 403, 404].includes(error.status)) setCanManage(false);
+        setError(errorMessage(error));
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [workspaceId, departmentId]);
 
   useEffect(() => {
-    localStorage.setItem('mycoo_tasks', JSON.stringify(tasks));
-  }, [tasks]);
+    void reload();
+    const onFocus = () => { if (!busy.current) void reload(); };
+    window.addEventListener('focus', onFocus);
+    return () => { request.current?.abort(); window.removeEventListener('focus', onFocus); };
+  }, [reload]);
 
-  const addTask = (task: Omit<Task, 'id' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...task,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    setTasks((prev) => [...prev, newTask]);
-  };
-
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-  };
-
-  const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  // Имитация AI-генерации критерия результата
-  const generateSuccessCriteria = async (title: string): Promise<string> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    
-    const templates: Record<string, string> = {
-      'коммерческое предложение': 'КП отправлено клиенту и подтверждено получение',
-      'встречу': 'Встреча проведена, зафиксированы договорённости и следующие шаги',
-      'документацию': 'Документация актуализирована и размещена в репозитории',
-      'аналитику': 'Данные собираются и отображаются в реальном времени',
-      'отчёт': 'Отчёт подготовлен и направлен заинтересованным сторонам',
-      'найм': 'Кандидат прошёл собеседование и получил оффер',
-    };
-
-    const lowerTitle = title.toLowerCase();
-    for (const [key, value] of Object.entries(templates)) {
-      if (lowerTitle.includes(key)) {
-        return value;
-      }
+  async function save(action: () => Promise<unknown>) {
+    if (busy.current) return false;
+    busy.current = true;
+    request.current?.abort();
+    setPending(true);
+    setError('');
+    try {
+      await action();
+      await reload();
+      return true;
+    } catch (error) {
+      await reload();
+      setError(errorMessage(error));
+      return false;
+    } finally {
+      busy.current = false;
+      setPending(false);
     }
+  }
 
-    return `Задача выполнена и результат подтверждён ответственным`;
-  };
-
-  return (
-    <TasksContext.Provider
-      value={{
-        tasks,
-        addTask,
-        updateTask,
-        deleteTask,
-        viewMode,
-        setViewMode,
-        generateSuccessCriteria,
-      }}
-    >
-      {children}
-    </TasksContext.Provider>
-  );
+  return <TasksContext.Provider value={{
+    tasks, canManage, assigneeOptions, loading, pending, error, reload, editingTask, setEditingTask, viewMode, setViewMode,
+    addTask: (task) => save(() => tasksApi.create(workspaceId, departmentId, task)),
+    updateTask: (id, task) => save(() => tasksApi.update(workspaceId, departmentId, id, task)),
+    setStatus: (id, status) => save(() => tasksApi.status(workspaceId, departmentId, id, status)),
+    deleteTask: (id) => save(() => tasksApi.remove(workspaceId, departmentId, id)),
+  }}>{children}</TasksContext.Provider>;
 }
 
 export function useTasks() {
   const context = useContext(TasksContext);
-  if (!context) {
-    throw new Error('useTasks must be used within a TasksProvider');
-  }
+  if (!context) throw new Error('TasksProvider is required');
   return context;
 }

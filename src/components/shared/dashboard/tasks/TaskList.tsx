@@ -1,5 +1,7 @@
 import { useTasks } from '../../../../context/TasksContext';
-import { LuCalendarDays, LuUser, LuTrash2 } from 'react-icons/lu';
+import { LuCalendarDays, LuUser } from 'react-icons/lu';
+import { TaskActions, TaskStatusSelect } from './TaskControls';
+import { taskAssigneeNames } from '@/types/task.types';
 
 const priorityColors: Record<string, string> = {
   low: 'var(--color-ok)',
@@ -13,12 +15,6 @@ const priorityLabels: Record<string, string> = {
   high: 'Высокий',
 };
 
-const statusLabels: Record<string, string> = {
-  backlog: 'Backlog',
-  'in-progress': 'В работе',
-  review: 'На проверке',
-  done: 'Готово',
-};
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString('ru-RU', {
@@ -61,46 +57,8 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-function StatusSelect({
-  status,
-  onChange,
-}: {
-  status: string;
-  onChange: (status: string) => void;
-}) {
-  return (
-    <select
-      value={status}
-      onChange={(e) => onChange(e.target.value)}
-      className="
-        w-full
-        appearance-none
-        rounded-lg
-        border border-line/50
-        bg-hull/50
-        px-3
-        py-2
-        text-xs
-        text-mist
-        outline-none
-        transition-colors
-        hover:border-line
-        focus:border-flux
-        sm:w-auto
-        sm:min-w-[125px]
-      "
-    >
-      {Object.entries(statusLabels).map(([value, label]) => (
-        <option key={value} value={value}>
-          {label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 export default function TaskList() {
-  const { tasks, updateTask, deleteTask } = useTasks();
+  const { tasks, canManage } = useTasks();
 
   if (tasks.length === 0) {
     return (
@@ -110,7 +68,7 @@ export default function TaskList() {
         </div>
 
         <p className="text-sm text-fog/50">
-          Нет задач. Создайте первую задачу!
+          {canManage ? 'Нет задач. Создайте первую задачу!' : 'Вам пока не назначены задачи.'}
         </p>
       </div>
     );
@@ -134,7 +92,7 @@ export default function TaskList() {
 
               <th className="px-4 py-3 text-left">
                 <span className="mono-label text-[10px] font-normal uppercase tracking-wider text-fog/50">
-                  Ответственный
+                  Исполнители
                 </span>
               </th>
 
@@ -197,7 +155,7 @@ export default function TaskList() {
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2 text-sm text-mist">
                       <LuUser className="h-3.5 w-3.5 text-fog/40" />
-                      <span>{task.assignee || '—'}</span>
+                      <span>{taskAssigneeNames(task)}</span>
                     </div>
                   </td>
 
@@ -227,33 +185,12 @@ export default function TaskList() {
 
                   {/* Status */}
                   <td className="px-4 py-4">
-                    <StatusSelect
-                      status={task.status}
-                      onChange={(status) =>
-                        updateTask(task.id, {
-                          status: status as any,
-                        })
-                      }
-                    />
+                    <TaskStatusSelect task={task} />
                   </td>
 
                   {/* Delete */}
                   <td className="px-4 py-4 text-right">
-                    <button
-                      onClick={() => deleteTask(task.id)}
-                      className="
-                        rounded-md
-                        p-2
-                        text-fog/30
-                        transition-colors
-                        hover:bg-crit/10
-                        hover:text-crit
-                      "
-                      title="Удалить"
-                      aria-label={`Удалить задачу ${task.title}`}
-                    >
-                      <LuTrash2 className="h-4 w-4" />
-                    </button>
+                    <TaskActions task={task} />
                   </td>
                 </tr>
               );
@@ -293,24 +230,7 @@ export default function TaskList() {
                   )}
                 </div>
 
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="
-                    shrink-0
-                    rounded-lg
-                    p-2
-                    -mr-1
-                    -mt-1
-                    text-fog/30
-                    transition-colors
-                    active:bg-crit/10
-                    active:text-crit
-                  "
-                  title="Удалить"
-                  aria-label={`Удалить задачу ${task.title}`}
-                >
-                  <LuTrash2 className="h-4 w-4" />
-                </button>
+                <TaskActions task={task} />
               </div>
 
               {/* Meta */}
@@ -318,7 +238,7 @@ export default function TaskList() {
                 {/* Assignee */}
                 <div className="flex items-center gap-1.5 text-[11px] text-fog/60">
                   <LuUser className="h-3.5 w-3.5 text-fog/40" />
-                  <span>{task.assignee || 'Не назначен'}</span>
+                  <span>{taskAssigneeNames(task)}</span>
                 </div>
 
                 {/* Due date */}
@@ -343,14 +263,7 @@ export default function TaskList() {
 
               {/* Status */}
               <div className="mt-4">
-                <StatusSelect
-                  status={task.status}
-                  onChange={(status) =>
-                    updateTask(task.id, {
-                      status: status as any,
-                    })
-                  }
-                />
+                <TaskStatusSelect task={task} />
               </div>
             </article>
           );

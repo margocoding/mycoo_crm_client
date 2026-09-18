@@ -1,202 +1,99 @@
-import { useState } from 'react';
-import { useTasks, Task } from '../../../../context/TasksContext';
-import { IconX, IconCheck } from '../../../icons';
+import { useState, type FormEvent } from 'react';
+import { useTasks, type Task } from '@/context/TasksContext';
+import { Modal } from '@/components/ui/Modal';
 
-interface NewTaskModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
+const fieldClass = 'w-full rounded-md border border-line bg-hull/30 px-4 py-2.5 text-mist placeholder-fog/40 focus:border-flux focus:outline-none focus:ring-1 focus:ring-flux/30';
 const priorityOptions = [
-  { value: 'low', label: 'Низкий', color: 'var(--color-ok)' },
-  { value: 'medium', label: 'Средний', color: 'var(--color-warn)' },
-  { value: 'high', label: 'Высокий', color: 'var(--color-crit)' },
+  { value: 'low', label: 'Низкий' },
+  { value: 'medium', label: 'Средний' },
+  { value: 'high', label: 'Высокий' },
 ] as const;
 
-export default function NewTaskModal({ isOpen, onClose }: NewTaskModalProps) {
-  const { addTask, generateSuccessCriteria } = useTasks();
-  const [title, setTitle] = useState('');
-  const [assignee, setAssignee] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [successCriteria, setSuccessCriteria] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [showAISuggestion, setShowAISuggestion] = useState(false);
+const criteriaTemplates: Record<string, string> = {
+  'коммерческое предложение': 'КП отправлено клиенту и подтверждено получение',
+  'встречу': 'Встреча проведена, зафиксированы договорённости и следующие шаги',
+  'документацию': 'Документация актуализирована и размещена в репозитории',
+  'аналитику': 'Данные собираются и отображаются в реальном времени',
+  'отчёт': 'Отчёт подготовлен и направлен заинтересованным сторонам',
+  'найм': 'Кандидат прошёл собеседование и получил оффер',
+};
 
-  if (!isOpen) return null;
+export default function NewTaskModal({ onClose, task }: { onClose: () => void; task?: Task }) {
+  const { addTask, updateTask, assigneeOptions, pending, error } = useTasks();
+  const [title, setTitle] = useState(task?.title ?? '');
+  const [emails, setEmails] = useState(task?.assignees.map((a) => a.email) ?? []);
+  const [dueDate, setDueDate] = useState(task?.dueDate ?? '');
+  const [priority, setPriority] = useState<Task['priority']>(task?.priority ?? 'medium');
+  const [successCriteria, setSuccessCriteria] = useState(task?.successCriteria ?? '');
+  const [validation, setValidation] = useState('');
+  const options = [...assigneeOptions, ...(task?.assignees ?? [])
+    .filter((a) => !assigneeOptions.some((o) => o.email === a.email))];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !assignee.trim() || !dueDate) return;
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!emails.length) { setValidation('Выберите хотя бы одного исполнителя.'); return; }
+    setValidation('');
+    const data = { title: title.trim(), assigneeEmails: emails, dueDate, priority, successCriteria: successCriteria.trim() };
+    const saved = task ? await updateTask(task.id, data) : await addTask(data);
+    if (saved) onClose();
+  }
 
-    addTask({
-      title: title.trim(),
-      assignee: assignee.trim(),
-      dueDate,
-      priority,
-      successCriteria: successCriteria.trim() || 'Результат должен быть подтверждён',
-      status: 'backlog',
-    });
-
-    // Reset form
-    setTitle('');
-    setAssignee('');
-    setDueDate('');
-    setPriority('medium');
-    setSuccessCriteria('');
-    setShowAISuggestion(false);
-    onClose();
-  };
-
-  const handleGenerateCriteria = async () => {
-    if (!title.trim()) return;
-    setIsGenerating(true);
-    try {
-      const criteria = await generateSuccessCriteria(title);
-      setSuccessCriteria(criteria);
-      setShowAISuggestion(true);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-void/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <div className="relative w-full max-w-lg glass corner rounded-xl p-6 step-in">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-lg font-bold text-snow">Новая задача</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md text-fog/60 hover:text-snow hover:bg-hull/50 transition-colors"
-          >
-            <IconX className="w-5 h-5" />
-          </button>
+  return <Modal isOpen onClose={() => !pending && onClose()} maxWidth="max-w-lg" showLogo={false}
+    title={task ? 'Редактировать задачу' : 'Новая задача'} ariaLabel={task ? 'Редактировать задачу' : 'Новая задача'}>
+    <form onSubmit={submit} className="space-y-5">
+      <fieldset disabled={pending} className="min-w-0 space-y-5 disabled:opacity-60">
+        <label className="block">
+          <span className="block mono-label text-fog/70 mb-2">Название</span>
+          <input autoFocus required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="Подготовить коммерческое предложение" className={fieldClass} />
+        </label>
+        <fieldset>
+          <legend className="mono-label text-fog/70 mb-2">Исполнители</legend>
+          <div className="max-h-40 overflow-y-auto rounded-md border border-line bg-hull/20 p-2 space-y-1">
+            {options.map((person) => <label key={person.email} className="flex items-start gap-2 p-2 rounded hover:bg-hull/50 cursor-pointer">
+              <input type="checkbox" className="mt-1 accent-flux" checked={emails.includes(person.email)}
+                onChange={(e) => setEmails((current) => e.target.checked ? [...current, person.email] : current.filter((v) => v !== person.email))} />
+              <span className="min-w-0 text-sm text-mist break-words">{person.name || person.email}
+                <span className="block text-xs text-fog/60">{person.name ? person.email : ''}{!person.userId ? ' · Приглашён, ещё не присоединился' : ''}</span>
+              </span>
+            </label>)}
+            {!options.length && <p className="p-2 text-sm text-fog">Сначала пригласите участника в департамент.</p>}
+          </div>
+        </fieldset>
+        <label className="block">
+          <span className="block mono-label text-fog/70 mb-2">Срок</span>
+          <input type="date" required min="1900-01-01" max="9999-12-31" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldClass} />
+        </label>
+        <fieldset>
+          <legend className="mono-label text-fog/70 mb-2">Приоритет</legend>
+          <div className="flex gap-2">
+            {priorityOptions.map((opt) => <button key={opt.value} type="button" aria-pressed={priority === opt.value}
+              onClick={() => setPriority(opt.value)} className={'flex-1 rounded-md border px-2 py-2.5 text-sm transition-colors ' +
+                (priority === opt.value ? 'border-flux bg-flux/10 text-snow' : 'border-line bg-hull/20 text-fog')}>
+              {opt.label}
+            </button>)}
+          </div>
+        </fieldset>
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <label htmlFor="task-criteria" className="mono-label text-fog/70">Критерий результата</label>
+            <button type="button" disabled={!title.trim()} className="text-xs text-ion disabled:opacity-40"
+              onClick={() => setSuccessCriteria(Object.entries(criteriaTemplates).find(([key]) => title.toLowerCase().includes(key))?.[1]
+                ?? 'Задача выполнена и результат подтверждён ответственным')}>
+              Подставить шаблон
+            </button>
+          </div>
+          <textarea id="task-criteria" rows={3} maxLength={3000} value={successCriteria} onChange={(e) => setSuccessCriteria(e.target.value)}
+            placeholder="КП отправлено клиенту и получена обратная связь" className={fieldClass + ' resize-none'} />
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Название */}
-          <div>
-            <label className="block mono-label text-fog/70 mb-2">Название</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Подготовить коммерческое предложение"
-              className="w-full rounded-md border border-line bg-hull/30 px-4 py-2.5 text-mist placeholder-fog/40 focus:border-flux focus:outline-none focus:ring-1 focus:ring-flux/30 transition-colors"
-              required
-            />
-          </div>
-
-          {/* Ответственный и Срок */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block mono-label text-fog/70 mb-2">Ответственный</label>
-              <input
-                type="text"
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
-                placeholder="Иван"
-                className="w-full rounded-md border border-line bg-hull/30 px-4 py-2.5 text-mist placeholder-fog/40 focus:border-flux focus:outline-none focus:ring-1 focus:ring-flux/30 transition-colors"
-                required
-              />
-            </div>
-            <div>
-              <label className="block mono-label text-fog/70 mb-2">Срок</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-md border border-line bg-hull/30 px-4 py-2.5 text-mist focus:border-flux focus:outline-none focus:ring-1 focus:ring-flux/30 transition-colors"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Приоритет */}
-          <div>
-            <label className="block mono-label text-fog/70 mb-2">Приоритет</label>
-            <div className="flex gap-2">
-              {priorityOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setPriority(opt.value as typeof priority)}
-                  className={`flex-1 rounded-md border px-4 py-2.5 text-sm font-medium transition-all ${
-                    priority === opt.value
-                      ? 'border-flux bg-flux/10 text-snow'
-                      : 'border-line bg-hull/20 text-fog hover:border-line/70'
-                  }`}
-                  style={priority === opt.value ? { borderColor: opt.color } : {}}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Критерий результата */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block mono-label text-fog/70">Критерий результата</label>
-              {title.trim() && !isGenerating && (
-                <button
-                  type="button"
-                  onClick={handleGenerateCriteria}
-                  className="mono-label text-[10px] text-ion hover:text-flux transition-colors flex items-center gap-1"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-ion animate-pulse" />
-                  AI-помощник
-                </button>
-              )}
-            </div>
-            <textarea
-              value={successCriteria}
-              onChange={(e) => setSuccessCriteria(e.target.value)}
-              placeholder="КП отправлено клиенту и получена обратная связь"
-              rows={3}
-              className="w-full rounded-md border border-line bg-hull/30 px-4 py-2.5 text-mist placeholder-fog/40 focus:border-flux focus:outline-none focus:ring-1 focus:ring-flux/30 transition-colors resize-none"
-            />
-            
-            {showAISuggestion && (
-              <p className="mt-2 mono-label text-[10px] text-ion/80 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-ion" />
-                Предложено AI на основе названия задачи
-              </p>
-            )}
-            
-            {isGenerating && (
-              <p className="mt-2 mono-label text-[10px] text-flux/80 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-flux animate-pulse" />
-                Генерирую критерий...
-              </p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              className="flex-1 btn-primary rounded-md bg-flux px-5 py-3 text-sm font-bold text-void shadow-[0_0_26px_-8px_rgba(56,189,248,0.7)] hover:bg-ice transition-all"
-            >
-              Создать задачу
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border border-line px-5 py-3 text-sm font-semibold text-fog hover:border-warn/50 hover:text-warn transition-all"
-            >
-              Отмена
-            </button>
-          </div>
-        </form>
+      </fieldset>
+      {(validation || error) && <p role="alert" className="text-sm text-crit">{validation || error}</p>}
+      <div className="flex gap-3 pt-2">
+        <button type="submit" disabled={pending || !title.trim()} className="flex-1 rounded-md bg-flux px-4 py-3 text-sm font-bold text-void hover:bg-ice disabled:opacity-50">
+          {pending ? 'Сохранение…' : task ? 'Сохранить' : 'Создать задачу'}
+        </button>
+        <button type="button" disabled={pending} onClick={onClose} className="rounded-md border border-line px-4 py-3 text-sm text-fog hover:text-snow">Отмена</button>
       </div>
-    </div>
-  );
+    </form>
+  </Modal>;
 }

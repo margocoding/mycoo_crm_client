@@ -1,6 +1,6 @@
 import { Task, useTasks } from '../../../../context/TasksContext';
-import { LuX } from 'react-icons/lu';
-import Select from '../../../ui/Select';
+import { TaskActions, TaskStatusSelect } from './TaskControls';
+import { taskAssigneeNames } from '@/types/task.types';
 
 interface KanbanColumnProps {
   status: 'backlog' | 'in-progress' | 'review' | 'done';
@@ -20,38 +20,8 @@ const priorityLabels: Record<string, string> = {
   high: 'Высокий',
 };
 
-const statusOptions = [
-  {
-    value: 'backlog',
-    label: 'Backlog',
-    color: 'var(--color-fog)',
-  },
-  {
-    value: 'in-progress',
-    label: 'В работе',
-    color: 'var(--color-flux)',
-  },
-  {
-    value: 'review',
-    label: 'На проверке',
-    color: 'var(--color-warn)',
-  },
-  {
-    value: 'done',
-    label: 'Готово',
-    color: 'var(--color-ok)',
-  },
-];
 
 function TaskCard({ task }: { task: Task }) {
-  const { updateTask, deleteTask } = useTasks();
-
-  const handleStatusChange = (newStatus: string) => {
-    updateTask(task.id, {
-      status: newStatus as Task['status'],
-    });
-  };
-
   return (
     <div className="group glass corner rounded-lg p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-line/80">
       {/* Header */}
@@ -60,24 +30,18 @@ function TaskCard({ task }: { task: Task }) {
           {task.title}
         </h4>
 
-        <button
-          onClick={() => deleteTask(task.id)}
-          className="opacity-0 group-hover:opacity-100 p-1 text-fog/40 hover:text-crit transition-all cursor-pointer"
-          title="Удалить задачу"
-        >
-          <LuX className="w-4 h-4" />
-        </button>
+        <TaskActions task={task} />
       </div>
 
       {/* Meta */}
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2">
           <span className="mono-label text-[9px] text-fog/50">
-            ОТВЕТСТВЕННЫЙ
+            ИСПОЛНИТЕЛИ
           </span>
 
           <span className="text-xs text-mist">
-            {task.assignee}
+            {taskAssigneeNames(task)}
           </span>
         </div>
 
@@ -104,11 +68,7 @@ function TaskCard({ task }: { task: Task }) {
           {priorityLabels[task.priority]}
         </span>
 
-        <Select
-          options={statusOptions}
-          value={task.status}
-          onChange={handleStatusChange}
-        />
+        <TaskStatusSelect task={task} />
       </div>
 
       {/* Success criteria */}

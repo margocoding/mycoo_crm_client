@@ -6,6 +6,7 @@ export interface SelectOption {
   value: string;
   label: string;
   color?: string;
+  disabled?: boolean;
 }
 
 interface SelectProps {
@@ -13,6 +14,8 @@ interface SelectProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  disabled?: boolean;
+  ariaLabel?: string;
 }
 
 interface DropdownPosition {
@@ -27,6 +30,8 @@ export default function Select({
   value,
   onChange,
   className = '',
+  disabled = false,
+  ariaLabel,
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<DropdownPosition | null>(null);
@@ -322,6 +327,7 @@ export default function Select({
           <button
             key={option.value}
             type="button"
+            disabled={disabled || option.disabled}
             onClick={() => {
               onChange(option.value);
               setIsOpen(false);
@@ -336,7 +342,7 @@ export default function Select({
               text-[10px]
               font-medium
               transition-all
-              cursor-pointer
+              cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed
               ${
                 isSelected
                   ? 'bg-flux/10 text-snow'
@@ -385,6 +391,8 @@ export default function Select({
         <button
           ref={buttonRef}
           type="button"
+          disabled={disabled}
+          aria-label={ariaLabel}
           onClick={toggleOpen}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
