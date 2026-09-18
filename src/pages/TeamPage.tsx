@@ -628,6 +628,7 @@ export default function TeamPage() {
     useState<{
       department: Department;
       initial?: InvitationInput;
+      firstTasks?: boolean;
     } | null>(null);
   const [memberDialog, setMemberDialog] =
     useState<TeamMember | null>(null);
@@ -658,14 +659,14 @@ export default function TeamPage() {
 
   useEffect(() => {
     if (inviteOnOpen && department?.canManage) {
-      setInvitationDialog({ department });
+      setInvitationDialog({ department, firstTasks: data?.departments.length === 1 });
 
       navigate(
         `/dashboard/team/${department.id}`,
         { replace: true },
       );
     }
-  }, [inviteOnOpen, department, navigate]);
+  }, [inviteOnOpen, department, navigate, data?.departments.length]);
 
   useEffect(() => {
     setSearch("");
@@ -897,6 +898,9 @@ export default function TeamPage() {
         />
       ) : (
         <>
+          <Button variant="secondary" onClick={() => navigate('/dashboard/tasks/' + department.id)}>
+            Задачи департамента
+          </Button>
           <MembersSection
             members={members}
             search={search}
@@ -960,6 +964,7 @@ export default function TeamPage() {
         <InvitationDialog
           workspaceId={workspaceId}
           {...invitationDialog}
+          onCreateTasks={invitationDialog.firstTasks ? () => navigate('/dashboard/tasks/' + invitationDialog.department.id + '?new=1') : undefined}
           onClose={() =>
             setInvitationDialog(null)
           }

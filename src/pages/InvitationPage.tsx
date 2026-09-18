@@ -42,7 +42,7 @@ export default function InvitationPage() {
       useLaunchStore.getState().reset();
       localStorage.setItem('mycoo_workspace:' + session.user.id, session.workspaceId);
       useAuthStore.getState().saveSession(session.accessToken, session.user);
-      navigate('/dashboard/main', { replace: true });
+      navigate('/dashboard/tasks/' + session.departmentId, { replace: true });
     } catch (error) {
       setError(errorMessage(error));
       if (error instanceof ApiError && [404, 410].includes(error.status)) setInfo(null);
