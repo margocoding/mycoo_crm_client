@@ -34,78 +34,57 @@ export default function Select({
   ariaLabel,
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState<DropdownPosition | null>(null);
+  const [position, setPosition] =
+    useState<DropdownPosition | null>(null);
 
   const selectRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentOption = options.find(
-    (option) => option.value === value
+    (option) => option.value === value,
   );
 
-  /**
-   * Calculate dropdown position relative to viewport.
-   */
   const updatePosition = () => {
-    if (!buttonRef.current) {
-      return;
-    }
+    if (!buttonRef.current) return;
 
-    const rect = buttonRef.current.getBoundingClientRect();
+    const rect =
+      buttonRef.current.getBoundingClientRect();
 
     const gap = 6;
     const viewportPadding = 8;
-
-    /**
-     * We don't always know the dropdown height before
-     * it has been rendered, so use the actual height
-     * when available and a reasonable fallback otherwise.
-     */
     const dropdownHeight =
       dropdownRef.current?.offsetHeight ?? 180;
 
     const dropdownWidth = Math.max(
       rect.width,
-      150
+      150,
     );
 
     const spaceBelow =
       window.innerHeight - rect.bottom;
-
     const spaceAbove = rect.top;
 
     const shouldOpenUp =
       spaceBelow < dropdownHeight + gap &&
       spaceAbove > spaceBelow;
 
-    let top: number;
+    let top = shouldOpenUp
+      ? rect.top - dropdownHeight - gap
+      : rect.bottom + gap;
 
-    if (shouldOpenUp) {
-      top = rect.top - dropdownHeight - gap;
-    } else {
-      top = rect.bottom + gap;
-    }
-
-    /**
-     * Keep dropdown inside viewport vertically.
-     */
     top = Math.max(
       viewportPadding,
       Math.min(
         top,
         window.innerHeight -
           dropdownHeight -
-          viewportPadding
-      )
+          viewportPadding,
+      ),
     );
 
     let left = rect.left;
 
-    /**
-     * Prevent dropdown from going outside
-     * the right side of the viewport.
-     */
     if (
       left + dropdownWidth >
       window.innerWidth - viewportPadding
@@ -116,14 +95,7 @@ export default function Select({
         viewportPadding;
     }
 
-    /**
-     * Prevent dropdown from going outside
-     * the left side of the viewport.
-     */
-    left = Math.max(
-      viewportPadding,
-      left
-    );
+    left = Math.max(viewportPadding, left);
 
     setPosition({
       top,
@@ -135,10 +107,9 @@ export default function Select({
     });
   };
 
-  /**
-   * Open / close dropdown.
-   */
   const toggleOpen = () => {
+    if (disabled) return;
+
     if (!isOpen) {
       setPosition(null);
 
@@ -150,13 +121,8 @@ export default function Select({
     setIsOpen((prev) => !prev);
   };
 
-  /**
-   * Recalculate position while dropdown is open.
-   */
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
 
     const handleResize = () => {
       updatePosition();
@@ -166,58 +132,40 @@ export default function Select({
       updatePosition();
     };
 
-    /**
-     * Initial calculation.
-     */
     requestAnimationFrame(() => {
       updatePosition();
     });
 
     window.addEventListener(
       'resize',
-      handleResize
+      handleResize,
     );
 
-    /**
-     * true = capture scroll events from
-     * nested scroll containers too.
-     */
     window.addEventListener(
       'scroll',
       handleScroll,
-      true
+      true,
     );
 
     return () => {
       window.removeEventListener(
         'resize',
-        handleResize
+        handleResize,
       );
 
       window.removeEventListener(
         'scroll',
         handleScroll,
-        true
+        true,
       );
     };
   }, [isOpen, options.length]);
 
-  /**
-   * Close on outside click.
-   *
-   * Dropdown is rendered through a Portal,
-   * therefore we have to check both:
-   *
-   * - Select trigger
-   * - Dropdown itself
-   */
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
 
     const handleClickOutside = (
-      event: MouseEvent
+      event: MouseEvent,
     ) => {
       const target = event.target as Node;
 
@@ -237,27 +185,22 @@ export default function Select({
 
     document.addEventListener(
       'mousedown',
-      handleClickOutside
+      handleClickOutside,
     );
 
     return () => {
       document.removeEventListener(
         'mousedown',
-        handleClickOutside
+        handleClickOutside,
       );
     };
   }, [isOpen]);
 
-  /**
-   * Close when Escape is pressed.
-   */
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
 
     const handleKeyDown = (
-      event: KeyboardEvent
+      event: KeyboardEvent,
     ) => {
       if (event.key === 'Escape') {
         setIsOpen(false);
@@ -267,32 +210,29 @@ export default function Select({
 
     document.addEventListener(
       'keydown',
-      handleKeyDown
+      handleKeyDown,
     );
 
     return () => {
       document.removeEventListener(
         'keydown',
-        handleKeyDown
+        handleKeyDown,
       );
     };
   }, [isOpen]);
 
-  /**
-   * Dropdown element.
-   */
   const dropdown = (
     <div
       ref={dropdownRef}
       className={`
         fixed
         min-w-[150px]
-        glass
+        overflow-hidden
         rounded-lg
         border
         border-line/60
+        glass
         py-1
-        overflow-hidden
         transition-all
         duration-150
         ${
@@ -302,20 +242,16 @@ export default function Select({
         }
         ${
           isOpen
-            ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
+            ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : position?.placement === 'top'
-              ? 'opacity-0 scale-95 translate-y-1 pointer-events-none'
-              : 'opacity-0 scale-95 -translate-y-1 pointer-events-none'
+              ? 'pointer-events-none translate-y-1 scale-95 opacity-0'
+              : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
         }
       `}
       style={{
         top: position?.top ?? 0,
         left: position?.left ?? 0,
         width: position?.width ?? 150,
-
-        /**
-         * Maximum possible z-index.
-         */
         zIndex: 2147483647,
       }}
     >
@@ -327,32 +263,36 @@ export default function Select({
           <button
             key={option.value}
             type="button"
-            disabled={disabled || option.disabled}
+            disabled={
+              disabled || option.disabled
+            }
             onClick={() => {
               onChange(option.value);
               setIsOpen(false);
             }}
             className={`
-              w-full
               flex
+              w-full
               items-center
               gap-2
               px-3
               py-2
-              text-[10px]
+              text-left
+              text-[11px]
               font-medium
               transition-all
-              cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed
+              disabled:cursor-not-allowed
+              disabled:opacity-40
               ${
                 isSelected
                   ? 'bg-flux/10 text-snow'
-                  : 'text-fog/70 hover:text-mist hover:bg-hull/40'
+                  : 'text-fog/70 hover:bg-hull/40 hover:text-mist'
               }
             `}
           >
             {option.color && (
               <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{
                   backgroundColor:
                     option.color,
@@ -361,12 +301,12 @@ export default function Select({
               />
             )}
 
-            <span className="truncate">
+            <span className="min-w-0 flex-1 truncate">
               {option.label}
             </span>
 
             {isSelected && (
-              <LuCheck className="w-3 h-3 ml-auto shrink-0 text-flux" />
+              <LuCheck className="h-3.5 w-3.5 shrink-0 text-flux" />
             )}
           </button>
         );
@@ -374,50 +314,51 @@ export default function Select({
     </div>
   );
 
-  /**
-   * Portal root.
-   */
   const portalRoot =
-    document.getElementById(
-      'portal-root'
-    );
+    document.getElementById('portal-root');
 
   return (
     <>
       <div
         ref={selectRef}
-        className={`relative ${className}`}
+        className={`relative w-full ${className}`}
       >
         <button
           ref={buttonRef}
           type="button"
           disabled={disabled}
           aria-label={ariaLabel}
-          onClick={toggleOpen}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
+          onClick={toggleOpen}
           className={`
             flex
+            min-h-[44px]
+            w-full
             items-center
-            gap-1.5
+            gap-2.5
             rounded-md
-            px-2
-            py-1
-            text-[10px]
+            border
+            px-3.5
+            py-3
+            text-left
+            text-[12.5px]
             font-medium
             transition-all
-            border
+            duration-200
             cursor-pointer
+            disabled:cursor-not-allowed
+            disabled:opacity-60
             ${
               isOpen
-                ? 'bg-hull/60 border-flux/30 text-snow shadow-[0_0_12px_-4px_rgba(56,189,248,0.4)]'
-                : 'bg-hull/40 border-line/50 text-fog/70 hover:border-line/80 hover:text-mist'
+                ? 'border-flux/40 bg-flux/5 text-snow shadow-[0_0_16px_-6px_rgba(56,189,248,0.45)]'
+                : 'border-line bg-void/50 text-fog/70 hover:border-line/80 hover:text-mist'
             }
           `}
         >
           {currentOption?.color && (
             <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
               style={{
                 backgroundColor:
                   currentOption.color,
@@ -426,19 +367,21 @@ export default function Select({
             />
           )}
 
-          <span>
+          <span className="min-w-0 flex-1 truncate">
             {currentOption?.label}
           </span>
 
           <LuChevronDown
             className={`
-              w-3
-              h-3
+              h-4
+              w-4
+              shrink-0
+              text-fog/45
               transition-transform
               duration-200
               ${
                 isOpen
-                  ? 'rotate-180'
+                  ? 'rotate-180 text-flux'
                   : ''
               }
             `}
@@ -446,12 +389,12 @@ export default function Select({
         </button>
       </div>
 
-        {isOpen &&
+      {isOpen &&
         position &&
         portalRoot &&
         createPortal(
-            dropdown,
-            portalRoot
+          dropdown,
+          portalRoot,
         )}
     </>
   );
