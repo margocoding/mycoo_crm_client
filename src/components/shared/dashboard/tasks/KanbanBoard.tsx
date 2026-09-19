@@ -1,6 +1,6 @@
 import { Task, useTasks } from "../../../../context/TasksContext";
-import { TaskActions, TaskStatusSelect } from "./TaskControls";
-import { taskAssigneeNames } from "@/types/task.types";
+import { TaskActions, TaskStatusSelect, TaskDepartments } from "./TaskControls";
+import { taskAssigneeNames, taskDateRange } from "@/types/task.types";
 import { LuCalendarDays, LuCircleCheck, LuUsers } from "react-icons/lu";
 interface KanbanColumnProps {
   status: "backlog" | "in-progress" | "review" | "done";
@@ -36,7 +36,7 @@ function TaskCard({ task }: { task: Task }) {
             <h4 className="break-words text-[13px] font-semibold leading-snug text-snow sm:text-[13.5px]">
               {" "}
               {task.title}{" "}
-            </h4>{" "}
+            </h4><TaskDepartments task={task} />{" "}
           </div>{" "}
           <div className="shrink-0">
             {" "}
@@ -53,12 +53,12 @@ function TaskCard({ task }: { task: Task }) {
               {taskAssigneeNames(task)}{" "}
             </span>{" "}
           </div>{" "}
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             {" "}
             <LuCalendarDays className="h-3.5 w-3.5 shrink-0 text-fog/45" />{" "}
             <span>
               {" "}
-              {new Date(task.dueDate).toLocaleDateString("ru-RU")}{" "}
+              {taskDateRange(task)}{" "}
             </span>{" "}
           </div>{" "}
         </div>{" "}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTasks } from '../../../../context/TasksContext';
-import { taskAssigneeNames } from '@/types/task.types';
+import { taskAssigneeNames, taskDateRange } from '@/types/task.types';
+import { TaskDepartments } from './TaskControls';
 import {
   LuCalendarDays,
   LuChevronLeft,
@@ -161,16 +162,12 @@ export default function TaskCalendar() {
   const tasksByDate = useMemo(() => {
     const map = new Map<string, typeof tasks>();
 
-    tasks.forEach((task) => {
-      if (!task.dueDate) return;
-
-      const existing = map.get(task.dueDate) ?? [];
-
-      map.set(task.dueDate, [...existing, task]);
+    calendarDays.forEach((day) => {
+      if (day.date) map.set(day.key, tasks.filter((task) => task.startDate <= day.key && task.dueDate >= day.key));
     });
 
     return map;
-  }, [tasks]);
+  }, [tasks, calendarDays]);
 
   const selectedDateKey = getDateKey(
     selectedDate.getFullYear(),
@@ -178,7 +175,7 @@ export default function TaskCalendar() {
     selectedDate.getDate(),
   );
 
-  const selectedTasks = tasksByDate.get(selectedDateKey) ?? [];
+  const selectedTasks = tasks.filter((task) => task.startDate <= selectedDateKey && task.dueDate >= selectedDateKey);
 
   const goToPreviousMonth = () => {
     setCurrentDate(
@@ -211,16 +208,9 @@ export default function TaskCalendar() {
   };
 
   const monthTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      if (!task.dueDate) return false;
-
-      const date = new Date(task.dueDate);
-
-      return (
-        date.getMonth() === currentMonth &&
-        date.getFullYear() === currentYear
-      );
-    });
+    const first = getDateKey(currentYear, currentMonth, 1);
+    const last = getDateKey(currentYear, currentMonth, new Date(currentYear, currentMonth + 1, 0).getDate());
+    return tasks.filter((task) => task.startDate <= last && task.dueDate >= first);
   }, [tasks, currentMonth, currentYear]);
 
   const priorityCounts = useMemo(() => {
@@ -257,7 +247,7 @@ export default function TaskCalendar() {
                   : monthTasks.length < 5
                     ? 'задачи'
                     : 'задач'}{' '}
-                с дедлайном
+                в этом месяце
               </p>
             </div>
           </div>
@@ -594,6 +584,8 @@ export default function TaskCalendar() {
                       <p className="text-sm font-medium text-snow">
                         {task.title}
                       </p>
+                      <TaskDepartments task={task} />
+                      <p className="mt-1 text-[10px] text-fog">{taskDateRange(task)}</p>
 
                       {task.successCriteria && (
                         <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-fog/45">

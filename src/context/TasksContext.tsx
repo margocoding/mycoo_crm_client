@@ -7,6 +7,9 @@ export type { Task } from '@/types/task.types';
 export type ViewMode = 'kanban' | 'list' | 'calendar';
 
 interface TasksContextType {
+  departmentId: string;
+  departments: Array<{ id: string; name: string }>;
+  isOwner: boolean;
   tasks: Task[];
   canManage: boolean;
   assigneeOptions: TaskAssignee[];
@@ -26,8 +29,9 @@ interface TasksContextType {
 
 const TasksContext = createContext<TasksContextType | null>(null);
 
-export function TasksProvider({ workspaceId, departmentId, assigneeOptions, children }: {
-  workspaceId: string; departmentId: string; assigneeOptions: TaskAssignee[]; children: ReactNode;
+export function TasksProvider({ workspaceId, departmentId, departments, isOwner, assigneeOptions, children }: {
+  workspaceId: string; departmentId: string; departments: Array<{ id: string; name: string }>;
+  isOwner: boolean; assigneeOptions: TaskAssignee[]; children: ReactNode;
 }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [canManage, setCanManage] = useState(false);
@@ -91,6 +95,7 @@ export function TasksProvider({ workspaceId, departmentId, assigneeOptions, chil
   }
 
   return <TasksContext.Provider value={{
+    departmentId, departments, isOwner,
     tasks, canManage, assigneeOptions, loading, pending, error, reload, editingTask, setEditingTask, viewMode, setViewMode,
     addTask: (task) => save(() => tasksApi.create(workspaceId, departmentId, task)),
     updateTask: (id, task) => save(() => tasksApi.update(workspaceId, departmentId, id, task)),
