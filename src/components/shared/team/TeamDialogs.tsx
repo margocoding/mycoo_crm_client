@@ -582,6 +582,7 @@ export function MemberDepartmentsDialog({
   member,
   departments,
   canEdit,
+  isOwner,
   onClose,
   onSaved,
 }: {
@@ -589,6 +590,7 @@ export function MemberDepartmentsDialog({
   member: TeamMember;
   departments: Department[];
   canEdit: boolean;
+  isOwner: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -671,7 +673,7 @@ export function MemberDepartmentsDialog({
                 const locked =
                   !canEdit ||
                   !department.canManage ||
-                  membership?.role === "CHIEF";
+                  (membership?.role === "CHIEF" && !isOwner);
 
                 return (
                   <label
@@ -721,8 +723,7 @@ export function MemberDepartmentsDialog({
         {canEdit && (
           <DialogNotice tone="info">
             В новых департаментах участник получит роль сотрудника.
-            Чтобы исключить руководителя из департамента, сначала
-            назначьте ему замену.
+            {!isOwner && " Чтобы исключить руководителя из департамента, сначала назначьте ему замену."}
           </DialogNotice>
         )}
 

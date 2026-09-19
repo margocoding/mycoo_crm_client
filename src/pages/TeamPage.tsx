@@ -212,6 +212,7 @@ function MemberRole({
   role,
   department,
   canManage,
+  isOwner,
   pending,
   loading,
   onChange,
@@ -220,12 +221,13 @@ function MemberRole({
   role: DepartmentRole;
   department: Department;
   canManage: boolean;
+  isOwner: boolean;
   pending: boolean;
   loading: boolean;
   onChange: (role: DepartmentRole) => void;
 }) {
   if (member.isOwner) return <span className="font-mono text-[10.5px] text-ion">Собственник</span>;
-  if (canManage && role !== "CHIEF") {
+  if (canManage && (role !== "CHIEF" || isOwner)) {
     return (
       <RoleSelect
         value={role}
@@ -260,6 +262,7 @@ function MembersTable({
   members,
   department,
   canManage,
+  isOwner,
   pending,
   loading,
   onRoleChange,
@@ -269,6 +272,7 @@ function MembersTable({
   members: TeamMember[];
   department: Department;
   canManage: boolean;
+  isOwner: boolean;
   pending: boolean;
   loading: boolean;
   onRoleChange: (member: TeamMember, role: DepartmentRole) => void;
@@ -315,6 +319,7 @@ function MembersTable({
                       role={role}
                       department={department}
                       canManage={canManage}
+                      isOwner={isOwner}
                       pending={pending}
                       loading={loading}
                       onChange={(value) => onRoleChange(member, value)}
@@ -337,10 +342,10 @@ function MembersTable({
                         disabled={
                           pending ||
                           loading ||
-                          role === "CHIEF"
+                          (role === "CHIEF" && !isOwner)
                         }
                         title={
-                          role === "CHIEF"
+                          role === "CHIEF" && !isOwner
                             ? "Сначала назначьте другого руководителя"
                             : "Удалить из департамента"
                         }
@@ -383,10 +388,10 @@ function MembersTable({
                     disabled={
                       pending ||
                       loading ||
-                      role === "CHIEF"
+                      (role === "CHIEF" && !isOwner)
                     }
                     title={
-                      role === "CHIEF"
+                      role === "CHIEF" && !isOwner
                         ? "Сначала назначьте другого руководителя"
                         : "Удалить из департамента"
                     }
@@ -409,6 +414,7 @@ function MembersTable({
                     role={role}
                     department={department}
                     canManage={canManage}
+                    isOwner={isOwner}
                     pending={pending}
                     loading={loading}
                     onChange={(value) =>
@@ -443,6 +449,7 @@ function MembersSection({
   setSearch,
   department,
   canManage,
+  isOwner,
   pending,
   loading,
   onRoleChange,
@@ -454,6 +461,7 @@ function MembersSection({
   setSearch: (value: string) => void;
   department: Department;
   canManage: boolean;
+  isOwner: boolean;
   pending: boolean;
   loading: boolean;
   onRoleChange: (member: TeamMember, role: DepartmentRole) => void;
@@ -509,6 +517,7 @@ function MembersSection({
           members={filtered}
           department={department}
           canManage={canManage}
+          isOwner={isOwner}
           pending={pending}
           loading={loading}
           onRoleChange={onRoleChange}
@@ -909,6 +918,7 @@ export default function TeamPage() {
             setSearch={setSearch}
             department={department}
             canManage={canManage}
+            isOwner={data.isOwner}
             pending={pending}
             loading={loading}
             onRoleChange={setRole}
@@ -980,6 +990,7 @@ export default function TeamPage() {
           member={memberDialog}
           departments={data.departments}
           canEdit={canManage}
+          isOwner={data.isOwner}
           onClose={() => setMemberDialog(null)}
           onSaved={() => void reload()}
         />
