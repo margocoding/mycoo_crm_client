@@ -2,7 +2,7 @@ import type { AuthRdo } from './auth.types';
 
 export type DepartmentRole = 'CHIEF' | 'ADMIN' | 'WORKER';
 export const ROLE_LABELS: Record<DepartmentRole, string> = {
-  CHIEF: 'Начальник', ADMIN: 'Администратор', WORKER: 'Работник',
+  CHIEF: 'Руководитель', ADMIN: 'Администратор', WORKER: 'Сотрудник',
 };
 export interface Department {
   id: string;
@@ -14,6 +14,7 @@ export interface Department {
 }
 export interface TeamMember {
   id: string;
+  isOwner: boolean;
   email: string;
   name: string;
   departments: Array<{ id: string; name: string; role: DepartmentRole }>;
