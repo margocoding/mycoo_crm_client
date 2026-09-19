@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTasks } from '../../../../context/TasksContext';
+import { taskAssigneeNames } from '@/types/task.types';
 import {
   LuCalendarDays,
   LuChevronLeft,
@@ -605,10 +606,10 @@ export default function TaskCalendar() {
 
                 {/* Meta */}
                 <div className="flex shrink-0 flex-wrap items-center gap-3 pl-4 sm:pl-0">
-                  {task.assignee && (
+                  {task.assignees.length > 0 && (
                     <div className="flex items-center gap-1.5 text-[10px] text-fog/50">
                       <LuUser className="h-3.5 w-3.5" />
-                      <span>{task.assignee}</span>
+                      <span>{taskAssigneeNames(task)}</span>
                     </div>
                   )}
 

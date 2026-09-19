@@ -1,6 +1,5 @@
 import { Route, Routes } from "react-router-dom";
 import DashboardLayout from "./components/layout/DashboardLayout";
-import { TasksProvider } from "./context/TasksContext";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
@@ -34,41 +33,41 @@ export default function App() {
         <Route
           path="/dashboard/main"
           element={
-            <ProtectedRoute><TasksProvider>
+            <ProtectedRoute>
               <DashboardLayout>
                 <DashboardPage />
               </DashboardLayout>
-            </TasksProvider></ProtectedRoute>
+            </ProtectedRoute>
           }
         />
         <Route
-          path="/dashboard/tasks"
+          path="/dashboard/tasks/:departmentId?"
           element={
-            <ProtectedRoute><TasksProvider>
+            <ProtectedRoute>
               <DashboardLayout>
                 <TasksPage />
               </DashboardLayout>
-            </TasksProvider></ProtectedRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/ai"
           element={
-            <ProtectedRoute><TasksProvider>
+            <ProtectedRoute>
               <DashboardLayout>
                 <AIChatPage />
               </DashboardLayout>
-            </TasksProvider></ProtectedRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/calls"
           element={
-            <ProtectedRoute><TasksProvider>
+            <ProtectedRoute>
               <DashboardLayout>
                 <CallsPage />
               </DashboardLayout>
-            </TasksProvider></ProtectedRoute>
+            </ProtectedRoute>
           }
         />
       </Routes>

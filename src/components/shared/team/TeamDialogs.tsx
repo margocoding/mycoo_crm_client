@@ -287,12 +287,14 @@ export function InvitationDialog({
   initial,
   onClose,
   onSaved,
+  onCreateTasks,
 }: {
   workspaceId: string;
   department: Department;
   initial?: InvitationInput;
   onClose: () => void;
   onSaved: () => void;
+  onCreateTasks?: () => void;
 }) {
   const [email, setEmail] = useState(initial?.email ?? "");
   const [name, setName] = useState(initial?.name ?? "");
@@ -438,6 +440,9 @@ export function InvitationDialog({
           </label>
 
           <DialogActions>
+            {onCreateTasks && <Button tone="flux" onClick={onCreateTasks} className="w-full sm:w-auto">
+              Создать первые задачи
+            </Button>}
             <Button
               tone="flux"
               iconLeft={<LuCopy />}
