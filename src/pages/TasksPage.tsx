@@ -98,12 +98,16 @@ export default function TasksPage() {
     {departmentId ? 'Департамент недоступен.' : 'Для работы с задачами нужен департамент.'}
     <Link className="ml-3 text-flux underline" to="/dashboard/team?setup=1">Перейти к команде</Link>
   </div>;
-  const members = data.members.filter((m) => m.departments.some((d) => d.id === department.id))
-    .map((m) => ({ email: m.email, name: m.name, userId: m.id as string | null }));
-  const assigneeOptions = [...members, ...data.invitations.filter((i) => i.departmentId === department.id && !members.some((m) => m.email === i.email))
-    .map((i) => ({ email: i.email, name: i.name, userId: null }))];
+  const departments = data.isOwner ? data.departments : [department];
+  const assigneeOptions = departments.flatMap((d) => {
+    const members = data.members.filter((m) => m.isOwner || m.departments.some((item) => item.id === d.id))
+      .map((m) => ({ departmentId: d.id, email: m.email, name: m.name, userId: m.id as string | null }));
+    return [...members, ...data.invitations.filter((i) => i.departmentId === d.id && !members.some((m) => m.email === i.email))
+      .map((i) => ({ departmentId: d.id, email: i.email, name: i.name, userId: null }))];
+  });
   return (
-    <TasksProvider key={data.workspaceId + ':' + department.id} workspaceId={data.workspaceId} departmentId={department.id} assigneeOptions={assigneeOptions}>
+    <TasksProvider key={data.workspaceId + ':' + department.id} workspaceId={data.workspaceId} departmentId={department.id}
+      departments={departments} isOwner={data.isOwner} assigneeOptions={assigneeOptions}>
       <label className="block mb-6 text-sm text-fog">Департамент
         <select aria-label="Департамент" value={department.id} onChange={(e) => navigate('/dashboard/tasks/' + e.target.value)}
           className="ml-3 max-w-full rounded-md border border-line bg-hull px-3 py-2 text-mist">

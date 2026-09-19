@@ -51,11 +51,13 @@ export default function NewTaskModal({
   onClose: () => void;
   task?: Task;
 }) {
-  const { addTask, updateTask, assigneeOptions, pending, error } = useTasks();
+  const { addTask, updateTask, assigneeOptions, departmentId, departments, isOwner, pending, error } = useTasks();
   const [title, setTitle] = useState(task?.title ?? "");
-  const [emails, setEmails] = useState(
-    task?.assignees.map((a) => a.email) ?? [],
+  const [assignments, setAssignments] = useState(
+    task?.assignees.map(({ email, departmentId }) => ({ email, departmentId })) ?? [],
   );
+  const [selectedDepartments, setSelectedDepartments] = useState(task?.departments.map((d) => d.id) ?? [departmentId]);
+  const [startDate, setStartDate] = useState(task?.startDate ?? "");
   const [dueDate, setDueDate] = useState(task?.dueDate ?? "");
   const [priority, setPriority] = useState<Task["priority"]>(
     task?.priority ?? "medium",
@@ -67,23 +69,24 @@ export default function NewTaskModal({
   const options = [
     ...assigneeOptions,
     ...(task?.assignees ?? []).filter(
-      (a) => !assigneeOptions.some((o) => o.email === a.email),
+      (a) => !assigneeOptions.some((o) => o.email === a.email && o.departmentId === a.departmentId),
     ),
-  ];
+  ].filter((a) => selectedDepartments.includes(a.departmentId));
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!emails.length) {
-      setValidation("Выберите хотя бы одного исполнителя.");
+    if (selectedDepartments.some((id) => !assignments.some((a) => a.departmentId === id))) {
+      setValidation("Выберите хотя бы одного исполнителя в каждом выбранном департаменте.");
       return;
     }
-    if (!dueDate) {
-      setValidation("Укажите срок выполнения.");
+    if (!startDate || !dueDate || startDate > dueDate) {
+      setValidation("Укажите даты начала и окончания: начало не должно быть позже окончания.");
       return;
     }
     setValidation("");
     const data = {
       title: title.trim(),
-      assigneeEmails: emails,
+      assignees: assignments,
+      startDate,
       dueDate,
       priority,
       successCriteria: successCriteria.trim(),
@@ -101,14 +104,15 @@ export default function NewTaskModal({
       )?.[1] ?? "Задача выполнена и результат подтверждён ответственным";
     setSuccessCriteria(template);
   }
-  function toggleAssignee(email: string, checked: boolean) {
-    setEmails((current) =>
-      checked
-        ? current.includes(email)
-          ? current
-          : [...current, email]
-        : current.filter((value) => value !== email),
-    );
+  function toggleAssignee(email: string, departmentId: string, checked: boolean) {
+    setAssignments((current) => {
+      const rest = current.filter((a) => a.email !== email || a.departmentId !== departmentId);
+      return checked ? [...rest, { email, departmentId }] : rest;
+    });
+  }
+  function toggleDepartment(id: string, checked: boolean) {
+    setSelectedDepartments((current) => checked ? [...current, id] : current.filter((item) => item !== id));
+    if (!checked) setAssignments((current) => current.filter((a) => a.departmentId !== id));
   }
   return (
     <Modal
@@ -169,6 +173,17 @@ export default function NewTaskModal({
               </span>{" "}
             </div>{" "}
           </div>{" "}
+          {isOwner && departments.length > 1 && <fieldset className="min-w-0">
+            <legend className="mb-2 text-xs text-fog">Департаменты</legend>
+            <div className="flex flex-wrap gap-3">
+              {departments.map((d) => <label key={d.id} className="flex min-w-0 items-center gap-2 text-xs text-mist">
+                <input type="checkbox" checked={selectedDepartments.includes(d.id)} disabled={d.id === departmentId}
+                  onChange={(e) => toggleDepartment(d.id, e.target.checked)} className="accent-flux" />
+                <span className="break-words">{d.name}</span>
+              </label>)}
+            </div>
+            <p className="mt-2 text-[11px] text-fog/60">Одна задача с общим статусом для выбранных департаментов.</p>
+          </fieldset>}
           <fieldset className="min-w-0">
             {" "}
             <SectionLabel icon={<LuUsers className="h-3.5 w-3.5" />}>
@@ -181,10 +196,10 @@ export default function NewTaskModal({
                 <div className="max-h-52 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain">
                   {" "}
                   {options.map((person, index) => {
-                    const selected = emails.includes(person.email);
+                    const selected = assignments.some((a) => a.email === person.email && a.departmentId === person.departmentId);
                     return (
                       <label
-                        key={person.email}
+                        key={person.departmentId + ':' + person.email}
                         className={`flex min-w-0 cursor-pointer items-center gap-2.5 px-3 py-3 transition-colors sm:gap-3 sm:px-3.5 ${index > 0 ? "border-t border-line/40" : ""} ${selected ? "bg-flux/8" : "hover:bg-hull/40"}`}
                       >
                         {" "}
@@ -199,7 +214,7 @@ export default function NewTaskModal({
                           className="sr-only"
                           checked={selected}
                           onChange={(e) =>
-                            toggleAssignee(person.email, e.target.checked)
+                            toggleAssignee(person.email, person.departmentId, e.target.checked)
                           }
                         />{" "}
                         <span className="min-w-0 flex-1 overflow-hidden">
@@ -208,6 +223,9 @@ export default function NewTaskModal({
                             {" "}
                             {person.name || person.email}{" "}
                           </span>{" "}
+                          {selectedDepartments.length > 1 && <span className="block text-[10px] text-ion/80">
+                            {departments.find((d) => d.id === person.departmentId)?.name}
+                          </span>}
                           {(person.name || !person.userId) && (
                             <span className="mt-0.5 block truncate text-[10px] text-fog/45">
                               {" "}
@@ -228,30 +246,36 @@ export default function NewTaskModal({
                 </p>
               )}{" "}
             </div>{" "}
-            {emails.length > 0 && (
+            {assignments.length > 0 && (
               <p className="mt-1.5 font-mono text-[8px] text-fog/35">
                 {" "}
-                выбрано: {emails.length}{" "}
+                выбрано назначений: {assignments.length}{" "}
               </p>
             )}{" "}
           </fieldset>{" "}
           <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <SectionLabel icon={<LuCalendarDays className="h-3.5 w-3.5" />}>Срок выполнения — с</SectionLabel>
+              <DatePicker value={startDate} onChange={setStartDate} min="1900-01-01" max={dueDate || "9999-12-31"}
+                required disabled={pending} placeholder="Дата начала" ariaLabel="Начало выполнения" caption="НАЧАЛО" className="min-w-0" />
+            </div>
             {" "}
             <div className="min-w-0">
               {" "}
               <SectionLabel icon={<LuCalendarDays className="h-3.5 w-3.5" />}>
                 {" "}
-                Срок выполнения{" "}
+                Срок выполнения — по{" "}
               </SectionLabel>{" "}
               <DatePicker
                 value={dueDate}
                 onChange={setDueDate}
-                min="1900-01-01"
+                min={startDate || "1900-01-01"}
                 max="9999-12-31"
                 required
                 disabled={pending}
-                placeholder="Выберите срок"
-                ariaLabel="Срок выполнения"
+                placeholder="Дата окончания"
+                ariaLabel="Окончание выполнения"
+                caption="ОКОНЧАНИЕ"
                 className="min-w-0"
               />{" "}
             </div>{" "}

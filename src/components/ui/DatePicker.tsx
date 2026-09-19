@@ -21,6 +21,7 @@ interface DatePickerProps {
   placeholder?: string;
   className?: string;
   ariaLabel?: string;
+  caption?: string;
 }
 
 interface CalendarPosition {
@@ -309,6 +310,7 @@ export default function DatePicker({
   placeholder = 'Выберите дату',
   className = '',
   ariaLabel,
+  caption = 'DEADLINE',
 }: DatePickerProps) {
   const [isOpen, setIsOpen] =
     useState(false);
@@ -346,6 +348,12 @@ export default function DatePicker({
 
   const calendarRef =
     useRef<HTMLDivElement>(null);
+
+  const manualDate = parseManualDate(manualValue);
+  const invalid = Boolean(manualValue) && (!manualDate || isDateDisabled(manualDate, min, max));
+  useEffect(() => {
+    inputRef.current?.setCustomValidity(invalid ? 'Укажите существующую дату в допустимом интервале.' : '');
+  }, [invalid]);
 
   useEffect(() => {
     setManualValue(
@@ -534,7 +542,7 @@ export default function DatePicker({
     };
 
     const handleOutside = (
-      event: MouseEvent,
+      event: MouseEvent | FocusEvent,
     ) => {
       const target =
         event.target as Node;
@@ -585,6 +593,7 @@ export default function DatePicker({
       'mousedown',
       handleOutside,
     );
+    document.addEventListener('focusin', handleOutside);
 
     document.addEventListener(
       'keydown',
@@ -607,6 +616,7 @@ export default function DatePicker({
         'mousedown',
         handleOutside,
       );
+      document.removeEventListener('focusin', handleOutside);
 
       document.removeEventListener(
         'keydown',
@@ -658,7 +668,7 @@ export default function DatePicker({
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="mono-label text-[8px] text-fog/40">
-              DEADLINE
+              {caption}
             </div>
 
             <div className="mt-1 text-[13px] font-medium text-snow">
@@ -902,6 +912,7 @@ export default function DatePicker({
                 : placeholder
             }
             aria-label={ariaLabel}
+            aria-invalid={invalid || undefined}
             onFocus={openCalendar}
             onChange={(event) =>
               handleManualChange(
@@ -921,7 +932,7 @@ export default function DatePicker({
 
           {value && (
             <span className="hidden shrink-0 font-mono text-[8px] text-flux/60 sm:block">
-              DEADLINE
+              {caption}
             </span>
           )}
 

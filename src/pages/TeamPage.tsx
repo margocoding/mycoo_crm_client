@@ -180,6 +180,7 @@ function MemberDepartments({
   pending: boolean;
   onClick: () => void;
 }) {
+  if (member.isOwner) return <span className="text-xs text-fog">Все департаменты</span>;
   return (
     <button
       type="button"
@@ -223,6 +224,7 @@ function MemberRole({
   loading: boolean;
   onChange: (role: DepartmentRole) => void;
 }) {
+  if (member.isOwner) return <span className="font-mono text-[10.5px] text-ion">Собственник</span>;
   if (canManage && role !== "CHIEF") {
     return (
       <RoleSelect
@@ -294,9 +296,9 @@ function MembersTable({
                 (item) => item.id === department.id,
               );
 
-              if (!membership) return null;
+              if (!membership && !member.isOwner) return null;
 
-              const role = membership.role;
+              const role = membership?.role ?? "ADMIN";
 
               return (
                 <tr
@@ -328,7 +330,7 @@ function MembersTable({
                   </td>
 
                   <td className="px-4 py-4">
-                    {canManage && (
+                    {canManage && !member.isOwner && (
                       <button
                         type="button"
                         aria-label={`Удалить из департамента: ${member.name}`}
@@ -339,7 +341,7 @@ function MembersTable({
                         }
                         title={
                           role === "CHIEF"
-                            ? "Сначала назначьте другого начальника"
+                            ? "Сначала назначьте другого руководителя"
                             : "Удалить из департамента"
                         }
                         className="rounded-md border border-transparent p-2 text-fog/60 transition-all hover:border-crit/30 hover:bg-crit/5 hover:text-crit disabled:cursor-not-allowed disabled:opacity-20"
@@ -362,9 +364,9 @@ function MembersTable({
             (item) => item.id === department.id,
           );
 
-          if (!membership) return null;
+          if (!membership && !member.isOwner) return null;
 
-          const role = membership.role;
+          const role = membership?.role ?? "ADMIN";
 
           return (
             <article
@@ -374,7 +376,7 @@ function MembersTable({
               <div className="flex items-start justify-between gap-3">
                 <MemberIdentity member={member} />
 
-                {canManage && (
+                {canManage && !member.isOwner && (
                   <button
                     type="button"
                     aria-label={`Удалить из департамента: ${member.name}`}
@@ -385,7 +387,7 @@ function MembersTable({
                     }
                     title={
                       role === "CHIEF"
-                        ? "Сначала назначьте другого начальника"
+                        ? "Сначала назначьте другого руководителя"
                         : "Удалить из департамента"
                     }
                     className="shrink-0 rounded-md border border-transparent p-2 text-fog/60 transition-all hover:border-crit/30 hover:bg-crit/5 hover:text-crit disabled:cursor-not-allowed disabled:opacity-20"
@@ -687,7 +689,7 @@ export default function TeamPage() {
   const canManage = Boolean(department?.canManage);
 
   const members = data.members.filter((member) =>
-    member.departments.some(
+    member.isOwner || member.departments.some(
       (item) => item.id === department?.id,
     ),
   );
@@ -728,8 +730,8 @@ export default function TeamPage() {
 
     if (role === "CHIEF") {
       setConfirmation({
-        title: "Назначить начальника?",
-        text: `${member.name} станет начальником департамента «${department.name}». Нынешний начальник станет администратором.`,
+        title: "Назначить руководителя?",
+        text: `${member.name} станет руководителем департамента «${department.name}». Нынешний руководитель станет администратором.`,
         action,
       });
 

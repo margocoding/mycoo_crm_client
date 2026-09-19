@@ -1,7 +1,7 @@
 import { useTasks } from '../../../../context/TasksContext';
 import { LuCalendarDays, LuUser } from 'react-icons/lu';
-import { TaskActions, TaskStatusSelect } from './TaskControls';
-import { taskAssigneeNames } from '@/types/task.types';
+import { TaskActions, TaskStatusSelect, TaskDepartments } from './TaskControls';
+import { taskAssigneeNames, taskDateRange } from '@/types/task.types';
 
 const priorityColors: Record<string, string> = {
   low: 'var(--color-ok)',
@@ -16,13 +16,6 @@ const priorityLabels: Record<string, string> = {
 };
 
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
 
 function isOverdue(date: string, status: string) {
   if (status === 'done') return false;
@@ -30,7 +23,7 @@ function isOverdue(date: string, status: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const dueDate = new Date(date);
+  const dueDate = new Date(date + 'T00:00:00');
   dueDate.setHours(0, 0, 0, 0);
 
   return dueDate < today;
@@ -137,7 +130,7 @@ export default function TaskList() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-snow">
                         {task.title}
-                      </p>
+                      </p><TaskDepartments task={task} />
 
                       {task.successCriteria && (
                         <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
@@ -168,7 +161,7 @@ export default function TaskList() {
                     >
                       <LuCalendarDays className="h-3.5 w-3.5 opacity-60" />
 
-                      <span>{formatDate(task.dueDate)}</span>
+                      <span>{taskDateRange(task)}</span>
                     </div>
 
                     {overdue && (
@@ -217,7 +210,7 @@ export default function TaskList() {
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-semibold leading-5 text-snow">
                     {task.title}
-                  </h3>
+                  </h3><TaskDepartments task={task} />
 
                   {task.successCriteria && (
                     <div className="mt-2 flex items-start gap-1.5">
@@ -248,7 +241,7 @@ export default function TaskList() {
                   }`}
                 >
                   <LuCalendarDays className="h-3.5 w-3.5 opacity-60" />
-                  <span>{formatDate(task.dueDate)}</span>
+                  <span>{taskDateRange(task)}</span>
 
                   {overdue && (
                     <span className="text-[9px] font-medium uppercase">

@@ -543,7 +543,7 @@ export function InvitationDialog({
 
           {role === "CHIEF" && (
             <DialogNotice>
-              После принятия приглашения нынешний начальник
+              После принятия приглашения нынешний руководитель
               департамента станет администратором.
             </DialogNotice>
           )}
@@ -705,7 +705,7 @@ export function MemberDepartmentsDialog({
                     <span className="max-w-24 shrink-0 text-right font-mono text-[8.5px] uppercase tracking-[0.06em] text-fog/55 sm:max-w-none sm:text-[9.5px] sm:tracking-[0.08em]">
                       {membership
                         ? ROLE_LABELS[membership.role]
-                        : "Работник"}
+                        : "Сотрудник"}
                     </span>
                   </label>
                 );
@@ -720,8 +720,8 @@ export function MemberDepartmentsDialog({
 
         {canEdit && (
           <DialogNotice tone="info">
-            В новых департаментах участник получит роль работника.
-            Чтобы исключить начальника из департамента, сначала
+            В новых департаментах участник получит роль сотрудника.
+            Чтобы исключить руководителя из департамента, сначала
             назначьте ему замену.
           </DialogNotice>
         )}
