@@ -9,12 +9,11 @@ import {
   LuCalendar,
   LuUsers
 } from 'react-icons/lu';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Logo } from '../icons';
 import { useLaunch, useLaunchStore } from '@/store/launch.store';
 import { useAuthStore } from '@/store/auth.store';
 import { TeamProvider, useTeam } from '@/components/shared/team/TeamProvider';
-import DepartmentPlaceholder from '@/components/shared/team/DepartmentPlaceholder';
 
 interface SidebarProps {
   children: ReactNode;
@@ -41,8 +40,6 @@ function DashboardShell({ children }: SidebarProps) {
   const { exitToSite, openSubscription, workspace } = useLaunch();
   const user = useAuthStore((s) => s.user);
   const { data } = useTeam();
-  const { pathname } = useLocation();
-  const memberPlaceholder = workspace?.ownerId !== user?.id && pathname === '/dashboard/main';
   const displayName = user?.name || (workspace?.ownerId === user?.id ? workspace?.ownerName : null) || user?.email || 'Пользователь';
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -142,7 +139,7 @@ function DashboardShell({ children }: SidebarProps) {
 
         <main className="p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
-            {memberPlaceholder ? <DepartmentPlaceholder /> : children}
+            {children}
           </div>
         </main>
       </div>
