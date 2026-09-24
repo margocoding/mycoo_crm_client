@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import SubscriptionModal from "./components/ui/SubscriptionModal";
 import TeamPage from "./pages/TeamPage";
 import InvitationPage from "./pages/InvitationPage";
+import NotificationsPage from './pages/NotificationsPage';
 import { useModalRouter } from "./hooks/useModalRouter";
 
 export default function App() {
@@ -27,6 +28,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/invite/:token" element={<InvitationPage />} />
+        <Route path="/dashboard/notifications" element={
+          <ProtectedRoute><DashboardLayout><NotificationsPage /></DashboardLayout></ProtectedRoute>
+        } />
         <Route path="/dashboard/team/:departmentId?" element={
           <ProtectedRoute><DashboardLayout><TeamPage /></DashboardLayout></ProtectedRoute>
         } />

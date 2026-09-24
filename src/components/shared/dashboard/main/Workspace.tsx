@@ -7,6 +7,7 @@ import { useLaunch } from "@/store/launch.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useTeam } from "@/components/shared/team/TeamProvider";
 import { useDashboard } from "@/hooks/useDashboard";
+import { ActivityFeed } from '@/components/shared/notifications/NotificationList';
 
 const toneVar = {
   crit: "var(--color-crit)",
@@ -371,8 +372,8 @@ export default function Workspace() {
           </section>
 
           {/* Журнал */}
-          <Card title="Операционный журнал" code="SYS·LOG" delay={0.52} className="lg:col-span-5">
-            <p className="text-sm text-fog">Записей пока нет.</p>
+          <Card title="Лента активности" code="SYS·LOG" delay={0.52} className="lg:col-span-5">
+            <ActivityFeed />
           </Card>
         </div>
 

@@ -7,6 +7,7 @@ export interface Task {
   isShared: boolean;
   canManage: boolean;
   canComplete: boolean;
+  editRestriction?: string | null;
   title: string;
   assignees: TaskAssignee[];
   startDate: string;
