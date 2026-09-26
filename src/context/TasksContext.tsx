@@ -53,7 +53,7 @@ export function TasksProvider({ workspaceId, departmentId, departments, isOwner,
       if (!controller.signal.aborted) {
         setTasks(result.tasks);
         setCanManage(result.canManage);
-        if (!result.canManage) setEditingTask(null);
+        setEditingTask(current => current ? result.tasks.find(task => task.id === current.id && task.canManage) ?? null : null);
         setError('');
       }
     } catch (error) {

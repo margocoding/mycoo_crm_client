@@ -1,4 +1,4 @@
-import { LuPencil, LuTrash2 } from 'react-icons/lu';
+import { LuLockKeyhole, LuPencil, LuTrash2 } from 'react-icons/lu';
 import Select from '@/components/ui/Select';
 import { useTasks, type Task } from '@/context/TasksContext';
 import type { TaskStatus } from '@/types/task.types';
@@ -19,7 +19,8 @@ export function TaskStatusSelect({ task }: { task: Task }) {
 
 export function TaskActions({ task }: { task: Task }) {
   const { pending, setEditingTask, deleteTask } = useTasks();
-  if (!task.canManage) return null;
+  if (!task.canManage) return task.editRestriction ? <span title={task.editRestriction} role="img" aria-label={task.editRestriction}
+    className="inline-flex p-1.5 text-fog/50"><LuLockKeyhole aria-hidden="true" className="h-4 w-4" /></span> : null;
   return <div className="flex items-center gap-1 shrink-0">
     <button disabled={pending} onClick={() => setEditingTask(task)} title="Редактировать"
       aria-label={'Редактировать задачу ' + task.title} className="p-1.5 text-fog/50 hover:text-flux disabled:opacity-40">

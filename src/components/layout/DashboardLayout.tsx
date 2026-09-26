@@ -7,6 +7,7 @@ import {
   LuBot,
   LuCreditCard,
   LuCalendar,
+  LuBell,
   LuUsers
 } from 'react-icons/lu';
 import { NavLink } from 'react-router-dom';
@@ -14,6 +15,7 @@ import { Logo } from '../icons';
 import { useLaunch, useLaunchStore } from '@/store/launch.store';
 import { useAuthStore } from '@/store/auth.store';
 import { TeamProvider, useTeam } from '@/components/shared/team/TeamProvider';
+import { NotificationsProvider, useNotifications } from '@/components/shared/notifications/NotificationsProvider';
 
 interface SidebarProps {
   children: ReactNode;
@@ -22,6 +24,7 @@ interface SidebarProps {
 const navItems = [
   { id: 'dashboard', label: 'Дашборд', icon: LuLayoutDashboard, path: '/dashboard/main' },
   { id: 'tasks', label: 'Задачи', icon: LuListChecks, path: '/dashboard/tasks' },
+  { id: 'notifications', label: 'Уведомления', icon: LuBell, path: '/dashboard/notifications' },
   { id: 'calls', label: 'Встречи', icon: LuCalendar, path: '/dashboard/calls' },
   { id: 'ai', label: 'AI COO', icon: LuBot, path: '/dashboard/ai' },
   { id: 'team', label: 'Команда', icon: LuUsers, path: '/dashboard/team' }
@@ -32,7 +35,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   if (!workspace || !user) return null;
   return <TeamProvider key={workspace.id + ':' + user.id} workspaceId={workspace.id}>
-    <DashboardShell>{children}</DashboardShell>
+    <NotificationsProvider workspaceId={workspace.id}><DashboardShell>{children}</DashboardShell></NotificationsProvider>
   </TeamProvider>;
 }
 
@@ -40,6 +43,7 @@ function DashboardShell({ children }: SidebarProps) {
   const { exitToSite, openSubscription, workspace } = useLaunch();
   const user = useAuthStore((s) => s.user);
   const { data } = useTeam();
+  const { data: notifications } = useNotifications();
   const displayName = user?.name || (workspace?.ownerId === user?.id ? workspace?.ownerName : null) || user?.email || 'Пользователь';
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -80,6 +84,9 @@ function DashboardShell({ children }: SidebarProps) {
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 {item.label}
+                {item.id === 'notifications' && Boolean(notifications?.unreadCount) && <span
+                  aria-label={`Непрочитанных: ${notifications?.unreadCount}`}
+                  className="ml-auto rounded-full bg-flux/15 px-2 py-0.5 text-[10px] text-flux">{Math.min(notifications!.unreadCount, 99)}{notifications!.unreadCount > 99 ? '+' : ''}</span>}
               </NavLink>
             );
           })}
