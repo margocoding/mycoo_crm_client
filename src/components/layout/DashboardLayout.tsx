@@ -121,7 +121,7 @@ function DashboardShell({ children }: SidebarProps) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-snow truncate">{displayName}</p>
-              <p className="mono-label text-[9px] text-fog/50">Pro тариф</p>
+              <p className="mono-label text-[9px] text-fog/50">{workspace?.subscription?.planName || (workspace?.subscription?.status === 'PAID' ? 'Подписка' : 'Пробный период')}</p>
             </div>
           </div>
         </div>

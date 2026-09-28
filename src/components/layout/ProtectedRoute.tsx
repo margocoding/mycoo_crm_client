@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { useLaunchStore } from "@/store/launch.store";
+import SubscriptionPage from '@/pages/SubscriptionPage';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, error } = useAuthStore();
@@ -10,6 +11,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     return <div role="status" className="flex min-h-screen items-center justify-center bg-void text-fog">Проверка доступа…</div>;
   }
   if (!user) return <Navigate to="/" replace />;
+  if (workspace.workspace?.diagnosticsComplete && !workspace.workspace.subscription?.hasAccess) return <SubscriptionPage />;
   if (!workspace.trialActive) return <Navigate to={workspace.workspace?.onboardingComplete ? "/?diagnostics=true" : "/?onboarding=true"} replace />;
   return <>{children}</>;
 }

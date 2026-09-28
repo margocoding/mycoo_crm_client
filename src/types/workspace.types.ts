@@ -30,6 +30,7 @@ export interface Analysis {
 export interface DiagnosticAnswer { questionId: string; opt?: number | null; text?: string | null; skip?: boolean; }
 export interface Question { id: string; question: string; options: Array<{ text: string; score: number }>; }
 export interface Workspace {
+  subscription?: import('./billing.types').Subscription;
   id: string; ownerId: string; onboardingStep: number;
   onboardingComplete: boolean; diagnosticsComplete: boolean; isActive: boolean;
   company?: string | null; industry?: string | null; industryOther?: string | null; site?: string | null;

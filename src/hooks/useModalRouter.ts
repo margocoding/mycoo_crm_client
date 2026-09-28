@@ -68,6 +68,7 @@ export function useModalRouter() {
         newParams.set("diagnostics", "true");
       } else if (type === "subscription") {
         newParams.set("subscription", "true");
+        if (params?.plan) newParams.set('plan', params.plan);
       }
 
       setSearchParams(newParams, { replace: true });

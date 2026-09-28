@@ -3,11 +3,36 @@ import { useAuthStore } from "@/store/auth.store";
 import { useLaunchStore } from "@/store/launch.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { useModalRouter } from "@/hooks/useModalRouter";
+import { useLocation } from 'react-router-dom';
+import { captureReferral } from '@/lib/referral';
 
 export default function SessionBootstrap() {
   const auth = useAuthStore();
   const workspace = useLaunchStore();
   const { state, openModal } = useModalRouter();
+  const { search } = useLocation();
+
+  useEffect(() => { captureReferral(search); }, [search]);
+
+  useEffect(() => {
+    if (!auth.user) return;
+    const refresh = () => { void useLaunchStore.getState().loadWorkspace(true); };
+    const onFocus = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('mycoo:subscription-expired', refresh);
+    window.addEventListener('focus', onFocus);
+    const end = workspace.workspace?.subscription?.activeUntil;
+    let timer: number | undefined;
+    const schedule = () => {
+      const delay = end ? Date.parse(end) - Date.now() : 0;
+      if (delay > 0) timer = window.setTimeout(() => { refresh(); schedule(); }, Math.min(delay + 100, 2147483647));
+    };
+    schedule();
+    return () => {
+      window.removeEventListener('mycoo:subscription-expired', refresh);
+      window.removeEventListener('focus', onFocus);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [auth.user?.id, workspace.workspace?.subscription?.activeUntil, workspace.workspace?.id]);
 
   useEffect(() => {
     const expire = () => useAuthStore.getState().clearSession();
