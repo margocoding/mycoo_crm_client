@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { MouseEvent, useState } from "react";
 import { Reveal, Decode } from "../../../lib/motion";
 import { OrbitRings, StatusChip, StatusDot } from "../../ui/Ambient";
 import { FiArrowRight } from "react-icons/fi";
 import Button from "../../ui/Button";
 import { useLaunch } from "@/store/launch.store";
+import { PHONE_HREF, PHONE_LABEL, PublicOfferContent, SUPPORT_EMAIL } from "./PublicOfferContent";
+import { Modal } from "@/components/ui/Modal";
 
 export function Launch() {
   const { launch } = useLaunch();
@@ -108,11 +110,17 @@ const FOOT_NAV2 = [
 
 export function Footer() {
   const [legalNote, setLegalNote] = useState("");
+  const [isOfferOpen, setIsOfferOpen] = useState(false);
   const { launch } = useLaunch();
 
-  const legal = (doc: string) => (e: React.MouseEvent) => {
+  const legal = (doc: string) => (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     setLegalNote(`«${doc}» будет опубликован на этапе запуска продукта.`);
+  };
+
+  const openOffer = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setIsOfferOpen(true);
   };
 
   return (
@@ -124,8 +132,8 @@ export function Footer() {
               <span className="font-display text-[16px] font-bold tracking-[0.22em] text-snow">MYCOO</span>
             </a>
             <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed text-fog">
-              Цифровой операционный директор. Превращаем информацию компании в
-              управленческие решения, задачи, контроль и договорённости.
+              Цифровой операционный директор. Превращаем информацию компании в управленческие решения, задачи,
+              контроль и договорённости.
             </p>
             <div className="mt-5 inline-flex items-center gap-2 rounded border border-line bg-hull/50 px-3 py-1.5">
               <StatusDot />
@@ -140,19 +148,26 @@ export function Footer() {
             <ul className="space-y-2.5">
               {FOOT_NAV.map((n) => (
                 <li key={n.href}>
-                  <a href={n.href} className="text-[13.5px] text-fog transition-colors hover:text-flux">
+                  <a
+                    href={n.href}
+                    className="text-[13.5px] text-fog transition-colors hover:text-flux"
+                  >
                     {n.label}
                   </a>
                 </li>
               ))}
             </ul>
           </div>
+
           <div>
             <h4 className="mono-label mb-4 text-fog/70">Разделы</h4>
             <ul className="space-y-2.5">
               {FOOT_NAV2.map((n) => (
                 <li key={n.href}>
-                  <a href={n.href} className="text-[13.5px] text-fog transition-colors hover:text-flux">
+                  <a
+                    href={n.href}
+                    className="text-[13.5px] text-fog transition-colors hover:text-flux"
+                  >
                     {n.label}
                   </a>
                 </li>
@@ -164,14 +179,37 @@ export function Footer() {
             <h4 className="mono-label mb-4 text-fog/70">Контакты</h4>
             <ul className="space-y-2.5 text-[13.5px]">
               <li>
-                <a href="mailto:hello@mycoo.io" className="font-mono text-[13px] text-mist transition-colors hover:text-flux">
-                  hello@mycoo.io
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                  className="font-mono text-[13px] text-mist transition-colors hover:text-flux"
+                >
+                  {SUPPORT_EMAIL}
                 </a>
+              </li>
+              <li>
+                <a
+                  href={PHONE_HREF}
+                  className="font-mono text-[13px] text-mist transition-colors hover:text-flux"
+                >
+                  {PHONE_LABEL}
+                </a>
+              </li>
+              <li className="text-[12.5px] leading-relaxed text-fog/75">
+                ИП Подкладышева Светлана Владимировна · ОГРНИП 304132735200029 · ИНН 132707721443
               </li>
               <li className="text-fog">Запуск и внедрение — вместе с командой MyCOO</li>
             </ul>
+
             <div className="mt-6 space-y-2">
-              <div className="flex gap-5">
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                <a
+                  href="#"
+                  onClick={openOffer}
+                  aria-haspopup="dialog"
+                  className="text-[12.5px] text-fog underline decoration-line underline-offset-4 transition-colors hover:text-flux"
+                >
+                  Публичная оферта
+                </a>
                 <a
                   href="#"
                   onClick={legal("Политика конфиденциальности")}
@@ -187,6 +225,7 @@ export function Footer() {
               >
                 Пользовательское соглашение
               </a>
+
               {legalNote && (
                 <p className="mt-3 flex items-start gap-2 rounded-md border border-warn/25 bg-warn/5 px-3 py-2.5 font-mono text-[11px] leading-relaxed text-warn/90">
                   <StatusDot color="var(--color-warn)" />
@@ -206,13 +245,77 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-line/50 pt-7 md:flex-row">
+        <div className="mt-12 border-t border-line/50 pt-8">
+          <div className="grid gap-8 md:grid-cols-3">
+            <div>
+              <h4 className="mono-label mb-3 text-fog/70">Исполнитель</h4>
+              <div className="space-y-1 font-mono text-[11.5px] leading-relaxed text-fog/80">
+                <p>ИП Подкладышева Светлана Владимировна</p>
+                <p>ОГРНИП 304132735200029</p>
+                <p>ИНН 132707721443</p>
+                <p>430034, РФ, Республика Мордовия, г. Саранск, ул. Миронова, д. 3, оф. 60</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="mono-label mb-3 text-fog/70">Банковские реквизиты</h4>
+              <div className="space-y-1 font-mono text-[11.5px] leading-relaxed text-fog/80">
+                <p>р/с 40802810102790001646</p>
+                <p>БИК 044525593</p>
+                <p>АО “АЛЬФА-БАНК”</p>
+                <p>к/с 30101810200000000593</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="mono-label mb-3 text-fog/70">Связь</h4>
+              <ul className="space-y-2 text-[13.5px]">
+                <li>
+                  <a
+                    href={PHONE_HREF}
+                    className="font-mono text-[13px] text-mist transition-colors hover:text-flux"
+                  >
+                    {PHONE_LABEL}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={`mailto:${SUPPORT_EMAIL}`}
+                    className="font-mono text-[13px] text-mist transition-colors hover:text-flux"
+                  >
+                    {SUPPORT_EMAIL}
+                  </a>
+                </li>
+                <li className="text-[12.5px] leading-relaxed text-fog/75">
+                  По вопросам подписок, возвратов, закрывающих документов и изменения реквизитов.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-line/50 pt-7 md:flex-row">
           <p className="font-mono text-[11px] text-fog/60">
             © {new Date().getFullYear()} MyCOO · Цифровой операционный директор
           </p>
-          <p className="mono-label text-fog/40">компания = корабль · mycoo = mission control</p>
+          <p className="mono-label text-fog/40">
+            компания = корабль · mycoo = mission control
+          </p>
         </div>
       </div>
+
+      <Modal
+        isOpen={isOfferOpen}
+        onClose={() => setIsOfferOpen(false)}
+        maxWidth="max-w-3xl"
+        ariaLabel="Публичная оферта MyCOO"
+        title="Публичная оферта"
+        subtitle="MyCOO · ИП Подкладышева С. В."
+      >
+        <div className="max-h-[70vh] overflow-y-auto pr-1">
+          <PublicOfferContent />
+        </div>
+      </Modal>
     </footer>
   );
 }
