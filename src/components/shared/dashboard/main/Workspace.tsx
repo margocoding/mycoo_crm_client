@@ -77,15 +77,15 @@ function Card({
 /* ================= workspace ================= */
 
 export default function Workspace() {
-  const { exitToSite, resetDemo, workspace } = useLaunch();
+  const { exitToSite, resetDemo, workspace, openSubscription } = useLaunch();
   const user = useAuthStore(s => s.user);
   const { data: team } = useTeam();
   const [departmentId, setDepartmentId] = useState('');
   const { data, error, reload } = useDashboard(workspace?.id, departmentId);
   const [ready, setReady] = useState(false);
   const isOwner = workspace?.ownerId === user?.id;
-  const trialStart = workspace?.trialStartedAt ? Date.parse(workspace.trialStartedAt) : Date.now();
-  const daysLeft = Math.max(0, 10 - Math.floor((Date.now() - trialStart) / 86400000));
+  const daysLeft = workspace?.subscription?.daysRemaining ?? 0;
+  const subscriptionLabel = workspace?.subscription?.planName || (workspace?.subscription?.status === 'PAID' ? 'Подписка' : 'Пробный период');
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 80);
@@ -136,7 +136,7 @@ export default function Workspace() {
           <div className="flex items-center gap-2.5">
             <span className="hidden items-center gap-2 rounded border border-flux/40 bg-flux/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-flux sm:inline-flex">
               <StatusDot />
-              trial · {daysLeft} дн
+              {subscriptionLabel} · {daysLeft} дн
             </span>
             <button
               onClick={exitToSite}
@@ -156,44 +156,16 @@ export default function Workspace() {
       </header>
 
       <main className="mx-auto max-w-7xl px-5 pb-20 pt-8 md:px-8">
-        {/* trial banner */}
-        <section className="step-in glass corner relative overflow-hidden rounded-xl p-5 md:p-6">
-          <span className="cx pointer-events-none absolute inset-0" />
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <section className="step-in glass corner rounded-xl p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="mono-label text-flux">пробный период</p>
-              <p className="mt-1.5 text-[15px] font-medium text-mist">
-                До окончания пробного периода:{" "}
-                <span className="font-display text-xl font-bold text-snow">
-                  {daysLeft} {daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}
-                </span>
-              </p>
-              <p className="mt-1 text-[12.5px] text-fog/70">
-                Trial запущен после диагностики — MyCOO уже работает с контекстом {company}.
-              </p>
+              <p className="mono-label text-flux">{subscriptionLabel}</p>
+              <p className="mt-2 text-sm text-mist">Осталось дней доступа: <strong className="text-snow">{daysLeft}</strong></p>
+              {workspace?.subscription?.activeUntil && <p className="mt-1 text-xs text-fog">До {new Date(workspace.subscription.activeUntil).toLocaleString('ru-RU')}</p>}
             </div>
-            <div className="w-full md:w-[300px]">
-              <div className="flex gap-1">
-                {Array.from({ length: 10 }, (_, i) => (
-                  <span
-                    key={i}
-                    className={`h-2 flex-1 rounded-sm transition-all duration-700 ${
-                      i < daysLeft
-                        ? "bg-flux shadow-[0_0_8px_rgba(56,189,248,0.55)]"
-                        : "bg-hull"
-                    }`}
-                    style={{ transitionDelay: `${i * 50}ms` }}
-                  />
-                ))}
-              </div>
-              <div className="mt-2 flex justify-between">
-                <span className="mono-label text-fog/45">день 0</span>
-                <span className="mono-label text-fog/45">день 10</span>
-              </div>
-            </div>
+            <button onClick={openSubscription} className="rounded-lg border border-flux/40 px-4 py-2 text-sm text-flux">Подписка и приглашения</button>
           </div>
         </section>
-
         {/* greeting */}
         <div className="step-in mt-8 flex flex-wrap items-end justify-between gap-3" style={{ animationDelay: "0.1s" }}>
           <div>

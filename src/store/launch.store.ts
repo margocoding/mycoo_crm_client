@@ -16,7 +16,7 @@ interface LaunchStore {
   loading: boolean;
   error: string | null;
   setWorkspace: (workspace: Workspace) => void;
-  loadWorkspace: () => Promise<void>;
+  loadWorkspace: (silent?: boolean) => Promise<void>;
   reset: () => void;
 }
 
@@ -30,7 +30,7 @@ export const useLaunchStore = create<LaunchStore>((set, get) => ({
     const userId = useAuthStore.getState().user?.id;
     if (userId) localStorage.setItem("mycoo_workspace:" + userId, workspace.id);
     set({ workspace, loadedFor: useAuthStore.getState().user?.id ?? null, profile: workspaceProfile(workspace),
-      trialActive: workspace.isActive && workspace.diagnosticsComplete, error: null });
+      trialActive: workspace.isActive && workspace.diagnosticsComplete && Boolean(workspace.subscription?.hasAccess), error: null });
   },
   reset: () => {
     revision++;
@@ -38,12 +38,12 @@ export const useLaunchStore = create<LaunchStore>((set, get) => ({
     clearWorkspaceCache();
     set({ workspace: null, loadedFor: null, trialActive: false, profile: null, loading: false, error: null });
   },
-  loadWorkspace: () => {
+  loadWorkspace: (silent = false) => {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) { get().reset(); return Promise.resolve(); }
     if (request?.userId === userId) return request.promise;
     const current = ++revision;
-    set({ loading: true, error: null });
+    set({ loading: !silent || !get().workspace, error: null });
     const promise = (async () => {
       try {
         const selectedId = localStorage.getItem("mycoo_workspace:" + userId);
@@ -91,6 +91,7 @@ export function useLaunch() {
     const state = useLaunchStore.getState();
     if (state.error || state.loading || state.loadedFor !== user.id) return;
     if (state.trialActive) go("/dashboard/main");
+    else if (state.workspace?.diagnosticsComplete) go('/subscription');
     else openModal(state.workspace?.onboardingComplete ? "diagnostics" : "onboarding");
   };
   return {

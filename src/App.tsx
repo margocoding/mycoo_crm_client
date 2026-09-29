@@ -14,6 +14,7 @@ import SubscriptionModal from "./components/ui/SubscriptionModal";
 import TeamPage from "./pages/TeamPage";
 import InvitationPage from "./pages/InvitationPage";
 import NotificationsPage from './pages/NotificationsPage';
+import SubscriptionPage from './pages/SubscriptionPage';
 import { useModalRouter } from "./hooks/useModalRouter";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
       <DiagnosticsOverlay />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/subscription" element={<SubscriptionPage />} />
         <Route path="/invite/:token" element={<InvitationPage />} />
         <Route path="/dashboard/notifications" element={
           <ProtectedRoute><DashboardLayout><NotificationsPage /></DashboardLayout></ProtectedRoute>

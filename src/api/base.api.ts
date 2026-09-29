@@ -34,6 +34,9 @@ api.interceptors.response.use((response) => response, (error) => {
     window.dispatchEvent(new Event("mycoo:session-expired"));
   }
   const data = error.response?.data;
+  if (status === 402 && data?.code === 'SUBSCRIPTION_EXPIRED') {
+    window.dispatchEvent(new Event('mycoo:subscription-expired'));
+  }
   const details = Array.isArray(data?.errors)
     ? data.errors.flatMap((item: { messages?: string[] }) => item.messages ?? []) : [];
   const message = details?.length ? details.join(" ")

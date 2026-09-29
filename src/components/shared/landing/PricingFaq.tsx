@@ -1,152 +1,74 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Reveal } from "../../../lib/motion";
-import { Corners, SectionHeading, StatusChip } from "../../ui/Ambient";
-import { FiCheck, FiMinus, FiPlus } from "react-icons/fi";
+import { Corners, SectionHeading } from "../../ui/Ambient";
+import { FiCheck, FiPlus } from "react-icons/fi";
 import Button from "../../ui/Button";
-import { useLaunch } from "@/store/launch.store";
-
-const PLANS = [
-  {
-    id: "START",
-    name: "Пуск",
-    desc: "Базовый операционный контур для небольшой команды.",
-    features: [
-      "Управление решениями и договорённостями",
-      "Управление задачами и ответственными",
-      "Контроль отклонений и alerts",
-      "До 5 пользователей",
-      "Базовая операционная сводка",
-    ],
-    limits: ["Интеграции и объём данных — уточняются"],
-    recommended: false,
-  },
-  {
-    id: "MISSION",
-    name: "Миссия",
-    desc: "Полный цикл управления для растущей компании.",
-    features: [
-      "Всё из тарифа «Пуск»",
-      "AI-анализ информации компании",
-      "Управленческие рекомендации",
-      "Контроль процессов в реальном времени",
-      "До 25 пользователей",
-      "Приоритетная поддержка запуска",
-    ],
-    limits: ["Расширения контура — по запросу"],
-    recommended: true,
-  },
-  {
-    id: "ENTERPRISE",
-    name: "Флот",
-    desc: "Несколько компаний или крупные операционные структуры.",
-    features: [
-      "Всё из тарифа «Миссия»",
-      "Несколько операционных контуров",
-      "Индивидуальная конфигурация",
-      "Пользователи — без фиксированного лимита",
-      "Сопровождение внедрения командой MyCOO",
-    ],
-    limits: ["Условия формируются индивидуально"],
-    recommended: false,
-  },
-];
+import { useModalRouter } from '@/hooks/useModalRouter';
+import { errorMessage } from '@/api/base.api';
+import { billingApi } from '@/api/billing.api';
+import type { BillingCatalog } from '@/types/billing.types';
 
 export function Pricing() {
-  const { launch } = useLaunch();
-
+  const { openModal } = useModalRouter();
+  const [catalog, setCatalog] = useState<BillingCatalog | null>(null);
+  const [error, setError] = useState('');
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setError('');
+    billingApi.plans(controller.signal)
+      .then(data => { if (!controller.signal.aborted) setCatalog(data); })
+      .catch(cause => { if (!controller.signal.aborted) setError(errorMessage(cause)); });
+    return () => controller.abort();
+  }, [revision]);
 
   return (
     <section id="pricing" className="relative border-t border-line/50 py-24 md:py-32">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] opacity-50"
-        style={{
-          background:
-            "radial-gradient(ellipse 55% 60% at 50% 0%, rgba(139,133,248,0.1), transparent 70%)",
-        }}
+        style={{ background: "radial-gradient(ellipse 55% 60% at 50% 0%, rgba(139,133,248,0.1), transparent 70%)" }}
       />
       <div className="mx-auto max-w-7xl px-5 md:px-8">
-        <SectionHeading
-          index="10"
-          label="Планы подключения"
-          title={
-            <>
-              Тарифы: <span className="text-flux">выберите свою орбиту</span>
-            </>
-          }
-          meta="3 TIERS"
-        >
-          <p>
-            Структура тарифов зафиксирована. Точные условия и стоимость
-            предоставляет команда MyCOO на этапе запуска — мы не публикуем
-            цифры, которые не готовы подтвердить.
-          </p>
+        <SectionHeading index="10" label="Планы подключения" title={<>Какой <span className="text-flux">MyCOO</span> вам нужен?</>} meta="3 ТАРИФА">
+          <p className="text-mist">Видеть → Управлять → Освободиться</p>
+          <p className="mt-3">2 месяца в подарок при оплате годовой подписки. Платите за 10 месяцев, получайте 12 месяцев.</p>
         </SectionHeading>
-
+        {error && <div role="alert" className="mb-5 rounded-lg border border-crit/40 p-4 text-sm text-crit">
+          {error} <button className="underline" onClick={() => setRevision(r => r + 1)}>Повторить</button>
+        </div>}
+        {!catalog && !error && <p role="status" className="text-center text-fog">Загружаем тарифы…</p>}
         <div className="grid gap-5 lg:grid-cols-3">
-          {PLANS.map((p, i) => (
+          {catalog?.plans.map((p, i) => (
             <Reveal key={p.id} delay={i * 110}>
-              <article
-                className={`corner card-hover relative flex h-full flex-col rounded-xl p-7 ${
-                  p.recommended
-                    ? "glass border-flux/40 shadow-[0_0_60px_-18px_rgba(56,189,248,0.5)]"
-                    : "glass"
-                }`}
-              >
+              <article className={`corner card-hover relative flex h-full flex-col rounded-xl p-7 ${
+                p.recommended ? "glass border-flux/40 shadow-[0_0_60px_-18px_rgba(56,189,248,0.5)]" : "glass"
+              }`}>
                 <Corners />
-                {p.recommended && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <span className="rounded-full border border-flux/50 bg-void px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-flux shadow-[0_0_20px_-4px_rgba(56,189,248,0.7)]">
-                      рекомендуемый
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] font-bold tracking-[0.24em] text-fog/60">
-                    TIER·{p.id}
+                {p.recommended && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full border border-flux/50 bg-void px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-flux">
+                    Популярный
                   </span>
-                  <StatusChip tone={p.recommended ? "flux" : "ok"}>
-                    {p.recommended ? "core" : "available"}
-                  </StatusChip>
-                </div>
-                <h3 className="font-display mt-4 text-2xl font-bold text-snow">{p.name}</h3>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-fog">{p.desc}</p>
-
+                </div>}
+                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-flux">{p.outcome}</p>
+                <h3 className="font-display mt-4 text-2xl font-bold uppercase text-snow">{p.name}</h3>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-fog lg:min-h-[110px]">«{p.description}»</p>
                 <div className="my-6 rounded-lg border border-line/70 bg-hull/30 px-5 py-4">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display text-3xl font-bold text-snow">—</span>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="font-display text-3xl font-bold text-snow">{(p.monthKopecks / 100).toLocaleString('ru-RU')}</span>
                     <span className="font-mono text-[12px] text-fog">₽ / мес</span>
                   </div>
-                  <span className="mono-label mt-1.5 block text-fog/55">
-                    стоимость уточняется при подключении
-                  </span>
+                  <p className="mt-2 text-xs text-fog">{(p.yearKopecks / 100).toLocaleString('ru-RU')} ₽ за год · 2 месяца в подарок</p>
                 </div>
-
-                <ul className="space-y-2.5">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-mist">
-                      <span className={`mt-0.5 ${p.recommended ? "text-flux" : "text-ok"}`}>
-                        <FiCheck className="h-4 w-4" />
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                  {p.limits.map((l) => (
-                    <li key={l} className="flex items-start gap-2.5 text-[13px] text-fog/70">
-                      <FiMinus className="mt-0.5 h-4 w-4 shrink-0 text-fog/50" />
-                      {l}
-                    </li>
-                  ))}
+                <p className="font-display text-sm font-bold text-mist lg:min-h-10">{p.tagline}</p>
+                <p className="mt-2 mb-5 text-sm leading-relaxed text-fog lg:min-h-16">{p.promise}</p>
+                <ul className="mb-8 space-y-2.5">
+                  {p.features.map(feature => <li key={feature} className="flex items-start gap-2.5 text-[13.5px] text-mist">
+                    <FiCheck className={`mt-0.5 h-4 w-4 shrink-0 ${p.recommended ? 'text-flux' : 'text-ok'}`} />
+                    {feature}
+                  </li>)}
                 </ul>
-
-                <Button
-                  variant={p.recommended ? "primary" : "secondary"}
-                  tone={p.recommended ? "flux" : undefined}
-                  onClick={launch}
-                  className="mt-8 w-full"
-                >
-                  Запустить MyCOO
-                </Button>
+                <Button variant={p.recommended ? "primary" : "secondary"} tone={p.recommended ? "flux" : undefined}
+                  onClick={() => openModal('subscription', { plan: p.id })} className="mt-auto w-full">Выбрать тариф</Button>
               </article>
             </Reveal>
           ))}
@@ -155,7 +77,6 @@ export function Pricing() {
     </section>
   );
 }
-
 const FAQ = [
   {
     q: "Что такое MyCOO?",
@@ -195,7 +116,7 @@ const FAQ = [
   },
   {
     q: "Какие тарифы доступны?",
-    a: "Три уровня: «Пуск» — базовый операционный контур, «Миссия» — полный цикл с AI-анализом и рекомендациями, «Флот» — несколько контуров и индивидуальные условия. Стоимость уточняется при подключении.",
+    a: "Три уровня управляемости бизнеса: «Старт» — видеть, «Контроль» — управлять, «Опердир» — освободиться от ежедневной операционки. Актуальная стоимость указана в разделе тарифов. При годовой оплате вы получаете 12 месяцев по цене 10.",
   },
   {
     q: "Насколько безопасны данные?",
