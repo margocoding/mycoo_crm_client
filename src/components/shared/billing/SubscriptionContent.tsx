@@ -1,24 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { LuCheck, LuCopy } from 'react-icons/lu';
-import { billingApi } from '@/api/billing.api';
-import { authApi } from '@/api/auth.api';
-import { errorMessage } from '@/api/base.api';
-import { useAuthStore } from '@/store/auth.store';
-import { useLaunch, useLaunchStore } from '@/store/launch.store';
-import { useModalRouter } from '@/hooks/useModalRouter';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { LuCheck, LuCopy } from "react-icons/lu";
+import { billingApi } from "@/api/billing.api";
+import { authApi } from "@/api/auth.api";
+import { errorMessage } from "@/api/base.api";
+import { useAuthStore } from "@/store/auth.store";
+import { useLaunch, useLaunchStore } from "@/store/launch.store";
+import { useModalRouter } from "@/hooks/useModalRouter";
 import type {
   BillingAccount,
   BillingCatalog,
   BillingPeriod,
   PlanId,
-} from '@/types/billing.types';
+} from "@/types/billing.types";
 
 const button =
-  'rounded-lg border border-line px-4 py-2.5 text-sm text-mist hover:border-flux/50 disabled:cursor-not-allowed disabled:opacity-50';
+  "rounded-lg border border-line px-4 py-2.5 text-sm text-mist hover:border-flux/50 disabled:cursor-not-allowed disabled:opacity-50";
 
 const formatPrice = (kopecks: number) =>
-  (kopecks / 100).toLocaleString('ru-RU');
+  (kopecks / 100).toLocaleString("ru-RU");
 
 export default function SubscriptionContent() {
   const user = useAuthStore((s) => s.user);
@@ -37,18 +37,18 @@ function Content() {
   const [account, setAccount] = useState<BillingAccount | null>(null);
 
   const [params, setParams] = useSearchParams();
-  const payment = params.get('payment');
+  const payment = params.get("payment");
 
   const [plan, setPlan] = useState<PlanId>(() => {
-    const requested = params.get('plan');
-    return requested === 'START' || requested === 'ENTERPRISE'
+    const requested = params.get("plan");
+    return requested === "START" || requested === "ENTERPRISE"
       ? requested
-      : 'MISSION';
+      : "MISSION";
   });
 
-  const [period, setPeriod] = useState<BillingPeriod>('MONTH');
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [period, setPeriod] = useState<BillingPeriod>("MONTH");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
 
@@ -61,6 +61,17 @@ function Content() {
   const canManage = !workspace || workspace.ownerId === user?.id;
   const subscription = workspace?.subscription ?? account?.subscription;
 
+  const currentPlanIndex =
+    subscription?.status === "PAID" && subscription.plan
+      ? (catalog?.plans.findIndex((item) => item.id === subscription.plan) ??
+        -1)
+      : -1;
+
+  const isPlanDowngrade = (planId: PlanId) =>
+    currentPlanIndex >= 0 &&
+    (catalog?.plans.findIndex((item) => item.id === planId) ?? -1) <
+      currentPlanIndex;
+
   const stopPolling = useCallback(() => {
     if (pollRef.current !== null) {
       window.clearInterval(pollRef.current);
@@ -72,8 +83,8 @@ function Content() {
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        next.delete('payment');
-        next.delete('orderId');
+        next.delete("payment");
+        next.delete("orderId");
         return next;
       },
       { replace: true },
@@ -93,7 +104,7 @@ function Content() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setError('');
+    setError("");
 
     const loadData = async () => {
       try {
@@ -122,7 +133,7 @@ function Content() {
     if (!user) return;
 
     const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         setRevision((r) => r + 1);
         void useLaunchStore.getState().loadWorkspace(true);
       }
@@ -135,32 +146,32 @@ function Content() {
     if (!payment || paymentProcessed.current) return;
 
     if (!user) {
-      setError('Войдите, чтобы проверить статус оплаты.');
-      openModal('auth', { step: 'email' });
+      setError("Войдите, чтобы проверить статус оплаты.");
+      openModal("auth", { step: "email" });
       return;
     }
 
     paymentProcessed.current = true;
     stopPolling();
 
-    if (payment === 'failed') {
-      setError('Оплата не завершена или была отменена. Попробуйте снова.');
-      setNotice('');
+    if (payment === "failed") {
+      setError("Оплата не завершена или была отменена. Попробуйте снова.");
+      setNotice("");
       clearPaymentParams();
       return;
     }
 
-    if (payment !== 'success' && payment !== 'pending') {
+    if (payment !== "success" && payment !== "pending") {
       clearPaymentParams();
       return;
     }
 
     setNotice(
-      payment === 'success'
-        ? 'Оплата принята. Проверяем активацию доступа…'
-        : 'Оплата ещё подтверждается сервером. Обновляем статус…',
+      payment === "success"
+        ? "Оплата принята. Проверяем активацию доступа…"
+        : "Оплата ещё подтверждается сервером. Обновляем статус…",
     );
-    setError('');
+    setError("");
     reload();
 
     let attempts = 0;
@@ -177,13 +188,13 @@ function Content() {
         const workspaceSubscription = freshWorkspace?.subscription;
 
         const isActivated =
-          (workspaceSubscription?.status === 'PAID' &&
+          (workspaceSubscription?.status === "PAID" &&
             workspaceSubscription.hasAccess) ||
-          (account?.subscription?.status === 'PAID' &&
+          (account?.subscription?.status === "PAID" &&
             account.subscription.hasAccess);
 
         if (isActivated) {
-          setNotice('Доступ активирован. Можно работать.');
+          setNotice("Доступ активирован. Можно работать.");
           stopPolling();
           clearPaymentParams();
           return;
@@ -191,7 +202,7 @@ function Content() {
 
         if (attempts >= maxAttempts) {
           setNotice(
-            'Оплата прошла, но доступ ещё не обновился. Подождите 1–2 минуты и нажмите «Обновить».',
+            "Оплата прошла, но доступ ещё не обновился. Подождите 1–2 минуты и нажмите «Обновить».",
           );
           stopPolling();
           clearPaymentParams();
@@ -214,16 +225,23 @@ function Content() {
 
   async function pay() {
     if (!user) {
-      openModal('auth', { step: 'email' });
+      openModal("auth", { step: "email" });
       return;
     }
 
-    if (paying.current || !catalog?.paymentsAvailable || !canManage) return;
+    if (
+      paying.current ||
+      !catalog?.paymentsAvailable ||
+      !canManage ||
+      isPlanDowngrade(plan)
+    ) {
+      return;
+    }
 
     paying.current = true;
     setBusy(true);
-    setError('');
-    setNotice('');
+    setError("");
+    setNotice("");
 
     const selection = `${plan}:${period}`;
 
@@ -245,10 +263,10 @@ function Content() {
       const url = new URL(result.checkoutUrl, window.location.origin);
 
       const isLocalHttp =
-        url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+        url.hostname === "localhost" || url.hostname === "127.0.0.1";
 
-      if (url.protocol !== 'https:' && !isLocalHttp) {
-        throw new Error('Некорректная ссылка оплаты.');
+      if (url.protocol !== "https:" && !isLocalHttp) {
+        throw new Error("Некорректная ссылка оплаты.");
       }
 
       window.location.replace(url.toString());
@@ -265,9 +283,9 @@ function Content() {
 
     try {
       await navigator.clipboard.writeText(account.referral.url);
-      setNotice('Ссылка скопирована.');
+      setNotice("Ссылка скопирована.");
     } catch {
-      setNotice('Выделите и скопируйте ссылку из поля.');
+      setNotice("Выделите и скопируйте ссылку из поля.");
     }
   }
 
@@ -276,25 +294,23 @@ function Content() {
       {subscription && (
         <section className="rounded-lg border border-line/50 bg-hull/20 p-4">
           <h2 className="font-display text-lg font-bold text-snow">
-            {subscription.status === 'EXPIRED'
-              ? 'Срок доступа закончился'
-              : subscription.status === 'TRIAL'
-                ? 'Пробный период'
-                : subscription.status === 'PAID'
+            {subscription.status === "EXPIRED"
+              ? "Срок доступа закончился"
+              : subscription.status === "TRIAL"
+                ? "Пробный период"
+                : subscription.status === "PAID"
                   ? `Подписка${
-                      subscription.planName
-                        ? ` «${subscription.planName}»`
-                        : ''
+                      subscription.planName ? ` «${subscription.planName}»` : ""
                     }`
-                  : 'Пробный период ещё не начался'}
+                  : "Пробный период ещё не начался"}
           </h2>
 
           <p className="mt-2 text-sm text-fog">
             {subscription.activeUntil
               ? `Доступ ${
-                  subscription.hasAccess ? 'до' : 'закончился'
+                  subscription.hasAccess ? "до" : "закончился"
                 } ${new Date(subscription.activeUntil).toLocaleString(
-                  'ru-RU',
+                  "ru-RU",
                 )}. Осталось дней: ${subscription.daysRemaining}.`
               : `Пробный период — ${catalog?.trialDays ?? 10} дней после диагностики.`}
           </p>
@@ -306,16 +322,14 @@ function Content() {
             </p>
           )}
 
-          {user &&
-            canManage &&
-            subscription.status === 'NOT_STARTED' && (
-              <button
-                onClick={launch}
-                className="mt-3 text-sm text-flux underline"
-              >
-                Начать пробный период
-              </button>
-            )}
+          {user && canManage && subscription.status === "NOT_STARTED" && (
+            <button
+              onClick={launch}
+              className="mt-3 text-sm text-flux underline"
+            >
+              Начать пробный период
+            </button>
+          )}
         </section>
       )}
 
@@ -324,7 +338,7 @@ function Content() {
           role="alert"
           className="rounded-lg border border-crit/40 p-3 text-sm text-crit"
         >
-          {error}{' '}
+          {error}{" "}
           <button className="underline" onClick={reload}>
             Повторить
           </button>
@@ -354,20 +368,20 @@ function Content() {
           >
             <button
               className={`${button} ${
-                period === 'MONTH' ? 'bg-flux/15 border-flux/50' : ''
+                period === "MONTH" ? "bg-flux/15 border-flux/50" : ""
               }`}
-              aria-pressed={period === 'MONTH'}
-              onClick={() => setPeriod('MONTH')}
+              aria-pressed={period === "MONTH"}
+              onClick={() => setPeriod("MONTH")}
             >
               Месяц
             </button>
 
             <button
               className={`${button} ${
-                period === 'YEAR' ? 'bg-flux/15 border-flux/50' : ''
+                period === "YEAR" ? "bg-flux/15 border-flux/50" : ""
               }`}
-              aria-pressed={period === 'YEAR'}
-              onClick={() => setPeriod('YEAR')}
+              aria-pressed={period === "YEAR"}
+              onClick={() => setPeriod("YEAR")}
             >
               Год · 2 месяца в подарок
             </button>
@@ -382,17 +396,20 @@ function Content() {
               <button
                 key={item.id}
                 aria-pressed={plan === item.id}
+                disabled={isPlanDowngrade(item.id)}
                 onClick={() => setPlan(item.id)}
                 className={`relative flex flex-col rounded-lg border p-4 text-left transition-colors ${
-                  plan === item.id
-                    ? 'border-flux/60 bg-flux/10'
-                    : item.recommended
-                      ? 'border-flux/40 bg-hull/20 hover:border-flux/60'
-                      : 'border-line/50 bg-hull/20 hover:border-flux/30'
+                  isPlanDowngrade(item.id)
+                    ? "cursor-not-allowed border-line/30 bg-hull/10 opacity-40"
+                    : plan === item.id
+                      ? "border-flux/60 bg-flux/10"
+                      : item.recommended
+                        ? "border-flux/40 bg-hull/20 hover:border-flux/60"
+                        : "border-line/50 bg-hull/20 hover:border-flux/30"
                 }`}
               >
                 <span className="mb-2 min-h-4 font-mono text-[9px] font-bold uppercase tracking-wider text-flux">
-                  {item.recommended ? 'Популярный' : '\u00a0'}
+                  {item.recommended ? "Популярный" : "\u00a0"}
                 </span>
 
                 <span className="font-mono text-[10px] uppercase text-fog">
@@ -409,13 +426,13 @@ function Content() {
 
                 <p className="text-xl font-bold text-flux">
                   {formatPrice(
-                    period === 'MONTH' ? item.monthKopecks : item.yearKopecks,
-                  )}{' '}
+                    period === "MONTH" ? item.monthKopecks : item.yearKopecks,
+                  )}{" "}
                   ₽
                 </p>
 
                 <p className="text-xs text-fog">
-                  за {period === 'MONTH' ? 'месяц' : 'год'}
+                  за {period === "MONTH" ? "месяц" : "год"}
                 </p>
 
                 {plan === item.id && (
@@ -450,15 +467,21 @@ function Content() {
             <button
               onClick={pay}
               disabled={
-                busy || Boolean(user && (!canManage || !catalog.paymentsAvailable))
+                busy ||
+                Boolean(
+                  user &&
+                  (!canManage ||
+                    !catalog.paymentsAvailable ||
+                    isPlanDowngrade(plan)),
+                )
               }
               className="rounded-lg bg-flux px-5 py-3 text-sm font-bold text-void disabled:cursor-not-allowed disabled:opacity-50"
             >
               {!user
-                ? 'Войти для оформления'
+                ? "Войти для оформления"
                 : busy
-                  ? 'Готовим оплату…'
-                  : 'Купить подписку'}
+                  ? "Готовим оплату…"
+                  : "Купить подписку"}
             </button>
 
             {!catalog.paymentsAvailable && (
@@ -479,7 +502,7 @@ function Content() {
 
           <p className="mt-2 text-sm leading-relaxed text-fog">
             За каждого нового пользователя, который зарегистрируется по вашей
-            ссылке и подтвердит email, вы получите{' '}
+            ссылке и подтвердит email, вы получите{" "}
             {account.referral.daysPerRegistration} дней доступа. Если срок
             закончился, 30 дней отсчитываются с регистрации друга.
           </p>
@@ -517,7 +540,7 @@ function Content() {
           </div>
 
           <p className="mt-3 text-sm text-fog">
-            Регистраций: {account.referral.registrations} · Начислено:{' '}
+            Регистраций: {account.referral.registrations} · Начислено:{" "}
             {account.referral.earnedDays} дней
           </p>
 
@@ -528,10 +551,7 @@ function Content() {
             </p>
           )}
 
-          <button
-            className="mt-2 text-sm text-flux underline"
-            onClick={reload}
-          >
+          <button className="mt-2 text-sm text-flux underline" onClick={reload}>
             Обновить срок и начисления
           </button>
         </section>
