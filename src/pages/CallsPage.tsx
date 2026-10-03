@@ -1,209 +1,334 @@
-import { useMemo, useState } from "react";
-import { LuPlus, LuSearch, LuCalendar } from "react-icons/lu";
-import { Meeting, meetings as initialMeetings } from "../data/meetings/mockData";
-import MeetingDetail from "../components/shared/dashboard/calls/MeetingDetail";
-import { StatusDot } from "../components/ui/Ambient";
-import MeetingCard from "../components/shared/dashboard/calls/MeetingCard";
-import NewMeetingModal from "../components/shared/dashboard/calls/NewMeetingModal";
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  LuArrowLeft,
+  LuCalendar,
+  LuPlus,
+  LuSearch,
+  LuVideo,
+  LuArrowUpRight,
+} from 'react-icons/lu';
+import MeetingSession from '@/components/shared/dashboard/calls/MeetingSession';
+import MeetingCard from '@/components/shared/dashboard/calls/MeetingCard';
+import NewMeetingModal from '@/components/shared/dashboard/calls/NewMeetingModal';
+import {
+  Avatar,
+  formatMeetingDate,
+  formatMeetingTime,
+} from '@/components/shared/dashboard/calls/MeetingUI';
+import {
+  meetingDepartments,
+  meetingPeople,
+} from '@/data/meetings/prototypeData';
+import { useMeetingsPrototype } from '@/hooks/useMeetingsPrototype';
+import { useAuthStore } from '@/store/auth.store';
+import { useLaunchStore } from '@/store/launch.store';
+import type {
+  Meeting,
+  MeetingDraft,
+  MeetingStatus,
+} from '@/types/meetings.types';
+import '@/components/shared/dashboard/calls/meetings.css';
 
-type Filter = "all" | "upcoming" | "completed" | "processing";
-
-export default function CallsPage() {
-  const [meetings, setMeetings] = useState<Meeting[]>(initialMeetings);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
-  const [query, setQuery] = useState("");
-  const [showNew, setShowNew] = useState(false);
-
-  const activeMeeting = activeId ? meetings.find((m) => m.id === activeId) : null;
-
-  const filtered = useMemo(() => {
-    return meetings.filter((m) => {
-      if (filter !== "all" && m.status !== filter) return false;
-      if (query && !m.title.toLowerCase().includes(query.toLowerCase())) return false;
-      return true;
-    });
-  }, [meetings, filter, query]);
-
-  const stats = useMemo(() => {
-    return {
-      total: meetings.length,
-      upcoming: meetings.filter((m) => m.status === "upcoming").length,
-      completed: meetings.filter((m) => m.status === "completed").length,
-      processing: meetings.filter((m) => m.status === "processing").length,
-    };
-  }, [meetings]);
-
-  const handleNewMeeting = (data: {
-    title: string;
-    date: string;
-    time: string;
-    participants: string[];
-    emails: string[];
-    duration: number;
-    platform: "zoom" | "meet" | "yandex";
-    agenda: string;
-  }) => {
-    const newMeeting: Meeting = {
-      id: `m${Date.now()}`,
-      title: data.title,
-      date: data.date,
-      time: data.time,
-      duration: data.duration,
-      participants: data.participants,
-      emails: data.emails,
-      agenda: data.agenda,
-      status: "upcoming",
-      platform: data.platform,
-      hasRecording: false,
-    };
-    setMeetings((prev) => [newMeeting, ...prev]);
-  };
-
-  if (activeMeeting) {
-    return (
-      <div className="relative min-h-[calc(100vh-4rem)]">
-        <MeetingDetail meeting={activeMeeting} onBack={() => setActiveId(null)} />
-      </div>
-    );
+export default function CallsPage({ preview = false }: { preview?: boolean }) {
+  const user = useAuthStore((s) => s.user);
+  const workspace = useLaunchStore((s) => s.workspace);
+  const scope = preview
+    ? 'preview'
+    : (workspace?.id || 'none') + ':' + (user?.id || 'none');
+  const name = preview
+    ? 'Иван Петров'
+    : user?.name || workspace?.ownerName || 'Вы';
+  return <Meetings key={scope} scope={scope} name={name} />;
+}
+function Meetings({ scope, name }: { scope: string; name: string }) {
+  const { meetings, setMeetings, update, storageError } =
+    useMeetingsPrototype(scope);
+  const people = useMemo(() => meetingPeople(name), [name]);
+  const [params, setParams] = useSearchParams();
+  const activeId = params.get('meeting');
+  const meeting = meetings.find((m) => m.id === activeId);
+  const [quickMeetingId, setQuickMeetingId] = useState<string | null>(null);
+  const [editor, setEditor] = useState(false);
+  const [filter, setFilter] = useState<'all' | MeetingStatus>('all');
+  const [query, setQuery] = useState('');
+  const [department, setDepartment] = useState('');
+  function select(id?: string) {
+    const next = new URLSearchParams(params);
+    if (id) next.set('meeting', id);
+    else next.delete('meeting');
+    setParams(next);
+    setEditor(false);
   }
-
+  function create(draft: MeetingDraft) {
+    const created: Meeting = {
+      ...draft,
+      id: crypto.randomUUID(),
+      organizerId: 'me',
+      status: 'scheduled',
+    };
+    setMeetings((current) => [created, ...current]);
+    select(created.id);
+  }
+  function quick() {
+    const created: Meeting = {
+      id: crypto.randomUUID(),
+      title: 'Быстрая встреча',
+      startsAt: new Date().toISOString(),
+      duration: 30,
+      departmentId: department || 'operations',
+      organizerId: 'me',
+      participants: [
+        { personId: 'me', role: 'host' },
+        ...people
+          .filter((p) => p.departmentId === (department || 'operations'))
+          .map((p) => ({ personId: p.id, role: 'participant' as const })),
+      ],
+      agenda: '',
+      status: 'scheduled',
+      waitingRoom: true,
+      muteOnEntry: true,
+      allowScreenShare: true,
+    };
+    setMeetings((current) => [created, ...current]);
+    select(created.id);
+    setQuickMeetingId(created.id);
+  }
+  const upcoming = meetings
+    .filter((m) => m.status === 'scheduled' || m.status === 'live')
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const nextMeeting = upcoming.find((m) => m.status === 'live') || upcoming[0];
+  const filtered = meetings
+    .filter(
+      (m) =>
+        (filter === 'all' || m.status === filter) &&
+        (!department || m.departmentId === department) &&
+        m.title
+          .toLocaleLowerCase('ru')
+          .includes(query.trim().toLocaleLowerCase('ru')),
+    )
+    .sort((a, b) => {
+      const activeA = a.status === 'scheduled' || a.status === 'live',
+        activeB = b.status === 'scheduled' || b.status === 'live';
+      return activeA !== activeB
+        ? Number(activeB) - Number(activeA)
+        : activeA
+          ? a.startsAt.localeCompare(b.startsAt)
+          : b.startsAt.localeCompare(a.startsAt);
+    });
   return (
-    <div className="relative min-h-[calc(100vh-4rem)]">
-      <div
-        className="pointer-events-none fixed inset-0 -z-10 opacity-60"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 50% at 30% -10%, rgba(30,58,138,0.18), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 20%, rgba(139,133,248,0.08), transparent 65%)",
-        }}
-      />
-
-      <section className="step-in glass corner relative overflow-hidden rounded-xl p-6 md:p-7">
-        <span className="cx pointer-events-none absolute inset-0" />
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="mono-label text-flux">этап 10–14</span>
-              <span className="h-px w-8 bg-line" />
-              <span className="mono-label text-fog/70">meetings · ai</span>
-            </div>
-            <h1 className="mt-2 font-display text-2xl font-bold text-snow md:text-3xl">
-              📅 Встречи
-            </h1>
-            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-fog/80">
-              От планирования до задач в канбане. MyCOO проводит встречу,
-              расшифровывает запись, формирует саммари и извлекает договорённости.
-            </p>
-          </div>
-          <button
-            onClick={() => setShowNew(true)}
-            className="btn-primary flex items-center gap-2 rounded-md bg-flux px-5 py-3 text-[13px] font-bold text-void shadow-[0_0_26px_-8px_rgba(56,189,248,0.7)] transition-all hover:bg-ice"
-          >
-            <LuPlus className="h-4 w-4" />
-            Создать встречу
+    <div className="meetings-ui">
+      <div className="meeting-demo-note">
+        <span className="meeting-demo-pill">Прототип</span>
+        <p>
+          Тестовая команда и локальные встречи. Звонки, запись и сообщения
+          имитируются; приглашения не отправляются.
+        </p>
+      </div>
+      {storageError && (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-warn/40 p-3 text-sm text-warn"
+        >
+          Браузер не разрешил сохранить встречи. Изменения останутся только до
+          перезагрузки страницы.
+        </p>
+      )}
+      {activeId && !meeting ? (
+        <div className="meeting-empty">
+          <LuCalendar />
+          <h1>Встреча недоступна в этом браузере</h1>
+          <p>
+            Демоссылки открывают только локально сохранённые встречи. Настоящие
+            приглашения появятся после подключения сервиса.
+          </p>
+          <button className="meeting-button" onClick={() => select()}>
+            <LuArrowLeft />К списку встреч
           </button>
         </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatBox value={stats.total} label="всего встреч" tone="mist" />
-          <StatBox value={stats.upcoming} label="предстоящих" tone="flux" />
-          <StatBox value={stats.processing} label="в обработке AI" tone="warn" pulse />
-          <StatBox value={stats.completed} label="завершено" tone="ok" />
-        </div>
-      </section>
-
-      <div className="step-in mt-6 flex flex-wrap items-center gap-3" style={{ animationDelay: "0.08s" }}>
-        <div className="flex flex-1 items-center gap-2 rounded-lg border border-line/60 bg-hull/40 px-3 py-2.5 min-w-[200px]">
-          <LuSearch className="h-4 w-4 text-fog/50" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по названию встречи"
-            className="flex-1 bg-transparent text-[13px] text-snow placeholder-fog/40 outline-none"
-          />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: "all" as const, label: "Все", count: stats.total },
-            { id: "upcoming" as const, label: "Предстоят", count: stats.upcoming, tone: "flux" },
-            { id: "processing" as const, label: "AI", count: stats.processing, tone: "warn" },
-            { id: "completed" as const, label: "Завершены", count: stats.completed, tone: "ok" },
-          ].map((f) => {
-            const active = filter === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`flex items-center gap-2 rounded-md border px-3 py-2 font-mono text-[11px] transition-all ${
-                  active
-                    ? "border-flux/50 bg-flux/10 text-snow"
-                    : "border-line/50 bg-hull/30 text-fog/70 hover:border-line/80"
-                }`}
-              >
-                {active && <StatusDot color={f.tone ? `var(--color-${f.tone})` : "var(--color-mist)"} />}
-                {f.label}
-                <span className="text-fog/50">{f.count}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {filtered.length > 0 ? (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {filtered.map((m, i) => (
-            <MeetingCard
-              key={m.id}
-              meeting={m}
-              onClick={() => setActiveId(m.id)}
-              delay={0.05 * i}
-            />
-          ))}
-        </div>
+      ) : meeting ? (
+        <MeetingSession
+          key={meeting.id}
+          meeting={meeting}
+          people={people}
+          initialLobby={quickMeetingId === meeting.id}
+          onBack={() => select()}
+          onUpdate={(patch) => update(meeting.id, patch)}
+        />
       ) : (
-        <section className="step-in mt-6 glass corner relative rounded-xl p-10 text-center">
-          <span className="cx pointer-events-none absolute inset-0" />
-          <LuCalendar className="mx-auto h-8 w-8 text-fog/40" />
-          <p className="mt-3 font-display text-[14px] font-semibold text-mist">
-            Встречи не найдены
+        <>
+          <header className="mb-7 flex flex-wrap items-start justify-between gap-5">
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-widest text-fog">
+                Командная работа
+              </p>
+              <h1 className="font-display text-3xl font-bold text-snow">
+                Встречи
+              </h1>
+              <p className="mt-3 text-sm text-fog">
+                Соберите команду. Обсудите главное. Договоритесь о следующем
+                шаге.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button onClick={quick} className="meeting-button">
+                <LuVideo />
+                Быстрый звонок
+              </button>
+              <button
+                onClick={() => setEditor(true)}
+                className="meeting-button primary"
+              >
+                <LuPlus />
+                Создать встречу
+              </button>
+            </div>
+          </header>
+          {nextMeeting && (
+            <section className="meeting-next">
+              <div>
+                <span className="mb-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-flux">
+                  <span className="h-1.5 w-1.5 rounded-full bg-flux" />
+                  {nextMeeting.status === 'live'
+                    ? 'Можно вернуться'
+                    : 'Ближайшая встреча'}
+                </span>
+                <h2 className="font-display text-xl font-semibold leading-relaxed text-snow md:text-2xl break-words">
+                  {nextMeeting.title}
+                </h2>
+                <p className="mt-3 text-sm text-fog">
+                  {
+                    meetingDepartments.find(
+                      (d) => d.id === nextMeeting.departmentId,
+                    )?.name
+                  }{' '}
+                  · {nextMeeting.duration} минут
+                </p>
+                <div className="mt-6 flex flex-wrap items-center gap-4">
+                  <div className="meeting-avatar-stack flex">
+                    {nextMeeting.participants.slice(0, 4).map((p) => (
+                      <Avatar
+                        key={p.personId}
+                        name={
+                          people.find((person) => person.id === p.personId)
+                            ?.name || 'Участник'
+                        }
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-fog">
+                    Участники демовстречи
+                  </span>
+                </div>
+              </div>
+              <div className="meeting-next-time">
+                <p className="font-mono text-sm text-fog">
+                  {formatMeetingDate(nextMeeting.startsAt)}
+                </p>
+                <p className="mt-2 font-display text-4xl font-semibold text-snow">
+                  {formatMeetingTime(nextMeeting.startsAt)}
+                </p>
+                <button
+                  onClick={() => select(nextMeeting.id)}
+                  className="meeting-button primary mt-6"
+                >
+                  Открыть встречу
+                  <LuArrowUpRight />
+                </button>
+              </div>
+            </section>
+          )}
+          <div className="my-7 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap gap-1" aria-label="Фильтр встреч">
+              {[
+                ['all', 'Все'],
+                ['scheduled', 'Предстоящие'],
+                ['live', 'В эфире'],
+                ['completed', 'Завершённые'],
+                ['cancelled', 'Отменённые'],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  className={'meeting-tab ' + (filter === id ? 'active' : '')}
+                  aria-pressed={filter === id}
+                  onClick={() => setFilter(id as typeof filter)}
+                >
+                  {label}
+                  <span>
+                    {id === 'all'
+                      ? meetings.length
+                      : meetings.filter((m) => m.status === id).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_240px]">
+            <label className="meeting-search">
+              <LuSearch />
+              <input
+                aria-label="Поиск встреч"
+                placeholder="Поиск по названию"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <select
+              className="meeting-select"
+              aria-label="Фильтр по департаменту"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+            >
+              <option value="">Все департаменты</option>
+              {meetingDepartments.map((d) => (
+                <option value={d.id} key={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {filtered.length ? (
+            <div className="meeting-panel overflow-hidden">
+              {filtered.map((item) => (
+                <MeetingCard
+                  key={item.id}
+                  meeting={item}
+                  people={people}
+                  onClick={() => select(item.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="meeting-empty">
+              <LuCalendar />
+              <h2>Встреч не найдено</h2>
+              <p>Измените фильтры или запланируйте новую встречу.</p>
+              <button
+                className="meeting-button"
+                onClick={() => {
+                  setQuery('');
+                  setDepartment('');
+                  setFilter('all');
+                }}
+              >
+                Сбросить фильтры
+              </button>
+            </div>
+          )}
+          <p className="mt-5 text-xs text-fog">
+            Время указано по часовому поясу устройства:{' '}
+            {Intl.DateTimeFormat().resolvedOptions().timeZone}. Данные сохранены
+            только в этом браузере.
           </p>
-          <p className="mt-1 text-[12.5px] text-fog/70">
-            Попробуйте изменить фильтр или создайте новую встречу.
-          </p>
-        </section>
+        </>
       )}
-
-      <NewMeetingModal
-        isOpen={showNew}
-        onClose={() => setShowNew(false)}
-        onSubmit={handleNewMeeting}
-      />
-    </div>
-  );
-}
-
-function StatBox({
-  value,
-  label,
-  tone,
-  pulse,
-}: {
-  value: number;
-  label: string;
-  tone: "mist" | "flux" | "warn" | "ok";
-  pulse?: boolean;
-}) {
-  const colorVar = `var(--color-${tone})`;
-  return (
-    <div className="rounded-lg border border-line/50 bg-hull/30 px-4 py-3">
-      <div className="flex items-center gap-2">
-        <span className="font-display text-2xl font-bold" style={{ color: colorVar }}>
-          {value}
-        </span>
-        {pulse && <StatusDot color={colorVar} />}
-      </div>
-      <p className="mono-label mt-1 text-[10px] text-fog/60">{label}</p>
+      {editor && !activeId && (
+        <NewMeetingModal
+          people={people}
+          onClose={() => setEditor(false)}
+          onSubmit={create}
+        />
+      )}
     </div>
   );
 }
