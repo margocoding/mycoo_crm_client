@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       try {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) { get().clearSession(); return; }
-        const user = await authApi.me(token);
+        const user = await authApi.me();
         if (current === revision) set({ accessToken: token, user, email: user.email });
       } catch (error) {
         if (current !== revision) return;

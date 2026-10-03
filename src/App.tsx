@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
@@ -19,6 +19,22 @@ import { useModalRouter } from "./hooks/useModalRouter";
 
 export default function App() {
   const { state, closeModal } = useModalRouter();
+  const location = useLocation();
+  if (import.meta.env.DEV && location.pathname === "/preview/meetings") {
+    return (
+      <main className="min-h-screen bg-void px-4 py-6 md:px-8">
+        <div className="mx-auto max-w-[1440px]">
+          <div className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-5">
+            <span className="font-display text-sm font-bold tracking-widest text-snow">
+              MYCOO <span className="ml-3 text-fog">/ ВСТРЕЧИ</span>
+            </span>
+            <span className="text-xs text-fog">Локальный просмотр</span>
+          </div>
+          <CallsPage preview />
+        </div>
+      </main>
+    );
+  }
   return (
     <div>
       <SessionBootstrap />

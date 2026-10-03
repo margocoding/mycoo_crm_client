@@ -1,267 +1,273 @@
-import { useState } from "react";
-import { LuCalendar, LuClock, LuFileText, LuMail, LuUsers, LuPlus, LuX } from "react-icons/lu";
-import { Modal } from "../../../ui/Modal";
-import { teamMembers } from "../../../../data/meetings/mockData";
-import { StatusChip } from "../../../ui/Ambient";
+import { useState, type FormEvent } from 'react';
+import { LuCalendar, LuShieldCheck } from 'react-icons/lu';
+import { meetingDepartments } from '@/data/meetings/prototypeData';
+import type {
+  Meeting,
+  MeetingDraft,
+  MeetingParticipant,
+  MeetingPerson,
+} from '@/types/meetings.types';
+import { Avatar, MeetingDialog } from './MeetingUI';
 
-interface NewMeetingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: {
-    title: string;
-    date: string;
-    time: string;
-    participants: string[];
-    emails: string[];
-    duration: number;
-    platform: "zoom" | "meet" | "yandex";
-    agenda: string;
-  }) => void;
+function localDateTime(value: Date) {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
-
-const platforms = [
-  { id: "zoom" as const, label: "Zoom" },
-  { id: "meet" as const, label: "Google Meet" },
-  { id: "yandex" as const, label: "Яндекс Телемост" },
-];
-
-const durations = [30, 45, 60, 90, 120];
-
-export default function NewMeetingModal({ isOpen, onClose, onSubmit }: NewMeetingModalProps) {
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [time, setTime] = useState("10:00");
-  const [participants, setParticipants] = useState<string[]>([]);
-  const [extraEmails, setExtraEmails] = useState("");
-  const [duration, setDuration] = useState(60);
-  const [platform, setPlatform] = useState<"zoom" | "meet" | "yandex">("zoom");
-  const [agenda, setAgenda] = useState("");
-
-  const toggleParticipant = (id: string) => {
-    setParticipants((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  };
-
-  const canSubmit = title.trim() && participants.length > 0 && agenda.trim();
-
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    const emails = [
-      ...participants.map((id) => teamMembers.find((m) => m.id === id)?.email || ""),
-      ...extraEmails
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean),
-    ];
-    onSubmit({ title, date, time, participants, emails, duration, platform, agenda });
-    setTitle("");
-    setDate(new Date().toISOString().split("T")[0]);
-    setTime("10:00");
-    setParticipants([]);
-    setExtraEmails("");
-    setDuration(60);
-    setPlatform("zoom");
-    setAgenda("");
-    onClose();
-  };
-
+export default function NewMeetingModal({
+  meeting,
+  people,
+  onClose,
+  onSubmit,
+}: {
+  meeting?: Meeting;
+  people: MeetingPerson[];
+  onClose: () => void;
+  onSubmit: (draft: MeetingDraft) => void;
+}) {
+  const [title, setTitle] = useState(meeting?.title || '');
+  const [startsAt, setStartsAt] = useState(
+    localDateTime(
+      meeting ? new Date(meeting.startsAt) : new Date(Date.now() + 30 * 60000),
+    ),
+  );
+  const [departmentId, setDepartmentId] = useState(
+    meeting?.departmentId || 'operations',
+  );
+  const [duration, setDuration] = useState(meeting?.duration || 45);
+  const [agenda, setAgenda] = useState(meeting?.agenda || '');
+  const [participants, setParticipants] = useState<MeetingParticipant[]>(
+    meeting?.participants || [{ personId: 'me', role: 'host' }],
+  );
+  const [waitingRoom, setWaitingRoom] = useState(meeting?.waitingRoom ?? true);
+  const [muteOnEntry, setMuteOnEntry] = useState(meeting?.muteOnEntry ?? true);
+  const [allowScreenShare, setAllowScreenShare] = useState(
+    meeting?.allowScreenShare ?? true,
+  );
+  const [error, setError] = useState('');
+  const available = people.filter((p) => p.departmentId === departmentId);
+  function changeDepartment(id: string) {
+    setDepartmentId(id);
+    setParticipants((current) =>
+      current.filter(
+        (p) =>
+          p.role === 'host' ||
+          people.some(
+            (person) => person.id === p.personId && person.departmentId === id,
+          ),
+      ),
+    );
+  }
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const when = new Date(startsAt);
+    if (!title.trim()) {
+      setError('Введите название встречи.');
+      return;
+    }
+    if (!Number.isFinite(when.getTime()) || when.getTime() < Date.now()) {
+      setError('Выберите будущие дату и время.');
+      return;
+    }
+    onSubmit({
+      title: title.trim(),
+      startsAt: when.toISOString(),
+      duration,
+      departmentId,
+      agenda: agenda.trim(),
+      participants,
+      waitingRoom,
+      muteOnEntry,
+      allowScreenShare,
+    });
+  }
   return (
-    <Modal
-      isOpen={isOpen}
+    <MeetingDialog
+      title={meeting ? 'Изменить встречу' : 'Новая встреча'}
       onClose={onClose}
-      title={
-        <>
-          MYCOO <span className="text-fog/60">/</span>{" "}
-          <span className="text-flux">NEW MEETING</span>
-        </>
-      }
-      subtitle={<>этап 10 · создание встречи</>}
-      statusChip={{ tone: "flux", text: "invite" }}
-      maxWidth="max-w-3xl"
     >
-      <div className="space-y-5">
-        <div>
-          <label className="mono-label mb-2 block text-fog/60">название встречи</label>
+      <form onSubmit={submit} className="space-y-5">
+        <p className="text-sm text-fog">
+          Планируйте разговор в контексте отдела. В прототипе приглашения не
+          отправляются.
+        </p>
+        <label className="meeting-field">
+          Название встречи
           <input
-            type="text"
+            required
+            maxLength={120}
+            placeholder="Например, планирование следующей недели"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Например: Планёрка по операциям"
-            className="w-full rounded-lg border border-line/60 bg-hull/40 px-4 py-3 text-[14px] text-snow placeholder-fog/40 outline-none transition-colors focus:border-flux/50"
           />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div>
-            <label className="mono-label mb-2 flex items-center gap-1.5 text-fog/60">
-              <LuCalendar className="h-3 w-3" />
-              дата
-            </label>
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="meeting-field">
+            Дата и время
             <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-lg border border-line/60 bg-hull/40 px-3 py-2.5 text-[13px] text-snow outline-none transition-colors focus:border-flux/50"
+              type="datetime-local"
+              required
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
             />
-          </div>
-          <div>
-            <label className="mono-label mb-2 flex items-center gap-1.5 text-fog/60">
-              <LuClock className="h-3 w-3" />
-              время
-            </label>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-full rounded-lg border border-line/60 bg-hull/40 px-3 py-2.5 text-[13px] text-snow outline-none transition-colors focus:border-flux/50"
-            />
-          </div>
-          <div>
-            <label className="mono-label mb-2 flex items-center gap-1.5 text-fog/60">
-              <LuClock className="h-3 w-3" />
-              длительность
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {durations.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDuration(d)}
-                  className={`rounded-md border px-2.5 py-1.5 font-mono text-[10px] transition-all ${
-                    duration === d
-                      ? "border-flux/50 bg-flux/10 text-flux"
-                      : "border-line/50 bg-hull/30 text-fog/60 hover:border-line/80"
-                  }`}
-                >
-                  {d}м
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label className="mono-label mb-2 flex items-center gap-1.5 text-fog/60">
-            <LuUsers className="h-3 w-3" />
-            участники из команды
           </label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {teamMembers.map((m) => {
-              const selected = participants.includes(m.id);
+          <label className="meeting-field">
+            Продолжительность
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+            >
+              {[15, 30, 45, 60, 90, 120].map((n) => (
+                <option key={n} value={n}>
+                  {n} минут
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <label className="meeting-field">
+          Департамент
+          <select
+            value={departmentId}
+            onChange={(e) => changeDepartment(e.target.value)}
+          >
+            {meetingDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset>
+          <legend className="mb-3 text-sm font-semibold text-mist">
+            Участники <span className="text-fog">· {participants.length}</span>
+          </legend>
+          <div className="meeting-person-row mb-2">
+            <Avatar name={people[0].name} />
+            <div className="flex-1">
+              <p>
+                {people[0].name} <span className="text-fog">(вы)</span>
+              </p>
+              <small className="text-fog">
+                Организатор · управление встречей
+              </small>
+            </div>
+            <LuShieldCheck className="text-flux" />
+          </div>
+          <div className="space-y-2">
+            {available.map((person) => {
+              const selected = participants.find(
+                (p) => p.personId === person.id,
+              );
               return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => toggleParticipant(m.id)}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all ${
-                    selected
-                      ? "border-flux/50 bg-flux/10"
-                      : "border-line/50 bg-hull/30 hover:border-line/80"
-                  }`}
-                >
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-bold ${
-                      selected
-                        ? "bg-gradient-to-br from-flux to-ion text-void"
-                        : "bg-hull text-fog/70"
-                    }`}
-                  >
-                    {m.avatar}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`truncate text-[12.5px] font-medium ${selected ? "text-snow" : "text-mist"}`}>
-                      {m.name}
-                    </p>
-                    <p className="truncate font-mono text-[9.5px] text-fog/60">{m.role}</p>
-                  </div>
-                  {selected && <LuPlus className="h-3.5 w-3.5 shrink-0 text-flux" />}
-                </button>
+                <div key={person.id} className="meeting-person-row">
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selected)}
+                      onChange={(e) =>
+                        setParticipants((current) =>
+                          e.target.checked
+                            ? [
+                                ...current,
+                                { personId: person.id, role: 'participant' },
+                              ]
+                            : current.filter((p) => p.personId !== person.id),
+                        )
+                      }
+                    />
+                    <span>
+                      <span className="block text-sm text-snow">
+                        {person.name}
+                      </span>
+                      <span className="text-xs text-fog">
+                        {person.position}
+                      </span>
+                    </span>
+                  </label>
+                  {selected && (
+                    <select
+                      aria-label={'Роль: ' + person.name}
+                      className="meeting-select compact"
+                      value={selected.role}
+                      onChange={(e) =>
+                        setParticipants((current) =>
+                          current.map((p) =>
+                            p.personId === person.id
+                              ? {
+                                  ...p,
+                                  role:
+                                    e.target.value === 'cohost'
+                                      ? 'cohost'
+                                      : 'participant',
+                                }
+                              : p,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="participant">Участник</option>
+                      <option value="cohost">Соорганизатор</option>
+                    </select>
+                  )}
+                </div>
               );
             })}
           </div>
-        </div>
-
-        <div>
-          <label className="mono-label mb-2 flex items-center gap-1.5 text-fog/60">
-            <LuMail className="h-3 w-3" />
-            дополнительные email (через запятую)
-          </label>
-          <input
-            type="text"
-            value={extraEmails}
-            onChange={(e) => setExtraEmails(e.target.value)}
-            placeholder="guest@example.com, partner@company.com"
-            className="w-full rounded-lg border border-line/60 bg-hull/40 px-4 py-2.5 text-[13px] text-snow placeholder-fog/40 outline-none transition-colors focus:border-flux/50"
-          />
-        </div>
-
-        <div>
-          <label className="mono-label mb-2 flex items-center gap-1.5 text-fog/60">
-            платформа
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {platforms.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setPlatform(p.id)}
-                className={`rounded-md border px-3 py-2 font-mono text-[11px] transition-all ${
-                  platform === p.id
-                    ? "border-flux/50 bg-flux/10 text-flux"
-                    : "border-line/50 bg-hull/30 text-fog/60 hover:border-line/80"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="mono-label mb-2 flex items-center gap-1.5 text-fog/60">
-            <LuFileText className="h-3 w-3" />
-            повестка
-          </label>
+        </fieldset>
+        <label className="meeting-field">
+          Повестка <span className="font-normal text-fog">(необязательно)</span>
           <textarea
+            rows={3}
+            maxLength={2000}
+            placeholder="Что обсудить и с каким результатом закончить"
             value={agenda}
             onChange={(e) => setAgenda(e.target.value)}
-            rows={4}
-            placeholder="1. Первая тема обсуждения&#10;2. Вторая тема&#10;3. ..."
-            className="w-full resize-none rounded-lg border border-line/60 bg-hull/40 px-4 py-3 text-[13px] text-snow placeholder-fog/40 outline-none transition-colors focus:border-flux/50"
           />
+        </label>
+        <fieldset className="meeting-settings">
+          <legend className="mb-2 text-sm font-semibold">
+            Настройки входа
+          </legend>
+          <label>
+            <input
+              type="checkbox"
+              checked={waitingRoom}
+              onChange={(e) => setWaitingRoom(e.target.checked)}
+            />
+            Зал ожидания
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={muteOnEntry}
+              onChange={(e) => setMuteOnEntry(e.target.checked)}
+            />
+            Выключать микрофон при входе
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={allowScreenShare}
+              onChange={(e) => setAllowScreenShare(e.target.checked)}
+            />
+            Разрешить участникам демонстрацию экрана
+          </label>
+        </fieldset>
+        {error && (
+          <p role="alert" className="text-sm text-crit">
+            {error}
+          </p>
+        )}
+        <div className="meeting-dialog-actions">
+          <button type="button" className="meeting-button" onClick={onClose}>
+            Отмена
+          </button>
+          <button type="submit" className="meeting-button primary">
+            <LuCalendar />
+            {meeting ? 'Сохранить изменения' : 'Создать встречу'}
+          </button>
         </div>
-
-        <div className="rounded-lg border border-ion/20 bg-ion/5 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <StatusChip tone="ion">mycoo ai</StatusChip>
-            <span className="text-[12px] text-fog/80">
-              После завершения встречи MyCOO автоматически создаст transcript, саммари и предложит договорённости для превращения в задачи.
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex items-center justify-center gap-2 rounded-md border border-line/60 px-5 py-2.5 text-[12.5px] font-semibold text-fog transition-all hover:border-line hover:text-snow"
-        >
-          <LuX className="h-3.5 w-3.5" />
-          Отмена
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className={`flex items-center justify-center gap-2 rounded-md px-5 py-2.5 text-[12.5px] font-bold transition-all ${
-            canSubmit
-              ? "bg-flux text-void shadow-[0_0_22px_-6px_rgba(56,189,248,0.7)] hover:bg-ice"
-              : "cursor-not-allowed bg-hull/40 text-fog/40"
-          }`}
-        >
-          Сформировать приглашение
-        </button>
-      </div>
-    </Modal>
+      </form>
+    </MeetingDialog>
   );
 }
