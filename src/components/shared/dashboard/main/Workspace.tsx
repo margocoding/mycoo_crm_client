@@ -8,6 +8,8 @@ import { useAuthStore } from "@/store/auth.store";
 import { useTeam } from "@/components/shared/team/TeamProvider";
 import { useDashboard } from "@/hooks/useDashboard";
 import { ActivityFeed } from '@/components/shared/notifications/NotificationList';
+import { tasksApi } from '@/api/tasks.api';
+import { errorMessage } from '@/api/base.api';
 
 const toneVar = {
   crit: "var(--color-crit)",
@@ -82,6 +84,16 @@ export default function Workspace() {
   const { data: team } = useTeam();
   const [departmentId, setDepartmentId] = useState('');
   const { data, error, reload } = useDashboard(workspace?.id, departmentId);
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState('');
+  async function completeTask(id: string, taskDepartmentId: string) {
+    if (!workspace || completing) return;
+    setCompleting(id);
+    setTaskError('');
+    try { await tasksApi.status(workspace.id, taskDepartmentId, id, 'done'); reload(); }
+    catch (error) { setTaskError(errorMessage(error)); }
+    finally { setCompleting(null); }
+  }
   const [ready, setReady] = useState(false);
   const isOwner = workspace?.ownerId === user?.id;
   const daysLeft = workspace?.subscription?.daysRemaining ?? 0;
@@ -249,20 +261,27 @@ export default function Workspace() {
                 const overdue = row.dueDate < data.today;
                 const today = row.dueDate === data.today;
                 const tone = overdue ? toneVar.crit : today ? toneVar.warn : 'var(--color-flux)';
-                return <Link
-                  key={row.id} to={row.departmentId ? '/dashboard/tasks/' + row.departmentId : '/dashboard/tasks'}
-                  className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 rounded-md border border-line/60 bg-hull/25 px-3.5 py-2.5 transition-colors duration-300 hover:border-line sm:flex sm:gap-3"
+                return <div
+                  key={row.id}
+                  className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-md border border-line/60 bg-hull/25 px-3.5 py-2.5 transition-colors duration-300 hover:border-line sm:grid-cols-[auto_minmax(0,1fr)_auto]"
                 >
                   <span>
                     <StatusDot color={tone} />
                   </span>
-                  <span className="min-w-0 flex-1 break-words text-[13px] font-medium text-mist">{row.title}</span>
-                  <span className="col-start-2 font-mono text-[10.5px] uppercase tracking-[0.1em] sm:ml-auto sm:shrink-0" style={{ color: tone }}>
+                  <Link to={row.departmentId ? '/dashboard/tasks/' + row.departmentId : '/dashboard/tasks'} className="min-w-0 break-words text-[13px] font-medium text-mist hover:text-flux sm:col-span-2">{row.title}</Link>
+                  <span className="col-start-2 font-mono text-[10.5px] uppercase tracking-[0.1em]" style={{ color: tone }}>
                     {overdue ? 'Просрочена · ' : today ? 'Срок сегодня · ' : 'До '}{new Date(row.dueDate).toLocaleDateString('ru-RU', { timeZone: 'UTC' })}
                   </span>
-                </Link>;
+                  {overdue && row.canComplete && row.departmentId && <button
+                    disabled={completing !== null} onClick={() => void completeTask(row.id, row.departmentId!)}
+                    className="col-start-2 w-fit rounded border border-ok/40 px-2 py-1.5 text-xs text-ok hover:bg-ok/10 disabled:opacity-50 sm:col-start-3 sm:row-start-2"
+                    aria-label={'Завершить задачу: ' + row.title}>
+                    {completing === row.id ? 'Завершаем…' : 'Завершить задачу'}
+                  </button>}
+                </div>;
               })}
               {data && !data.tasks.items.length && <p className="text-sm text-fog">Активных задач пока нет.</p>}
+              {taskError && <p role="alert" className="text-sm text-crit">{taskError}</p>}
             </div>
             <p className="mono-label mt-4 text-fog/40">{data ? `обновлено: ${new Date(data.updatedAt).toLocaleTimeString('ru-RU')}` : 'загружаем задачи'}</p>
           </Card>

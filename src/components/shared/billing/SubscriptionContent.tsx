@@ -60,6 +60,13 @@ function Content() {
 
   const canManage = !workspace || workspace.ownerId === user?.id;
   const subscription = workspace?.subscription ?? account?.subscription;
+  function quote(item: BillingCatalog['plans'][number]) {
+    const base = period === 'MONTH' ? item.monthKopecks : item.yearKopecks;
+    const pending = canManage && account?.referral.pendingOrders?.find(order => order.plan === item.id && order.period === period);
+    const percent = canManage && (account?.referral.availableDiscounts ?? 0) > 0 ? account!.referral.discountPercent : 0;
+    return pending ? { amount: pending.amountKopecks, percent: pending.discountPercent }
+      : { amount: Math.round(base * (100 - percent) / 100), percent };
+  }
 
   const currentPlanIndex =
     subscription?.status === "PAID" && subscription.plan
@@ -425,15 +432,14 @@ function Content() {
                 </p>
 
                 <p className="text-xl font-bold text-flux">
-                  {formatPrice(
-                    period === "MONTH" ? item.monthKopecks : item.yearKopecks,
-                  )}{" "}
+                  {formatPrice(quote(item).amount)}{" "}
                   ₽
                 </p>
 
                 <p className="text-xs text-fog">
                   за {period === "MONTH" ? "месяц" : "год"}
                 </p>
+                {quote(item).percent > 0 && <p className="mt-2 text-xs text-ok">Скидка {quote(item).percent}% на эту оплату</p>}
 
                 {plan === item.id && (
                   <LuCheck className="absolute right-3 top-3 text-flux" />
@@ -486,8 +492,7 @@ function Content() {
 
             {!catalog.paymentsAvailable && (
               <p className="mt-3 text-sm text-fog">
-                Оплата скоро станет доступна. Пока можно продлить доступ по
-                реферальной программе.
+                Оплата временно недоступна. Реферальные скидки сохранятся до оформления подписки.
               </p>
             )}
           </div>
@@ -497,14 +502,15 @@ function Content() {
       {account && (
         <section className="rounded-lg border border-ion/40 bg-ion/5 p-4">
           <h2 className="font-display font-bold text-snow">
-            Приглашайте друзей — получайте +30 дней
+            Приглашайте друзей — получайте скидку 10%
           </h2>
 
           <p className="mt-2 text-sm leading-relaxed text-fog">
             За каждого нового пользователя, который зарегистрируется по вашей
             ссылке и подтвердит email, вы получите{" "}
-            {account.referral.daysPerRegistration} дней доступа. Если срок
-            закончился, 30 дней отсчитываются с регистрации друга.
+            одну скидку {account.referral.discountPercent ?? 10}% на оплату тарифа.
+            Скидки применяются по одной к отдельным оплатам месяца или года и не суммируются.
+            Например, три реферала — три оплаты подряд со скидкой 10%.
           </p>
 
           {!canManage && (
@@ -540,9 +546,16 @@ function Content() {
           </div>
 
           <p className="mt-3 text-sm text-fog">
-            Регистраций: {account.referral.registrations} · Начислено:{" "}
-            {account.referral.earnedDays} дней
+            Регистраций: {account.referral.registrations} · Доступно скидок: {account.referral.availableDiscounts ?? 0} · Использовано: {account.referral.usedDiscounts ?? 0}
           </p>
+          {(account.referral.earnedDays > 0 || account.referral.pendingDays > 0) && <p className="mt-2 text-xs text-fog">Ранее начисленные бонусные дни сохранены.</p>}
+          {Boolean(account.referral.pendingOrders?.length) && <div className="mt-3 space-y-2">
+            <p className="text-sm text-fog">Скидки в неоплаченных заказах: {account.referral.pendingOrders.length}. Продолжите выбранную оплату — скидка сохранится.</p>
+            {account.referral.pendingOrders.map(order => <button key={order.id} className={button} disabled={!canManage}
+              onClick={() => { setPlan(order.plan); setPeriod(order.period); setNotice('Тариф выбран. Нажмите «Купить подписку», чтобы продолжить оплату со скидкой.'); }}>
+              {catalog?.plans.find(item => item.id === order.plan)?.name ?? order.plan} · {order.period === 'MONTH' ? 'месяц' : 'год'} · {formatPrice(order.amountKopecks)} ₽
+            </button>)}
+          </div>}
 
           {account.referral.pendingDays > 0 && (
             <p className="mt-2 text-sm text-flux">

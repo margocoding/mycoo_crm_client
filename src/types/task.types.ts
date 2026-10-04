@@ -17,6 +17,9 @@ export interface Task {
   status: TaskStatus;
   createdAt: string;
   updatedAt: string;
+  repeatDays: number[];
+  nextRepeatAt: string | null;
+  repeatSourceId: string | null;
 }
 export interface TaskInput {
   title: string;
@@ -25,7 +28,9 @@ export interface TaskInput {
   dueDate: string;
   priority: Task['priority'];
   successCriteria: string;
+  repeatDays?: number[];
 }
+export const taskWeekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 export function taskAssigneeNames(task: Task) {
   return [...new Map(task.assignees.map((a) => [a.email, (a.name || a.email) + (a.userId ? '' : ' (приглашён)')])).values()].join(', ') || 'Не назначены';
 }

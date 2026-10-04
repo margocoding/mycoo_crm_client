@@ -1,6 +1,6 @@
 import { useTasks } from '../../../../context/TasksContext';
 import { LuCalendarDays, LuUser } from 'react-icons/lu';
-import { TaskActions, TaskStatusSelect, TaskDepartments } from './TaskControls';
+import { TaskActions, TaskStatusSelect, TaskDepartments, TaskRecurrence } from './TaskControls';
 import { taskAssigneeNames, taskDateRange } from '@/types/task.types';
 
 const priorityColors: Record<string, string> = {
@@ -130,7 +130,7 @@ export default function TaskList() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-snow">
                         {task.title}
-                      </p><TaskDepartments task={task} />
+                      </p><TaskDepartments task={task} /><TaskRecurrence task={task} />
 
                       {task.successCriteria && (
                         <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
@@ -210,7 +210,7 @@ export default function TaskList() {
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-semibold leading-5 text-snow">
                     {task.title}
-                  </h3><TaskDepartments task={task} />
+                  </h3><TaskDepartments task={task} /><TaskRecurrence task={task} />
 
                   {task.successCriteria && (
                     <div className="mt-2 flex items-start gap-1.5">

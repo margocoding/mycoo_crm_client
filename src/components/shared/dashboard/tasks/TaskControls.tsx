@@ -1,7 +1,7 @@
 import { LuLockKeyhole, LuPencil, LuTrash2 } from 'react-icons/lu';
 import Select from '@/components/ui/Select';
 import { useTasks, type Task } from '@/context/TasksContext';
-import type { TaskStatus } from '@/types/task.types';
+import { taskWeekdays, type TaskStatus } from '@/types/task.types';
 
 const statuses = [
   { value: 'backlog', label: 'Backlog', color: 'var(--color-fog)' },
@@ -31,6 +31,13 @@ export function TaskActions({ task }: { task: Task }) {
       <LuTrash2 className="h-4 w-4" />
     </button>
   </div>;
+}
+
+export function TaskRecurrence({ task }: { task: Task }) {
+  if (!task.repeatDays?.length && !task.repeatSourceId) return null;
+  return <p className="mt-1.5 text-[10px] leading-relaxed text-flux">
+    {task.repeatDays?.length ? 'Каждую неделю: ' + [...task.repeatDays].sort().map(d => taskWeekdays[d - 1]).join(', ') : 'По расписанию'}
+  </p>;
 }
 
 export function TaskDepartments({ task }: { task: Task }) {
