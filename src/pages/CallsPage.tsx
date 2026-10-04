@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   LuArrowLeft,
@@ -29,10 +29,12 @@ import type {
   MeetingStatus,
 } from '@/types/meetings.types';
 import '@/components/shared/dashboard/calls/meetings.css';
+const LiveCallsPage = lazy(()=>import('@/components/shared/dashboard/calls/LiveCallsPage'));
 
 export default function CallsPage({ preview = false }: { preview?: boolean }) {
   const user = useAuthStore((s) => s.user);
   const workspace = useLaunchStore((s) => s.workspace);
+  if (!preview) return <div className="meetings-ui"><Suspense fallback={<p className="p-6 text-fog">Загружаем встречи…</p>}><LiveCallsPage/></Suspense></div>;
   const scope = preview
     ? 'preview'
     : (workspace?.id || 'none') + ':' + (user?.id || 'none');

@@ -2,6 +2,7 @@ import { LuLockKeyhole, LuPencil, LuTrash2 } from 'react-icons/lu';
 import Select from '@/components/ui/Select';
 import { useTasks, type Task } from '@/context/TasksContext';
 import { taskWeekdays, type TaskStatus } from '@/types/task.types';
+import { Link } from 'react-router-dom';
 
 const statuses = [
   { value: 'backlog', label: 'Backlog', color: 'var(--color-fog)' },
@@ -34,10 +35,10 @@ export function TaskActions({ task }: { task: Task }) {
 }
 
 export function TaskRecurrence({ task }: { task: Task }) {
-  if (!task.repeatDays?.length && !task.repeatSourceId) return null;
-  return <p className="mt-1.5 text-[10px] leading-relaxed text-flux">
+  return <>{task.meeting&&<Link className="mt-1.5 block text-[10px] leading-relaxed text-flux" to={'/dashboard/calls?meeting='+task.meeting.id+'&workspace='+task.workspaceId}>Источник: {task.meeting.title} · {new Date(task.meeting.startsAt).toLocaleDateString('ru-RU')}</Link>}
+  {(!!task.repeatDays?.length||!!task.repeatSourceId)&&<p className="mt-1.5 text-[10px] leading-relaxed text-flux">
     {task.repeatDays?.length ? 'Каждую неделю: ' + [...task.repeatDays].sort().map(d => taskWeekdays[d - 1]).join(', ') : 'По расписанию'}
-  </p>;
+  </p>}</>;
 }
 
 export function TaskDepartments({ task }: { task: Task }) {

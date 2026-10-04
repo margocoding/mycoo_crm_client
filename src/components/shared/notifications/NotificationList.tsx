@@ -14,14 +14,14 @@ export function NotificationList({ items, pending, onRead, compact = false }: {
           <Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${item.kind === 'ROLE_CHANGED' ? 'text-ion' : 'text-flux'}`} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fog/70">
-              <span>{item.kind === 'ROLE_CHANGED' ? 'Изменение роли' : 'Назначение задачи'}</span>
+              <span>{{ROLE_CHANGED:'Изменение роли',TASK_ASSIGNED:'Назначение задачи',MEETING_INVITED:'Приглашение на встречу',MEETING_PROTOCOL:'Протокол встречи'}[item.kind]}</span>
               {!item.readAt && <span className="text-flux">Новое</span>}
               <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>
             </div>
             <p className="mt-2 break-words text-sm leading-relaxed text-mist">{item.message}</p>
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
               {item.href && <Link to={item.href} className="text-flux underline underline-offset-4"
-                onClick={() => { if (!item.readAt) void onRead(item.id); }}>{item.kind === 'TASK_ASSIGNED' ? 'Открыть доску' : 'Открыть департамент'}</Link>}
+                onClick={() => { if (!item.readAt) void onRead(item.id); }}>{item.kind.startsWith('MEETING_') ? 'Открыть встречу' : item.kind === 'TASK_ASSIGNED' ? 'Открыть доску' : 'Открыть департамент'}</Link>}
               {!item.readAt && <button type="button" disabled={pending} onClick={() => void onRead(item.id)}
                 aria-label={'Отметить прочитанным: ' + item.message}
                 className="inline-flex items-center gap-1.5 text-fog hover:text-snow disabled:opacity-40">

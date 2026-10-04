@@ -2,6 +2,8 @@ export type TaskStatus = 'backlog' | 'in-progress' | 'review' | 'done';
 export interface TaskAssignee { departmentId: string; email: string; name: string | null; userId: string | null; }
 export interface Task {
   id: string;
+  workspaceId?: string;
+  meeting?: { id: string; title: string; startsAt: string } | null;
   departmentId: string;
   departments: Array<{ id: string; name: string }>;
   isShared: boolean;

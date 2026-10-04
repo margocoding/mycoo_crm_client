@@ -1,6 +1,6 @@
 export interface Notification {
   id: string;
-  kind: 'ROLE_CHANGED' | 'TASK_ASSIGNED';
+  kind: 'ROLE_CHANGED' | 'TASK_ASSIGNED' | 'MEETING_INVITED' | 'MEETING_PROTOCOL';
   message: string;
   createdAt: string;
   readAt: string | null;
