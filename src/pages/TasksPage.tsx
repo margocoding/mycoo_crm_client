@@ -32,7 +32,7 @@ function TasksContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-display text-xl font-bold text-snow">Задачи</h2>
-          <p className="text-sm text-fog/70 mt-1">{canManage ? 'Управляйте задачами команды' : 'Ваши задачи. Статус «Готово» устанавливает администратор.'}</p>
+          <p className="text-sm text-fog/70 mt-1">{canManage ? 'Управляйте задачами команды' : 'Ваши задачи. Завершение доступно собственнику, руководителю, администратору или создателю задачи.'}</p>
         </div>
 
         <div className="flex items-center gap-3">

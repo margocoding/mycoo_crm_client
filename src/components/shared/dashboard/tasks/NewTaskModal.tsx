@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import DatePicker from "@/components/ui/DatePicker";
+import { taskWeekdays } from "@/types/task.types";
 const priorityOptions = [
   { value: "low", label: "Низкий", color: "var(--color-ok)" },
   { value: "medium", label: "Средний", color: "var(--color-warn)" },
@@ -59,6 +60,8 @@ export default function NewTaskModal({
   const [selectedDepartments, setSelectedDepartments] = useState(task?.departments.map((d) => d.id) ?? [departmentId]);
   const [startDate, setStartDate] = useState(task?.startDate ?? "");
   const [dueDate, setDueDate] = useState(task?.dueDate ?? "");
+  const [repeatDays, setRepeatDays] = useState(task?.repeatDays ?? []);
+  const [repeating, setRepeating] = useState(Boolean(task?.repeatDays?.length));
   const [priority, setPriority] = useState<Task["priority"]>(
     task?.priority ?? "medium",
   );
@@ -83,11 +86,16 @@ export default function NewTaskModal({
       return;
     }
     setValidation("");
+    if (repeating && !repeatDays.length) {
+      setValidation("Выберите хотя бы один день повторения.");
+      return;
+    }
     const data = {
       title: title.trim(),
       assignees: assignments,
       startDate,
       dueDate,
+      repeatDays: repeating ? repeatDays : [],
       priority,
       successCriteria: successCriteria.trim(),
     };
@@ -296,6 +304,29 @@ export default function NewTaskModal({
               />{" "}
             </fieldset>{" "}
           </div>{" "}
+          <fieldset className="min-w-0 rounded-md border border-line/60 bg-hull/15 p-3.5">
+            {task?.repeatSourceId ? <p className="text-xs leading-relaxed text-fog">
+              Задача создана по расписанию. Повторы настраиваются в исходной задаче; изменения здесь относятся только к этому экземпляру.
+            </p> : <>
+              <label className="flex items-center gap-2 text-sm text-mist">
+                <input type="checkbox" checked={repeating} onChange={(e) => setRepeating(e.target.checked)} className="accent-flux" />
+                Постоянная задача — повторять каждую неделю
+              </label>
+              {repeating && <>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {taskWeekdays.map((day, index) => <label key={day} className="flex items-center gap-1.5 rounded border border-line px-2.5 py-2 text-xs text-mist">
+                    <input type="checkbox" checked={repeatDays.includes(index + 1)} className="accent-flux"
+                      onChange={(e) => setRepeatDays((days) => e.target.checked ? [...days, index + 1].sort() : days.filter((d) => d !== index + 1))} />
+                    {day}
+                  </label>)}
+                </div>
+                <p className="mt-3 text-[11px] leading-relaxed text-fog">
+                  Первая задача создаётся сразу с указанным сроком. Следующие — в выбранные дни после даты начала, с тем же интервалом выполнения и исполнителями. Время: 00:00 МСК.
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-fog">Завершение задачи не отменяет повторы. Чтобы остановить их, выключите повторение в исходной задаче.</p>
+              </>}
+            </>}
+          </fieldset>
           <div className="min-w-0">
             {" "}
             <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2">

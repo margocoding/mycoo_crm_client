@@ -12,5 +12,7 @@ export interface BillingCatalog {
 }
 export interface BillingAccount {
   subscription: Subscription;
-  referral: { url: string; registrations: number; earnedDays: number; pendingDays: number; daysPerRegistration: number };
+  referral: { url: string; registrations: number; earnedDays: number; pendingDays: number; daysPerRegistration: number;
+    discountPercent: number; earnedDiscounts: number; availableDiscounts: number; usedDiscounts: number;
+    pendingOrders: Array<{ id: string; plan: PlanId; period: BillingPeriod; amountKopecks: number; discountPercent: number }> };
 }

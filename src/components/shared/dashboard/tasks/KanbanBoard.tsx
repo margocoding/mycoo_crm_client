@@ -1,5 +1,5 @@
 import { Task, useTasks } from "../../../../context/TasksContext";
-import { TaskActions, TaskStatusSelect, TaskDepartments } from "./TaskControls";
+import { TaskActions, TaskStatusSelect, TaskDepartments, TaskRecurrence } from "./TaskControls";
 import { taskAssigneeNames, taskDateRange } from "@/types/task.types";
 import { LuCalendarDays, LuCircleCheck, LuUsers } from "react-icons/lu";
 interface KanbanColumnProps {
@@ -36,7 +36,7 @@ function TaskCard({ task }: { task: Task }) {
             <h4 className="break-words text-[13px] font-semibold leading-snug text-snow sm:text-[13.5px]">
               {" "}
               {task.title}{" "}
-            </h4><TaskDepartments task={task} />{" "}
+            </h4><TaskDepartments task={task} /><TaskRecurrence task={task} />{" "}
           </div>{" "}
           <div className="shrink-0">
             {" "}
