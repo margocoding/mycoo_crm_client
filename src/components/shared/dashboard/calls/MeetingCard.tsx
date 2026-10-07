@@ -29,7 +29,7 @@ export default function MeetingCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs text-fog">
-          {meetingDepartments.find((d) => d.id === meeting.departmentId)?.name}
+          {meeting.departmentName || meetingDepartments.find((d) => d.id === meeting.departmentId)?.name}
         </p>
         <h3 className="mt-1 text-base font-semibold text-snow break-words">
           {meeting.title}
