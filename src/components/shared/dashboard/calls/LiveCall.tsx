@@ -163,7 +163,7 @@ export default function LiveCall({
                 if (
                   recording ||
                   window.confirm(
-                    "Начать запись? Участники увидят индикатор; запись будет обработана SaluteSpeech и GigaChat.",
+                    "Начать запись? Участники увидят индикатор; аудио будет отправлено на распознавание речи и подготовку AI-протокола.",
                   )
                 )
                   void control(recording ? "stop-record" : "record");
