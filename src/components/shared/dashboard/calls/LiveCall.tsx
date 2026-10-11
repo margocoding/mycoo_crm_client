@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
-import {
-  LiveKitRoom,
-  PreJoin,
-  VideoConference,
-} from "@livekit/components-react";
-import type { LocalUserChoices } from "@livekit/components-react";
-import "@livekit/components-styles";
+import { createPortal } from "react-dom";
+import { LiveKitRoom } from "@livekit/components-react";
 import { meetingsApi } from "@/api/meetings.api";
 import { errorMessage } from "@/api/base.api";
 import type { LiveMeeting } from "@/types/meetings.types";
+import LiveMeetingLobby, { type MediaChoices } from "./LiveMeetingLobby";
+import LiveMeetingRoom from "./LiveMeetingRoom";
 
 export default function LiveCall({
   workspaceId,
@@ -23,7 +20,7 @@ export default function LiveCall({
   action: (name: string, personId?: string) => Promise<void>;
   onLeave: () => void;
 }) {
-  const [choices, setChoices] = useState<LocalUserChoices | null>(null);
+  const [choices, setChoices] = useState<MediaChoices | null>(null);
   const [connection, setConnection] = useState<{
     token: string;
     url: string;
@@ -31,22 +28,25 @@ export default function LiveCall({
   const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!choices) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
     const join = async () => {
       try {
-        const r = await meetingsApi.join(workspaceId, meeting.id);
+        const result = await meetingsApi.join(workspaceId, meeting.id);
         if (!active) return;
-        if (r.waiting) {
+        if (result.waiting) {
           setWaiting(true);
           timer = setTimeout(() => void join(), 3000);
-        } else if (r.token && r.url) {
+        } else if (result.token && result.url) {
           setWaiting(false);
-          setConnection({ token: r.token, url: r.url });
+          setConnection({ token: result.token, url: result.url });
           setError("");
+        } else {
+          throw new Error(
+            "Не удалось получить доступ к звонку. Попробуйте ещё раз.",
+          );
         }
       } catch (e) {
         if (active) {
@@ -61,119 +61,84 @@ export default function LiveCall({
       clearTimeout(timer);
     };
   }, [workspaceId, meeting.id, choices, retry]);
-  async function control(name: string) {
-    setBusy(true);
-    try {
-      await action(name);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  const recording = meeting.recordings.some((r) =>
-    ["starting", "recording", "stopping"].includes(r.status),
-  );
-  const hand = meeting.participants.find(
-    (p) => p.personId === userId,
-  )?.raisedHand;
-  return (
-    <section className="meeting-panel p-3" data-lk-theme="default">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <span className={recording ? "text-crit" : "text-fog"}>
-          {recording
-            ? "● Ведётся запись встречи. Аудио будет отправлено на распознавание."
-            : "Запись выключена"}
-        </span>
-        <button className="meeting-button" onClick={onLeave}>
-          Выйти из звонка
-        </button>
-      </div>
-      {error && (
-        <p role="alert" className="mb-3 text-crit">
-          {error}{" "}
-          {!connection && (
+
+  if (!choices)
+    return (
+      <LiveMeetingLobby
+        meeting={meeting}
+        userId={userId}
+        error={error}
+        onBack={onLeave}
+        onJoin={(value) => {
+          setError("");
+          setChoices(value);
+        }}
+      />
+    );
+
+  if (!connection)
+    return (
+      <div className="meeting-empty" aria-live="polite">
+        <h1>
+          {error
+            ? "Не удалось войти"
+            : waiting
+              ? "Ожидаем организатора"
+              : "Подключаемся к встрече…"}
+        </h1>
+        <p>
+          {error ||
+            (waiting
+              ? "Запрос на вход отправлен. Вы войдёте, как только организатор допустит вас."
+              : meeting.title)}
+        </p>
+        <div className="flex flex-wrap justify-center gap-3">
+          {error && (
             <button
-              className="meeting-button"
-              onClick={() => setRetry((v) => v + 1)}
+              className="meeting-button primary"
+              onClick={() => {
+                setError("");
+                setRetry((n) => n + 1);
+              }}
             >
               Повторить вход
             </button>
           )}
-        </p>
-      )}
-      {!choices ? (
-        <PreJoin
-          defaults={{
-            username:
-              meeting.participants.find((p) => p.personId === userId)?.name ||
-              "Участник",
-            audioEnabled: !meeting.muteOnEntry,
-            videoEnabled: true,
-          }}
-          persistUserChoices={false}
-          joinLabel="Войти"
-          micLabel="Микрофон"
-          camLabel="Камера"
-          userLabel="Имя"
-          onSubmit={setChoices}
-          onError={(e) => setError(errorMessage(e))}
-        />
-      ) : connection ? (
-        <div style={{ height: "min(72vh,750px)", minHeight: 420 }}>
-          <LiveKitRoom
-            token={connection.token}
-            serverUrl={connection.url}
-            connect
-            audio={
-              choices.audioEnabled ? { deviceId: choices.audioDeviceId } : false
-            }
-            video={
-              choices.videoEnabled ? { deviceId: choices.videoDeviceId } : false
-            }
-            onDisconnected={onLeave}
-            onError={(e) => setError(errorMessage(e))}
-          >
-            <VideoConference />
-          </LiveKitRoom>
-        </div>
-      ) : (
-        <p className="p-8 text-center text-fog">
-          {waiting
-            ? "Ожидаем допуска организатором…"
-            : "Подключаемся к встрече…"}
-        </p>
-      )}
-      {connection && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            disabled={busy}
-            className="meeting-button"
-            onClick={() => void control(hand ? "lower" : "raise")}
-          >
-            {hand ? "Опустить руку" : "✋ Поднять руку"}
+          <button className="meeting-button" onClick={onLeave}>
+            Вернуться к встрече
           </button>
-          {meeting.canModerate && (
-            <button
-              disabled={
-                busy || meeting.recordings.some((r) => r.status === "stopping")
-              }
-              className="meeting-button"
-              onClick={() => {
-                if (
-                  recording ||
-                  window.confirm(
-                    "Начать запись? Участники увидят индикатор; аудио будет отправлено на распознавание речи и подготовку AI-протокола.",
-                  )
-                )
-                  void control(recording ? "stop-record" : "record");
-              }}
-            >
-              {recording ? "Остановить запись" : "Начать запись"}
-            </button>
-          )}
         </div>
-      )}
-    </section>
+      </div>
+    );
+
+  return createPortal(
+    <div className="meetings-ui">
+      <LiveKitRoom
+        token={connection.token}
+        serverUrl={connection.url}
+        connect
+        audio={
+          choices.audioEnabled ? { deviceId: choices.audioDeviceId } : false
+        }
+        video={
+          choices.videoEnabled ? { deviceId: choices.videoDeviceId } : false
+        }
+        onDisconnected={() => {
+          setConnection(null);
+          setChoices(null);
+          setError("Соединение завершено. При необходимости войдите снова.");
+        }}
+        onError={(e) => setError(errorMessage(e))}
+      >
+        <LiveMeetingRoom
+          meeting={meeting}
+          userId={userId}
+          action={action}
+          onLeave={onLeave}
+          connectionError={error}
+        />
+      </LiveKitRoom>
+    </div>,
+    document.body,
   );
 }

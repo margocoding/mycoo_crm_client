@@ -1,5 +1,18 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  LuArrowLeft,
+  LuCalendar,
+  LuClock,
+  LuCopy,
+  LuFileText,
+  LuHand,
+  LuLink,
+  LuPencil,
+  LuUsers,
+  LuVideo,
+  LuX,
+} from "react-icons/lu";
 import { meetingsApi } from "@/api/meetings.api";
 import { ApiError, errorMessage } from "@/api/base.api";
 import type { LiveMeeting, MeetingPerson } from "@/types/meetings.types";
@@ -8,6 +21,8 @@ import {
   MeetingBadge,
   formatMeetingDate,
   formatMeetingTime,
+  Avatar,
+  MeetingDialog,
 } from "./MeetingUI";
 import NewMeetingModal from "./NewMeetingModal";
 import MeetingProtocol from "./MeetingProtocol";
@@ -34,6 +49,9 @@ export default function LiveMeetingSession({
   const [editing, setEditing] = useState(false);
   const [joining, setJoining] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmation, setConfirmation] = useState<"cancel" | "end" | null>(
+    null,
+  );
   const [suggestion, setSuggestion] = useState<{
     agenda: string;
     suggestion: string;
@@ -87,10 +105,33 @@ export default function LiveMeetingSession({
   }
   const act = (name: string, person?: string) =>
     void action(name, person).catch(() => {});
+  const meetingUrl = new URL(window.location.href);
+  meetingUrl.searchParams.set("workspace", workspaceId);
+  const copyLink = () =>
+    navigator.clipboard
+      .writeText(meetingUrl.href)
+      .then(() =>
+        setNotice("Ссылка скопирована. Войти смогут приглашённые сотрудники."),
+      )
+      .catch(() => setNotice("Скопируйте ссылку из поля ниже."));
+  if (joining && meeting?.status === "live")
+    return (
+      <Suspense
+        fallback={<p className="p-6 text-fog">Подключаем видеосвязь…</p>}
+      >
+        <LiveCall
+          workspaceId={workspaceId}
+          meeting={meeting}
+          userId={userId}
+          action={action}
+          onLeave={() => setJoining(false)}
+        />
+      </Suspense>
+    );
   return (
-    <div className="meeting-page space-y-5">
+    <div className="meeting-page space-y-6">
       <button className="meeting-back" onClick={onBack}>
-        ← Все встречи
+        <LuArrowLeft /> Все встречи
       </button>
       {error && (
         <p role="alert" className="text-sm text-crit">
@@ -108,31 +149,42 @@ export default function LiveMeetingSession({
         </p>
       ) : (
         <>
-          <section className="meeting-panel p-6">
+          <section className="meeting-panel p-6 md:p-8">
             <div className="flex flex-wrap justify-between gap-3">
               <span className="text-sm text-flux">
                 {meeting.departmentName}
               </span>
               <MeetingBadge status={meeting.status} />
             </div>
-            <h1 className="mt-4 break-words text-2xl font-bold text-snow">
+            <h1 className="mt-5 break-words font-display text-xl font-bold leading-relaxed text-snow md:text-3xl">
               {meeting.title}
             </h1>
-            <p className="mt-3 text-sm text-fog">
-              {formatMeetingDate(meeting.startsAt)},{" "}
-              {formatMeetingTime(meeting.startsAt)} · {meeting.duration} мин
-            </p>
+            <div className="mt-5 flex flex-wrap gap-5 text-sm text-fog">
+              <span className="flex items-center gap-2">
+                <LuCalendar />
+                {formatMeetingDate(meeting.startsAt)},{" "}
+                {formatMeetingTime(meeting.startsAt)}
+              </span>
+              <span className="flex items-center gap-2">
+                <LuClock />
+                {meeting.duration} минут
+              </span>
+            </div>
             <p className="mt-4 text-sm text-mist">
               Результат: {meeting.objective}
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-7 flex flex-wrap gap-3">
               {meeting.status === "scheduled" && meeting.canModerate && (
                 <button
                   disabled={busy || !meeting.callsAvailable}
                   className="meeting-button primary"
-                  onClick={() => act("start")}
+                  onClick={() =>
+                    void action("start")
+                      .then(() => setJoining(true))
+                      .catch(() => {})
+                  }
                 >
-                  Начать встречу
+                  <LuVideo /> Начать встречу
                 </button>
               )}
               {meeting.status === "scheduled" && meeting.canHost && (
@@ -141,17 +193,14 @@ export default function LiveMeetingSession({
                     className="meeting-button"
                     onClick={() => setEditing(true)}
                   >
-                    Изменить
+                    <LuPencil /> Изменить
                   </button>
                   <button
                     disabled={busy}
-                    className="meeting-button danger"
-                    onClick={() => {
-                      if (window.confirm("Отменить эту встречу?"))
-                        act("cancel");
-                    }}
+                    className="meeting-button danger subtle"
+                    onClick={() => setConfirmation("cancel")}
                   >
-                    Отменить встречу
+                    <LuX /> Отменить встречу
                   </button>
                 </>
               )}
@@ -161,28 +210,9 @@ export default function LiveMeetingSession({
                   className="meeting-button primary"
                   onClick={() => setJoining(true)}
                 >
-                  Войти во встречу
+                  <LuVideo /> Войти во встречу
                 </button>
               )}
-              <button
-                className="meeting-button"
-                onClick={() => {
-                  const u = new URL(window.location.href);
-                  u.searchParams.set("workspace", workspaceId);
-                  navigator.clipboard
-                    .writeText(u.href)
-                    .then(() =>
-                      setNotice(
-                        "Ссылка скопирована. Войти смогут приглашённые сотрудники.",
-                      ),
-                    )
-                    .catch(() =>
-                      setNotice("Скопируйте ссылку из адресной строки."),
-                    );
-                }}
-              >
-                Скопировать ссылку
-              </button>
               {meeting.status === "completed" && meeting.canHost && (
                 <button
                   className="meeting-button"
@@ -193,22 +223,11 @@ export default function LiveMeetingSession({
               )}
             </div>
           </section>
-          {joining && meeting.status === "live" && (
-            <Suspense
-              fallback={<p className="text-fog">Подключаем видеосвязь…</p>}
-            >
-              <LiveCall
-                workspaceId={workspaceId}
-                meeting={meeting}
-                userId={userId}
-                action={action}
-                onLeave={() => setJoining(false)}
-              />
-            </Suspense>
-          )}
-          <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
+          <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
             <section className="meeting-panel p-6">
-              <h2 className="meeting-section-heading">Повестка</h2>
+              <h2 className="meeting-section-heading">
+                <LuFileText className="text-flux" /> Повестка встречи
+              </h2>
               <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-mist">
                 {meeting.agenda || "Повестка не добавлена."}
               </p>
@@ -259,8 +278,13 @@ export default function LiveMeetingSession({
               )}
             </section>
             <section className="meeting-panel p-6">
-              <h2 className="meeting-section-heading">Участники</h2>
-              <div className="mt-4 space-y-3">
+              <h2 className="meeting-section-heading">
+                <LuUsers className="text-flux" /> Участники{" "}
+                <span className="ml-auto text-xs font-normal text-fog">
+                  {meeting.participants.filter((p) => !p.removed).length}
+                </span>
+              </h2>
+              <div className="mt-5 space-y-4">
                 {meeting.participants
                   .filter((p) => !p.removed)
                   .map((p) => (
@@ -268,13 +292,19 @@ export default function LiveMeetingSession({
                       key={p.personId}
                       className="flex flex-wrap items-center justify-between gap-2 text-sm"
                     >
-                      <span>
-                        {p.name}
-                        {p.raisedHand ? " ✋" : ""}
-                        <small className="ml-2 text-fog">
-                          {MEETING_ROLES[p.role]}
-                        </small>
-                      </span>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar name={p.name} />
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-semibold text-snow">
+                            {p.name}
+                            {p.personId === userId ? " (вы)" : ""}
+                          </p>
+                          <p className="mt-1 text-xs text-fog">
+                            {MEETING_ROLES[p.role]}
+                          </p>
+                        </div>
+                        {p.raisedHand && <LuHand className="text-warn" />}
+                      </div>
                       {meeting.status === "live" &&
                         meeting.canModerate &&
                         p.personId !== userId &&
@@ -334,6 +364,32 @@ export default function LiveMeetingSession({
                     </div>
                   ))}
               </div>
+              <div className="mt-7 border-t border-line pt-6">
+                <label className="meeting-field">
+                  <span className="flex items-center gap-2">
+                    <LuLink /> Ссылка на встречу
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      readOnly
+                      value={meetingUrl.href}
+                      className="min-w-0 flex-1"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <button
+                      type="button"
+                      className="meeting-button"
+                      aria-label="Скопировать ссылку"
+                      onClick={() => void copyLink()}
+                    >
+                      <LuCopy />
+                    </button>
+                  </div>
+                </label>
+                <p className="mt-3 text-xs leading-5 text-fog">
+                  Войти смогут сотрудники, приглашённые на встречу.
+                </p>
+              </div>
             </section>
           </div>
           {meeting.status === "live" && meeting.canHost && (
@@ -348,9 +404,7 @@ export default function LiveMeetingSession({
               <button
                 disabled={busy}
                 className="meeting-button danger"
-                onClick={() => {
-                  if (window.confirm("Завершить встречу для всех?")) act("end");
-                }}
+                onClick={() => setConfirmation("end")}
               >
                 Завершить для всех
               </button>
@@ -362,6 +416,51 @@ export default function LiveMeetingSession({
             meeting={meeting}
             onUpdate={setMeeting}
           />
+          {confirmation && (
+            <MeetingDialog
+              title={
+                confirmation === "cancel"
+                  ? "Отменить встречу?"
+                  : "Завершить встречу для всех?"
+              }
+              onClose={() => {
+                if (!busy) setConfirmation(null);
+              }}
+            >
+              <p className="text-sm leading-6 text-fog">
+                {confirmation === "cancel"
+                  ? "Встреча останется в списке со статусом «Отменена»."
+                  : "Все участники будут отключены. Запись, если она включена, будет остановлена."}
+              </p>
+              {error && (
+                <p role="alert" className="mt-3 text-sm text-crit">
+                  {error}
+                </p>
+              )}
+              <div className="meeting-dialog-actions">
+                <button
+                  disabled={busy}
+                  className="meeting-button"
+                  onClick={() => setConfirmation(null)}
+                >
+                  Вернуться
+                </button>
+                <button
+                  disabled={busy}
+                  className="meeting-button danger"
+                  onClick={() =>
+                    void action(confirmation)
+                      .then(() => setConfirmation(null))
+                      .catch(() => {})
+                  }
+                >
+                  {confirmation === "cancel"
+                    ? "Отменить встречу"
+                    : "Завершить для всех"}
+                </button>
+              </div>
+            </MeetingDialog>
+          )}
           {editing && (
             <NewMeetingModal
               live
