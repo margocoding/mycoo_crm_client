@@ -1,15 +1,15 @@
-import { useState, type FormEvent } from 'react';
-import { LuCalendar, LuShieldCheck } from 'react-icons/lu';
-import { meetingDepartments } from '@/data/meetings/prototypeData';
+import { useState, type FormEvent } from "react";
+import { LuCalendar, LuShieldCheck } from "react-icons/lu";
+import { meetingDepartments } from "@/data/meetings/prototypeData";
 import type {
   Meeting,
   MeetingDraft,
   MeetingParticipant,
   MeetingPerson,
-} from '@/types/meetings.types';
-import { Avatar, MeetingDialog } from './MeetingUI';
-import { MEETING_KINDS, MEETING_TEMPLATES } from '@/types/meetings.types';
-import { errorMessage } from '@/api/base.api';
+} from "@/types/meetings.types";
+import { Avatar, MeetingDialog } from "./MeetingUI";
+import { MEETING_KINDS, MEETING_TEMPLATES } from "@/types/meetings.types";
+import { errorMessage } from "@/api/base.api";
 
 function localDateTime(value: Date) {
   const local = new Date(value.getTime() - value.getTimezoneOffset() * 60000);
@@ -21,51 +21,71 @@ export default function NewMeetingModal({
   onClose,
   onSubmit,
   departments = meetingDepartments,
-  currentPersonId = 'me',
+  currentPersonId = "me",
   live = false,
+  quick = false,
   initial,
 }: {
   meeting?: Meeting;
   people: MeetingPerson[];
   onClose: () => void;
-  onSubmit: (draft: MeetingDraft & {kind: string; objective: string}) => void | Promise<void>;
-  departments?: {id: string; name: string}[];
+  onSubmit: (
+    draft: MeetingDraft & { kind: string; objective: string },
+  ) => void | Promise<void>;
+  departments?: { id: string; name: string }[];
   currentPersonId?: string;
   live?: boolean;
+  quick?: boolean;
   initial?: Partial<Meeting>;
 }) {
-  const [title, setTitle] = useState(meeting?.title || initial?.title || '');
+  const [title, setTitle] = useState(meeting?.title || initial?.title || "");
   const [startsAt, setStartsAt] = useState(
     localDateTime(
       meeting ? new Date(meeting.startsAt) : new Date(Date.now() + 30 * 60000),
     ),
   );
   const [departmentId, setDepartmentId] = useState(
-    meeting?.departmentId || initial?.departmentId || departments[0]?.id || '',
+    meeting?.departmentId || initial?.departmentId || departments[0]?.id || "",
   );
-  const [duration, setDuration] = useState(meeting?.duration || 45);
-  const [agenda, setAgenda] = useState(meeting?.agenda || initial?.agenda || '');
+  const [duration, setDuration] = useState(
+    meeting?.duration || (quick ? 30 : 45),
+  );
+  const [agenda, setAgenda] = useState(
+    meeting?.agenda || initial?.agenda || "",
+  );
   const [participants, setParticipants] = useState<MeetingParticipant[]>(
-    meeting?.participants.map(({personId,role})=>({personId,role})) || [{ personId: currentPersonId, role: 'host' }],
+    meeting?.participants.map(({ personId, role }) => ({ personId, role })) || [
+      { personId: currentPersonId, role: "host" },
+    ],
   );
   const [waitingRoom, setWaitingRoom] = useState(meeting?.waitingRoom ?? true);
   const [muteOnEntry, setMuteOnEntry] = useState(meeting?.muteOnEntry ?? true);
   const [allowScreenShare, setAllowScreenShare] = useState(
     meeting?.allowScreenShare ?? true,
   );
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [kind, setKind] = useState(meeting?.kind || initial?.kind || 'operations');
-  const [objective, setObjective] = useState(meeting?.objective || initial?.objective || '');
-  const available = people.filter((p) => p.id !== currentPersonId && (p.departmentId === departmentId || p.departmentId === '*'));
+  const [kind, setKind] = useState(
+    meeting?.kind || initial?.kind || "operations",
+  );
+  const [objective, setObjective] = useState(
+    meeting?.objective || initial?.objective || "",
+  );
+  const available = people.filter(
+    (p) =>
+      p.id !== currentPersonId &&
+      (p.departmentId === departmentId || p.departmentId === "*"),
+  );
   function changeDepartment(id: string) {
     setDepartmentId(id);
     setParticipants((current) =>
       current.filter(
         (p) =>
-          p.role === 'host' ||
+          p.role === "host" ||
           people.some(
-            (person) => person.id === p.personId && (person.departmentId === id || person.departmentId === '*'),
+            (person) =>
+              person.id === p.personId &&
+              (person.departmentId === id || person.departmentId === "*"),
           ),
       ),
     );
@@ -73,38 +93,60 @@ export default function NewMeetingModal({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    const when = new Date(startsAt);
+    const when = quick ? new Date() : new Date(startsAt);
     if (!title.trim()) {
-      setError('Введите название встречи.');
+      setError("Введите название встречи.");
       return;
     }
-    if (!Number.isFinite(when.getTime()) || when.getTime() < Date.now()) {
-      setError('Выберите будущие дату и время.');
+    if (
+      !quick &&
+      (!Number.isFinite(when.getTime()) || when.getTime() < Date.now())
+    ) {
+      setError("Выберите будущие дату и время.");
       return;
     }
-    if (live && !objective.trim()) { setError('Укажите ожидаемый результат встречи.'); return; }
-    setSaving(true); setError('');
-    try { await onSubmit({
-      kind, objective: objective.trim(),
-      title: title.trim(),
-      startsAt: when.toISOString(),
-      duration,
-      departmentId,
-      agenda: agenda.trim(),
-      participants,
-      waitingRoom,
-      muteOnEntry,
-      allowScreenShare,
-    }); } catch (error) { setError(errorMessage(error)); } finally { setSaving(false); }
+    if (live && !objective.trim()) {
+      setError("Укажите ожидаемый результат встречи.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onSubmit({
+        kind,
+        objective: objective.trim(),
+        title: title.trim(),
+        startsAt: when.toISOString(),
+        duration,
+        departmentId,
+        agenda: agenda.trim(),
+        participants,
+        waitingRoom,
+        muteOnEntry,
+        allowScreenShare,
+      });
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <MeetingDialog
-      title={meeting ? 'Изменить встречу' : 'Новая встреча'}
+      title={
+        meeting
+          ? "Изменить встречу"
+          : quick
+            ? "Быстрый звонок"
+            : "Новая встреча"
+      }
       onClose={onClose}
     >
       <form onSubmit={submit} className="space-y-5">
         <p className="text-sm text-fog">
-          {live ? 'Участники получат приглашение в MyCoo и на почту, если она настроена.' : 'Планируйте разговор в контексте отдела. В прототипе приглашения не отправляются.'}
+          {live
+            ? "Участники получат приглашение в MyCoo и на почту, если она настроена."
+            : "Планируйте разговор в контексте отдела. В прототипе приглашения не отправляются."}
         </p>
         <label className="meeting-field">
           Название встречи
@@ -116,23 +158,56 @@ export default function NewMeetingModal({
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
-        {live && <>
-          <label className="meeting-field">Тип встречи<select value={kind} onChange={e => { setKind(e.target.value); if (!agenda.trim()) setAgenda(MEETING_TEMPLATES[e.target.value]); }}>
-            {MEETING_KINDS.map(([id,label]) => <option key={id} value={id}>{label}</option>)}
-          </select></label>
-          <label className="meeting-field">Ожидаемый результат<input required maxLength={1000} value={objective} onChange={e=>setObjective(e.target.value)} placeholder="Например: утвердить план продаж и назначить ответственных" /></label>
-          <button type="button" className="meeting-button" onClick={()=>setAgenda(MEETING_TEMPLATES[kind])}>Вставить шаблон повестки</button>
-        </>}
+        {live && (
+          <>
+            <label className="meeting-field">
+              Тип встречи
+              <select
+                value={kind}
+                onChange={(e) => {
+                  setKind(e.target.value);
+                  if (!agenda.trim())
+                    setAgenda(MEETING_TEMPLATES[e.target.value]);
+                }}
+              >
+                {MEETING_KINDS.map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="meeting-field">
+              Ожидаемый результат
+              <input
+                required
+                maxLength={1000}
+                value={objective}
+                onChange={(e) => setObjective(e.target.value)}
+                placeholder="Например: утвердить план продаж и назначить ответственных"
+              />
+            </label>
+            <button
+              type="button"
+              className="meeting-button"
+              onClick={() => setAgenda(MEETING_TEMPLATES[kind])}
+            >
+              Вставить шаблон повестки
+            </button>
+          </>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="meeting-field">
-            Дата и время
-            <input
-              type="datetime-local"
-              required
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-            />
-          </label>
+          {!quick && (
+            <label className="meeting-field">
+              Дата и время
+              <input
+                type="datetime-local"
+                required
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </label>
+          )}
           <label className="meeting-field">
             Продолжительность
             <select
@@ -165,10 +240,13 @@ export default function NewMeetingModal({
             Участники <span className="text-fog">· {participants.length}</span>
           </legend>
           <div className="meeting-person-row mb-2">
-            <Avatar name={people.find(p=>p.id===currentPersonId)?.name || 'Вы'} />
+            <Avatar
+              name={people.find((p) => p.id === currentPersonId)?.name || "Вы"}
+            />
             <div className="flex-1">
               <p>
-                {people.find(p=>p.id===currentPersonId)?.name || 'Вы'} <span className="text-fog">(организатор)</span>
+                {people.find((p) => p.id === currentPersonId)?.name || "Вы"}{" "}
+                <span className="text-fog">(организатор)</span>
               </p>
               <small className="text-fog">
                 Организатор · управление встречей
@@ -192,7 +270,7 @@ export default function NewMeetingModal({
                           e.target.checked
                             ? [
                                 ...current,
-                                { personId: person.id, role: 'participant' },
+                                { personId: person.id, role: "participant" },
                               ]
                             : current.filter((p) => p.personId !== person.id),
                         )
@@ -209,7 +287,7 @@ export default function NewMeetingModal({
                   </label>
                   {selected && (
                     <select
-                      aria-label={'Роль: ' + person.name}
+                      aria-label={"Роль: " + person.name}
                       className="meeting-select compact"
                       value={selected.role}
                       onChange={(e) =>
@@ -219,9 +297,9 @@ export default function NewMeetingModal({
                               ? {
                                   ...p,
                                   role:
-                                    e.target.value === 'cohost'
-                                      ? 'cohost'
-                                      : 'participant',
+                                    e.target.value === "cohost"
+                                      ? "cohost"
+                                      : "participant",
                                 }
                               : p,
                           ),
@@ -285,9 +363,17 @@ export default function NewMeetingModal({
           <button type="button" className="meeting-button" onClick={onClose}>
             Отмена
           </button>
-          <button type="submit" disabled={saving} className="meeting-button primary">
+          <button
+            type="submit"
+            disabled={saving}
+            className="meeting-button primary"
+          >
             <LuCalendar />
-            {saving ? 'Сохраняем…' : meeting ? 'Сохранить изменения' : 'Создать встречу'}
+            {saving
+              ? "Сохраняем…"
+              : meeting
+                ? "Сохранить изменения"
+                : "Создать встречу"}
           </button>
         </div>
       </form>
