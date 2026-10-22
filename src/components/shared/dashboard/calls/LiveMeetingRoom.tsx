@@ -41,6 +41,7 @@ import {
   type MeetingRole,
 } from "@/types/meetings.types";
 import { Avatar, MeetingDialog } from "./MeetingUI";
+import { recordingState } from "./recording-state";
 
 type Confirmation =
   { kind: "leave" | "record" } | { kind: "remove"; personId: string };
@@ -147,10 +148,7 @@ export default function LiveMeetingRoom({
     ? spotlight
     : null;
   const self = roster.find((p) => p.personId === userId);
-  const recording = meeting.recordings.some((r) =>
-    ["starting", "recording", "stopping"].includes(r.status),
-  );
-  const stopping = meeting.recordings.some((r) => r.status === "stopping");
+  const recording = recordingState(meeting.recordings);
   const elapsed = Math.max(
     0,
     Math.floor(
@@ -256,9 +254,16 @@ export default function LiveMeetingRoom({
                     : "Подключаемся…"}
               </span>
               <span className="font-mono text-fog">{clock}</span>
-              {recording && (
-                <span className="text-crit" role="status">
-                  ● {stopping ? "Сохраняем запись" : "Идёт запись"}
+              {(recording.pending || recording.error) && (
+                <span
+                  className={
+                    recording.capturing || recording.error
+                      ? "text-crit"
+                      : "text-warn"
+                  }
+                  role="status"
+                >
+                  ● {recording.label}
                 </span>
               )}
               {meeting.locked && (
@@ -358,16 +363,17 @@ export default function LiveMeetingRoom({
             </div>
             <div className="mt-4 flex flex-wrap justify-between gap-3 px-1 text-xs text-fog">
               <span>Участников в комнате: {participants.length}</span>
-              <span>
-                {recording
-                  ? "Аудио записывается для подготовки протокола"
-                  : "Запись выключена"}
-              </span>
+              <span>{recording.description}</span>
             </div>
             <StartAudio
               label="Включить звук встречи"
               className="meeting-button mt-3"
             />
+            {recording.error && (
+              <p role="alert" className="px-1 pt-3 text-sm text-crit">
+                {recording.error}
+              </p>
+            )}
             {error || connectionError ? (
               <p role="alert" className="px-1 pt-3 text-sm text-crit">
                 {error || connectionError}
@@ -665,17 +671,21 @@ export default function LiveMeetingRoom({
             {meeting.canModerate && (
               <Control
                 caption="Запись"
-                label={recording ? "Остановить запись" : "Начать запись"}
-                active={recording}
-                disabled={busy || stopping || !connected}
+                label={
+                  recording.pending ? "Остановить запись" : "Начать запись"
+                }
+                active={recording.capturing}
+                disabled={busy || recording.stopping || !connected}
                 onClick={() =>
-                  recording
+                  recording.pending
                     ? void control("stop-record")
                     : setConfirm({ kind: "record" })
                 }
               >
                 <LuCircle
-                  className={recording ? "fill-current text-crit" : ""}
+                  className={
+                    recording.capturing ? "fill-current text-crit" : ""
+                  }
                 />
               </Control>
             )}
