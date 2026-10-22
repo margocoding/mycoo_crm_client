@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test src/components/shared/dashboard/calls/recording-state.test.mjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

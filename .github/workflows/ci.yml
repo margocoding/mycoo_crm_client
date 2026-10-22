@@ -39,6 +39,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Recording status tests
+        run: npm test
+
       - name: GitLeaks Secret Scan
         uses: gitleaks/gitleaks-action@v3
         env:
