@@ -15,14 +15,14 @@ import {
   LuClock3,
 } from "react-icons/lu";
 import { Starfield } from "../../../ui/Ambient";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-  files?: File[];
-}
+import { useAuthStore } from "@/store/auth.store";
+import { useLaunchStore } from "@/store/launch.store";
+import {
+  COO_FORMATS,
+  COO_MAX_MESSAGE_LENGTH,
+  useAiCoo,
+} from "@/hooks/useAiCoo";
+import type { AiCooMessage, AiCooState } from "@/types/ai-coo.types";
 
 const QUICK_PROMPTS = [
   {
@@ -38,278 +38,185 @@ const QUICK_PROMPTS = [
   {
     title: "План совещаний",
     description:
-      "Подготовь повестку еженедельного совещания… (дополните запрос исходя из контекста)",
+      "Подготовь повестку еженедельного совещания по текущим задачам",
     icon: LuCalendarDays,
   },
   {
     title: "Письмо команде",
-    description: "Напиши письмо команде о новых целях",
+    description: "Напиши письмо команде о текущих целях и приоритетах",
     icon: LuFileText,
   },
 ];
 
-const SUPPORTED_FORMATS = ["PDF", "DOCX", "XLSX", "PPTX"];
-
-const INITIAL_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content:
-    "Я анализирую цели, задачи, встречи, документы и показатели компании, чтобы помогать принимать операционные решения.",
-  timestamp: new Date(),
-};
+const date = (value: string) =>
+  new Date(value).toLocaleDateString("ru-RU", { timeZone: "UTC" });
+const time = (value: string) =>
+  new Date(value).toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+const panel = "rounded-xl border border-line/50 bg-hull/25 p-3.5";
 
 export default function AIChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [isContextOpen, setIsContextOpen] = useState(false);
+  const userId = useAuthStore((s) => s.user?.id);
+  const workspaceId = useLaunchStore((s) => s.workspace?.id);
+  const loadedFor = useLaunchStore((s) => s.loadedFor);
+  if (!userId || !workspaceId || loadedFor !== userId)
+    return <p className="p-6 text-fog">Загружаем компанию…</p>;
+  return (
+    <WorkspaceChat key={`${userId}:${workspaceId}`} workspaceId={workspaceId} />
+  );
+}
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
+  const [departmentId, setDepartmentId] = useState("");
+  return (
+    <Conversation
+      key={departmentId}
+      workspaceId={workspaceId}
+      departmentId={departmentId}
+      selectScope={setDepartmentId}
+    />
+  );
+}
+
+function Conversation({
+  workspaceId,
+  departmentId,
+  selectScope,
+}: {
+  workspaceId: string;
+  departmentId: string;
+  selectScope: (id: string) => void;
+}) {
+  const chat = useAiCoo(workspaceId, departmentId);
+  const [inputValue, setInputValue] = useState("");
+  const [isContextOpen, setIsContextOpen] = useState(false);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const hasConversation = messages.length > 0;
+  const contextButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const retry = useRef<{ text: string; requestId: string } | null>(null);
+  const data = chat.data;
+  const documents = data?.documents ?? [];
+  const messages = data?.messages ?? [];
+  const visibleMessages = chat.pendingMessage
+    ? [
+        ...messages.filter(
+          (m) => m.requestId !== chat.pendingMessage?.requestId,
+        ),
+        chat.pendingMessage,
+      ]
+    : messages;
+  const hasConversation = visibleMessages.length > 0;
+  const canSend =
+    Boolean(data) &&
+    !chat.loading &&
+    !chat.busy &&
+    Boolean(inputValue.trim() || documents.length);
 
   useEffect(() => {
-    if (!hasConversation) return;
-
-    messagesEndRef.current?.scrollIntoView({
+    const scroller = messagesScrollRef.current;
+    scroller?.scrollTo({
+      top: scroller.scrollHeight,
       behavior: "smooth",
-      block: "end",
     });
-  }, [messages, isLoading, hasConversation]);
+  }, [messages.length, chat.pendingMessage, chat.operation]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
-
-    if (!textarea) return;
-
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    }
   }, [inputValue]);
 
-  const resetTextareaHeight = () => {
-    if (!textareaRef.current) return;
-
-    textareaRef.current.style.height = "44px";
-  };
-
-  const handleFileUpload = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = Array.from(event.target.files || []);
-
-    if (!files.length) return;
-
-    const validFiles = files.filter((file) => {
-      const extension = file.name.split(".").pop()?.toUpperCase();
-
-      return (
-        extension && SUPPORTED_FORMATS.includes(extension)
+  useEffect(() => {
+    const completed =
+      retry.current &&
+      messages.some(
+        (m) =>
+          m.requestId === retry.current?.requestId && m.status === "complete",
       );
-    });
-
-    if (validFiles.length !== files.length) {
-      alert(
-        `Поддерживаемые форматы: ${SUPPORTED_FORMATS.join(", ")}`,
-      );
+    if (completed && inputValue.trim() === retry.current?.text) {
+      retry.current = null;
+      setInputValue("");
     }
+  }, [messages, inputValue]);
 
-    setUploadedFiles((prev) => {
-      const existing = new Set(
-        prev.map(
-          (file) =>
-            `${file.name}-${file.size}-${file.lastModified}`,
+  useEffect(() => {
+    if (!isContextOpen) return;
+    const dialog = dialogRef.current;
+    dialog?.querySelector<HTMLButtonElement>("button")?.focus();
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsContextOpen(false);
+        event.preventDefault();
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const controls = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), select:not([disabled]), [tabindex="0"]',
         ),
-      );
-
-      const uniqueFiles = validFiles.filter(
-        (file) =>
-          !existing.has(
-            `${file.name}-${file.size}-${file.lastModified}`,
-          ),
-      );
-
-      return [...prev, ...uniqueFiles];
-    });
-
-    event.target.value = "";
-  };
-
-  const removeFile = (index: number) => {
-    setUploadedFiles((prev) =>
-      prev.filter((_, fileIndex) => fileIndex !== index),
-    );
-  };
-
-  const getAIResponse = (
-    text: string,
-    files: File[],
-  ): string => {
-    const normalizedText = text.toLowerCase();
-
-    if (files.length > 0) {
-      return `Получено файлов: ${files.length}
-
-Файлы подготовлены для анализа:
-
-${files.map((file) => `• ${file.name}`).join("\n")}
-
-После подключения базы знаний я смогу использовать содержимое этих документов при ответах на вопросы.`;
-    }
-
-    if (
-      normalizedText.includes("тормоз") ||
-      normalizedText.includes("проблем")
-    ) {
-      return `Анализ ситуации за последние 14 дней показывает 3 системных риска.
-
-1. **Зависимость от собственника** — критический риск
-   Влияние: 47% задач заблокированы ожиданием решения.
-
-2. **Нет единой системы контроля** — средний риск
-   Влияние: 23% задач выполняются с отклонением от сроков.
-
-3. **Договорённости после встреч не фиксируются** — средний риск
-   Влияние: 8 протоколов встреч требуют подтверждения.
-
-Рекомендация: начать с обязательного протоколирования встреч и назначения ответственного за каждую задачу.`;
-    }
-
-    if (
-      normalizedText.includes("совещ") ||
-      normalizedText.includes("план")
-    ) {
-      return `План совещаний на неделю:
-
-**Понедельник · 10:00**
-Планёрка по операциям
-• Обзор показателей за прошлую неделю
-• Приоритеты текущей недели
-• Блокирующие факторы
-
-**Среда · 12:30**
-Продажи
-• Выполнение плана продаж
-• Работа с воронкой
-• Ключевые сделки
-
-**Пятница · 15:00**
-Финансовый срез
-• Cash flow
-• План-факт анализ
-• Прогноз на следующую неделю`;
-    }
-
-    if (
-      normalizedText.includes("письм") ||
-      normalizedText.includes("напиш")
-    ) {
-      return `Черновик письма команде:
-
-Тема: Новые цели компании на ближайший квартал
-
-Коллеги, добрый день!
-
-На основе анализа текущей ситуации и стратегических приоритетов определяем следующие цели:
-
-1. **Главная цель:** увеличить выручку с 50 до 100 млн ₽.
-
-2. **Приоритеты квартала:**
-   • Оптимизация операционных процессов
-   • Развитие команды руководителей
-   • Внедрение системы контроля задач
-
-Прошу ознакомиться с целями и подготовить планы по вашим направлениям до конца недели.
-
-С уважением,
-Руководитель`;
-    }
-
-    return `Понял ваш вопрос.
-
-Чтобы дать точный ответ, мне нужно сопоставить запрос с данными компании:
-
-• Целями и показателями
-• Текущими задачами
-• Историей встреч
-• Договорённостями
-• Документами и регламентами
-
-Задайте более конкретный вопрос или загрузите документы, которые нужно проанализировать.`;
-  };
-
-  const handleSendMessage = async () => {
-    const text = inputValue.trim();
-
-    if ((!text && !uploadedFiles.length) || isLoading) {
-      return;
-    }
-
-    const files = [...uploadedFiles];
-
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-      timestamp: new Date(),
-      files,
+      ];
+      const first = controls[0],
+        last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
     };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setUploadedFiles([]);
-    resetTextareaHeight();
-    setIsLoading(true);
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1200);
-    });
-
-    const assistantMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: getAIResponse(text, files),
-      timestamp: new Date(),
+    document.addEventListener("keydown", handler);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      contextButtonRef.current?.focus();
     };
+  }, [isContextOpen]);
 
-    setMessages((prev) => [...prev, assistantMessage]);
-    setIsLoading(false);
-  };
+  function editDraft(value: string) {
+    if (retry.current?.text !== value.trim()) retry.current = null;
+    setInputValue(value);
+  }
 
-  const handleKeyDown = (
-    event: React.KeyboardEvent<HTMLTextAreaElement>,
-  ) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      !event.nativeEvent.isComposing
-    ) {
-      event.preventDefault();
-      handleSendMessage();
+  async function send() {
+    if (!canSend) return;
+    const text = inputValue.trim() || "Проанализируй загруженные документы.";
+    const request =
+      retry.current?.text === text
+        ? retry.current
+        : { text, requestId: crypto.randomUUID() };
+    retry.current = request;
+    setInputValue(text);
+    if (await chat.send(text, request.requestId)) {
+      retry.current = null;
+      setInputValue("");
     }
-  };
+  }
 
-  const handleQuickPrompt = (prompt: string) => {
-    setInputValue(prompt);
+  function retryMessage(message: AiCooMessage) {
+    if (!message.requestId || chat.busy) return;
+    retry.current = { text: message.content, requestId: message.requestId };
+    setInputValue(message.content);
     textareaRef.current?.focus();
-  };
+  }
 
-  const openFilePicker = () => {
-    fileInputRef.current?.click();
-  };
-
-  const formatTime = (date: Date) =>
-    date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  function chooseFiles() {
+    if (data && !chat.loading && !chat.busy) fileInputRef.current?.click();
+  }
+  const company = data?.context.company.name || "Моя компания";
+  const goalCount = data
+    ? Number(Boolean(data.context.company.goal)) +
+      data.context.company.priorities.length
+    : 0;
+  const assistantPending = chat.pendingMessage || chat.hasPending;
 
   return (
-    <div className="relative min-h-full bg-void font-body text-mist">
+    <div className="relative flex h-[calc(100dvh-5.5rem)] min-h-0 flex-col bg-void font-body text-mist md:h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-4rem)]">
       <Starfield />
-
       <div
         className="pointer-events-none fixed inset-0 -z-20"
         style={{
@@ -317,334 +224,222 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
             "radial-gradient(ellipse 70% 50% at 30% -10%, rgba(30,58,138,0.25), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 20%, rgba(139,133,248,0.09), transparent 65%), linear-gradient(180deg, #04070f 0%, #060b18 55%, #04070f 100%)",
         }}
       />
-
       <div className="noise-overlay" />
-
-      <header className="header-solid sticky top-0 z-40 border-b border-line/40">
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-4 px-3 sm:px-5 lg:px-7">
+      <header className="header-solid relative z-40 shrink-0 border-b border-line/40">
+        <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-3 px-3 sm:px-5 lg:px-7">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
               <LuBot className="h-4 w-4 text-ion" />
             </div>
-
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="min-w-0 truncate font-display text-[13px] font-bold tracking-[0.08em] text-snow sm:tracking-[0.12em]">
-                  ИИ-операционный директор
-                </h1>
-
-                <span className="hidden rounded border border-flux/30 bg-flux/5 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.14em] text-flux sm:inline-flex">
-                  База знаний
-                </span>
-              </div>
-
+              <h1 className="truncate font-display text-[13px] font-bold tracking-[0.08em] text-snow sm:tracking-[0.12em]">
+                ИИ-операционный директор
+              </h1>
               <p className="mono-label truncate text-[8px] text-fog/45 sm:text-[9px]">
                 Операционная аналитика
               </p>
             </div>
           </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-lg border border-line/50 bg-hull/20 px-2.5 py-1.5 sm:flex">
-              <span
-                className="dot-live"
-                style={{
-                  backgroundColor: "var(--color-ok)",
-                }}
-              />
-              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-fog/65">
-                12 источников
-              </span>
-            </div>
-
-            <button
-              onClick={() => setIsContextOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line/60 bg-hull/25 px-2.5 py-1.5 text-[10px] text-fog/75 transition-colors hover:border-flux/40 hover:text-flux"
-            >
-              <LuDatabase className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Контекст</span>
-              <LuChevronDown className="h-3 w-3" />
-            </button>
-          </div>
+          <button
+            ref={contextButtonRef}
+            onClick={() => setIsContextOpen(true)}
+            disabled={!data}
+            aria-label="Открыть контекст"
+            aria-expanded={isContextOpen}
+            aria-controls="ai-coo-context"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line/60 bg-hull/25 px-2.5 py-1.5 text-[10px] text-fog/75 transition-colors hover:border-flux/40 hover:text-flux disabled:opacity-40"
+          >
+            <LuDatabase className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Контекст</span>
+            <LuChevronDown className="h-3 w-3" />
+          </button>
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1440px] flex-col px-2 py-2 sm:px-4 sm:py-4 lg:px-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-2 py-2 sm:px-4 sm:py-4 lg:px-6">
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line/50 bg-hull/15 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
-          <div className="flex h-9 shrink-0 items-center gap-2 overflow-x-auto border-b border-line/40 px-3 scrollbar-none sm:h-10 sm:px-4">
-            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/60">
-              <LuBuilding2 className="h-3.5 w-3.5 text-ion/70" />
-              <span className="font-medium text-mist/80">
-                Компания «Акме»
+          <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line/40 px-3 py-2 sm:px-4">
+            <div className="flex min-w-0 items-center gap-1.5 text-[10px] text-fog/60">
+              <LuBuilding2 className="h-3.5 w-3.5 shrink-0 text-ion/70" />
+              <span className="max-w-[220px] truncate font-medium text-mist/80">
+                {data ? company : "Контекст компании"}
               </span>
             </div>
-
-            <span className="h-3 w-px shrink-0 bg-line/60" />
-
-            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
-              <LuTarget className="h-3 w-3" />4 цели
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
-              <LuListTodo className="h-3 w-3" />
-              28 задач
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1.5 text-[9px] text-fog/50">
-              <LuCalendarDays className="h-3 w-3" />3 встречи
-            </div>
-
-            <div className="ml-auto hidden shrink-0 items-center gap-1.5 text-[8px] text-fog/35 md:flex">
-              <span
-                className="dot-live"
-                style={{
-                  backgroundColor: "var(--color-ok)",
-                }}
-              />
-              Синхронизировано 4 мин назад
-            </div>
+            {data && (
+              <>
+                <label className="flex min-w-0 items-center gap-2 text-[10px] text-fog/60">
+                  <span className="sr-only">Область анализа</span>
+                  <select
+                    aria-label="Область анализа"
+                    value={data.scope.departmentId ?? ""}
+                    onChange={(e) => selectScope(e.target.value)}
+                    className="max-w-[220px] rounded border border-line/60 bg-void px-2 py-1 text-mist outline-none focus:border-flux/50"
+                  >
+                    {data.scopes.map((scope) => (
+                      <option key={scope.id} value={scope.id}>
+                        {scope.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="flex items-center gap-1.5 text-[9px] text-fog/50">
+                  <LuListTodo className="h-3 w-3" />
+                  Задач за неделю: {data.context.tasks.total}
+                </span>
+                <span className="flex items-center gap-1.5 text-[9px] text-fog/50">
+                  <LuFileText className="h-3 w-3" />
+                  Документов: {documents.length}
+                </span>
+                {data.scope.personal && (
+                  <span className="text-[9px] text-fog/50">
+                    Только доступные вам задачи
+                  </span>
+                )}
+              </>
+            )}
           </div>
 
-          <section className="relative min-h-0 flex-1 overflow-hidden">
-            <div className="h-full overflow-y-auto px-3 py-5 sm:px-6 sm:py-8 lg:px-10">
-              {!hasConversation ? (
-                <div className="flex min-h-full items-center justify-center">
-                  <div className="w-full max-w-3xl">
-                    <div className="mb-8 text-center sm:mb-10">
-                      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-ion/30 bg-ion/10 shadow-[0_0_40px_-15px_rgba(56,189,248,0.7)]">
-                        <LuSparkles className="h-6 w-6 text-ion" />
+          {chat.loading && !data ? (
+            <p role="status" className="p-8 text-center text-sm text-fog">
+              Загружаем диалог и контекст…
+            </p>
+          ) : !data ? (
+            <div className="p-8 text-center">
+              <p role="alert" className="text-sm text-crit">
+                {chat.error || "Не удалось загрузить диалог."}
+              </p>
+              <button
+                onClick={() => void chat.load()}
+                className="mt-4 text-sm text-flux"
+              >
+                Повторить загрузку
+              </button>
+            </div>
+          ) : (
+            <section
+              className="relative min-h-0 flex-1 overflow-hidden"
+              aria-label="Диалог с ИИ"
+            >
+              <div
+                ref={messagesScrollRef}
+                className="h-full overflow-y-auto overscroll-contain px-3 py-5 sm:px-6 sm:py-8 lg:px-10"
+              >
+                {!hasConversation ? (
+                  <div className="flex min-h-full items-center justify-center">
+                    <div className="w-full max-w-3xl">
+                      <div className="mb-8 text-center sm:mb-10">
+                        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-ion/30 bg-ion/10 shadow-[0_0_40px_-15px_rgba(56,189,248,0.7)]">
+                          <LuSparkles className="h-6 w-6 text-ion" />
+                        </div>
+                        <p className="mono-label mb-2 text-[9px] uppercase tracking-[0.22em] text-flux/70">
+                          Операционная аналитика
+                        </p>
+                        <h2 className="font-display text-2xl font-bold tracking-tight text-snow sm:text-3xl">
+                          Чем займёмся сегодня?
+                        </h2>
+                        <p className="mx-auto mt-3 max-w-xl text-[12px] leading-relaxed text-fog/55 sm:text-[13px]">
+                          Обсудим задачи за последнюю неделю, рекомендации
+                          дашборда и ваши документы. Помогу разобраться в
+                          текущих делах и подготовить следующие шаги.
+                        </p>
                       </div>
-
-                      <p className="mono-label mb-2 text-[9px] uppercase tracking-[0.22em] text-flux/70">
-                        Операционная аналитика
-                      </p>
-
-                      <h2 className="font-display text-2xl font-bold tracking-tight text-snow sm:text-3xl">
-                        Чем займёмся сегодня?
-                      </h2>
-
-                      <p className="mx-auto mt-3 max-w-xl text-[12px] leading-relaxed text-fog/55 sm:text-[13px]">
-                        Я анализирую данные вашей компании и помогаю
-                        находить проблемы, принимать решения и
-                        готовить следующие шаги.
-                      </p>
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
-                      {QUICK_PROMPTS.map(
-                        ({
-                          title,
-                          description,
-                          icon: Icon,
-                        }) => (
-                          <button
-                            key={title}
-                            onClick={() =>
-                              handleQuickPrompt(description)
-                            }
-                            className="group rounded-xl border border-line/50 bg-hull/25 p-3.5 text-left transition-all duration-200 hover:border-flux/35 hover:bg-hull/40 sm:p-4"
-                          >
-                            <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg border border-line/50 bg-hull/40 text-fog/60 transition-colors group-hover:border-flux/30 group-hover:text-flux">
-                              <Icon className="h-4 w-4" />
-                            </div>
-
-                            <p className="text-[11px] font-semibold text-mist">
-                              {title}
-                            </p>
-
-                            <p className="mt-1 text-[10px] leading-relaxed text-fog/45">
-                              {description}
-                            </p>
-                          </button>
-                        ),
-                      )}
+                      <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
+                        {QUICK_PROMPTS.map(
+                          ({ title, description, icon: Icon }) => (
+                            <button
+                              key={title}
+                              onClick={() => {
+                                editDraft(description);
+                                textareaRef.current?.focus();
+                              }}
+                              disabled={chat.busy}
+                              className="group rounded-xl border border-line/50 bg-hull/25 p-3.5 text-left transition-all duration-200 hover:border-flux/35 hover:bg-hull/40 disabled:opacity-40 sm:p-4"
+                            >
+                              <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg border border-line/50 bg-hull/40 text-fog/60 transition-colors group-hover:border-flux/30 group-hover:text-flux">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <p className="text-[11px] font-semibold text-mist">
+                                {title}
+                              </p>
+                              <p className="mt-1 text-[10px] leading-relaxed text-fog/45">
+                                {description}
+                              </p>
+                            </button>
+                          ),
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="mx-auto w-full max-w-4xl space-y-6">
-                  {messages.map((message) => {
-                    const isUser = message.role === "user";
-
-                    return (
-                      <div
+                ) : (
+                  <div
+                    className="mx-auto w-full max-w-4xl space-y-6"
+                    role="log"
+                    aria-live="polite"
+                    aria-relevant="additions text"
+                  >
+                    {visibleMessages.map((message) => (
+                      <Message
                         key={message.id}
-                        className={`flex gap-2.5 sm:gap-3 ${
-                          isUser
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
-                        {!isUser && (
-                          <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ion/40 bg-ion/10 sm:h-8 sm:w-8">
-                            <LuBot className="h-3.5 w-3.5 text-ion sm:h-4 sm:w-4" />
-                          </div>
-                        )}
-
-                        <div
-                          className={`min-w-0 ${
-                            isUser
-                              ? "max-w-[88%] sm:max-w-[75%]"
-                              : "max-w-[92%] sm:max-w-[82%]"
-                          }`}
+                        message={message}
+                        retry={() => retryMessage(message)}
+                        busy={chat.busy}
+                      />
+                    ))}
+                    {assistantPending && (
+                      <div className="flex gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-ion/40 bg-ion/10">
+                          <LuBot className="h-4 w-4 text-ion" />
+                        </div>
+                        <p
+                          role="status"
+                          className="rounded-xl border border-line/50 bg-hull/30 px-4 py-3 text-[11px] text-fog/60"
                         >
-                          {!isUser && (
-                            <div className="mb-1.5 flex items-center gap-2">
-                              <span className="font-display text-[9px] font-bold tracking-[0.12em] text-ion">
-                                ИИ-операционный директор
-                              </span>
-
-                              <span className="text-[8px] text-fog/30">
-                                {formatTime(message.timestamp)}
-                              </span>
-                            </div>
-                          )}
-
-                          <div
-                            className={`rounded-xl border px-3.5 py-3 sm:px-4 sm:py-3.5 ${
-                              isUser
-                                ? "border-flux/20 bg-flux/10 text-snow"
-                                : "border-line/50 bg-hull/30 text-mist"
-                            }`}
-                          >
-                            {message.content && (
-                              <div className="whitespace-pre-wrap text-[12px] leading-[1.7] sm:text-[13px]">
-                                {message.content}
-                              </div>
-                            )}
-
-                            {message.files &&
-                              message.files.length > 0 && (
-                                <div
-                                  className={`space-y-2 ${
-                                    message.content
-                                      ? "mt-3"
-                                      : ""
-                                  }`}
-                                >
-                                  {message.files.map(
-                                    (file) => (
-                                      <div
-                                        key={`${file.name}-${file.size}-${file.lastModified}`}
-                                        className="flex min-w-0 items-center gap-2.5 rounded-lg border border-line/50 bg-void/20 px-3 py-2"
-                                      >
-                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-flux/10 text-flux">
-                                          <LuFileText className="h-3.5 w-3.5" />
-                                        </div>
-
-                                        <div className="min-w-0">
-                                          <p className="truncate text-[10px] font-medium text-mist">
-                                            {file.name}
-                                          </p>
-
-                                          <p className="text-[8px] uppercase tracking-[0.08em] text-fog/35">
-                                            {(
-                                              file.size /
-                                              1024 /
-                                              1024
-                                            ).toFixed(1)}{" "}
-                                            МБ
-                                          </p>
-                                        </div>
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              )}
-                          </div>
-
-                          {isUser && (
-                            <p className="mt-1.5 text-right text-[8px] text-fog/30">
-                              {formatTime(message.timestamp)}
-                            </p>
-                          )}
-                        </div>
-
-                        {isUser && (
-                          <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-flux to-ion sm:h-8 sm:w-8">
-                            <span className="text-[10px] font-bold text-void">
-                              Вы
-                            </span>
-                          </div>
-                        )}
+                          Анализирую данные… Ответ появится в этом диалоге.
+                        </p>
                       </div>
-                    );
-                  })}
-
-                  {isLoading && (
-                    <div className="flex gap-2.5 sm:gap-3">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ion/40 bg-ion/10 sm:h-8 sm:w-8">
-                        <LuBot className="h-3.5 w-3.5 text-ion sm:h-4 sm:w-4" />
-                      </div>
-
-                      <div>
-                        <div className="mb-1.5 flex items-center gap-2">
-                          <span className="font-display text-[9px] font-bold tracking-[0.12em] text-ion">
-                            ИИ-операционный директор
-                          </span>
-                        </div>
-
-                        <div className="rounded-xl border border-line/50 bg-hull/30 px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="dot-live"
-                              style={{
-                                backgroundColor:
-                                  "var(--color-flux)",
-                              }}
-                            />
-                            <span className="text-[10px] text-fog/60">
-                              Анализирую данные...
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
-            </div>
-          </section>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           <div className="shrink-0 border-t border-line/40 bg-void/20 p-2.5 sm:p-3">
             <div className="mx-auto w-full max-w-4xl">
-              {!hasConversation && (
-                <div className="mb-2.5 flex gap-2 overflow-x-auto scrollbar-none">
-                  {QUICK_PROMPTS.map(
-                    ({ title, description, icon: Icon }) => (
-                      <button
-                        key={title}
-                        onClick={() =>
-                          handleQuickPrompt(description)
-                        }
-                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line/50 bg-hull/20 px-2.5 py-1.5 text-[9px] text-fog/60 transition-colors hover:border-flux/30 hover:text-flux"
-                      >
-                        <Icon className="h-3 w-3" />
-                        {title}
-                      </button>
-                    ),
-                  )}
-                </div>
+              {data && chat.error && (
+                <p
+                  role="alert"
+                  className="mb-3 whitespace-pre-wrap break-words text-[12px] text-crit"
+                >
+                  {chat.error}
+                </p>
               )}
-
-              {uploadedFiles.length > 0 && (
+              {chat.operation && !chat.pendingMessage && (
+                <p
+                  role="status"
+                  className="mb-3 break-words text-[11px] text-flux"
+                >
+                  {chat.operation}
+                </p>
+              )}
+              {documents.length > 0 && (
                 <div className="mb-2.5 flex gap-2 overflow-x-auto scrollbar-none">
-                  {uploadedFiles.map((file, index) => (
+                  {documents.map((file) => (
                     <div
-                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      key={file.id}
                       className="flex max-w-[240px] shrink-0 items-center gap-2 rounded-lg border border-flux/25 bg-flux/5 px-2.5 py-1.5"
                     >
                       <LuFileText className="h-3 w-3 shrink-0 text-flux" />
-
-                      <span className="truncate text-[9px] text-mist">
+                      <span
+                        className="truncate text-[9px] text-mist"
+                        title={file.name}
+                      >
                         {file.name}
                       </span>
-
                       <button
-                        onClick={() => removeFile(index)}
-                        className="shrink-0 text-fog/40 transition-colors hover:text-crit"
+                        onClick={() => void chat.remove(file.id)}
+                        disabled={chat.busy || chat.loading}
+                        className="shrink-0 text-fog/40 hover:text-crit disabled:opacity-30"
                         aria-label={`Удалить ${file.name}`}
                       >
                         <LuX className="h-3 w-3" />
@@ -653,246 +448,260 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
                   ))}
                 </div>
               )}
-
               <div className="flex items-end gap-2 rounded-xl border border-line/60 bg-hull/30 p-1.5 transition-colors focus-within:border-flux/30">
                 <button
-                  onClick={openFilePicker}
-                  className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-fog/60 transition-colors hover:bg-hull/60 hover:text-flux"
+                  onClick={chooseFiles}
+                  disabled={
+                    !data || chat.busy || chat.loading || documents.length >= 5
+                  }
                   title="Прикрепить файл"
                   aria-label="Прикрепить файл"
+                  className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-fog/60 transition-colors hover:bg-hull/60 hover:text-flux disabled:opacity-30"
                 >
                   <LuPaperclip className="h-4 w-4" />
                 </button>
-
                 <textarea
                   ref={textareaRef}
                   value={inputValue}
-                  onChange={(event) =>
-                    setInputValue(event.target.value)
-                  }
-                  onKeyDown={handleKeyDown}
-                  placeholder="Задайте вопрос ИИ-операционному директору..."
+                  onChange={(e) => editDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
+                      e.preventDefault();
+                      void send();
+                    }
+                  }}
+                  placeholder="Задайте вопрос ИИ-операционному директору…"
+                  aria-label="Сообщение ИИ"
                   rows={1}
-                  disabled={isLoading}
-                  className="min-h-[40px] max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2 text-[12px] leading-5 text-mist outline-none placeholder:text-fog/35 disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px]"
+                  maxLength={COO_MAX_MESSAGE_LENGTH}
+                  disabled={!data || chat.loading || Boolean(chat.operation)}
+                  className="min-h-[40px] max-h-[120px] min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2 text-[12px] leading-5 text-mist outline-none placeholder:text-fog/35 disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px]"
                 />
-
                 <button
-                  onClick={handleSendMessage}
-                  disabled={
-                    isLoading ||
-                    (!inputValue.trim() &&
-                      uploadedFiles.length === 0)
-                  }
-                  className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-flux text-void shadow-[0_0_26px_-8px_rgba(56,189,248,0.7)] transition-all duration-200 hover:bg-ice disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => void send()}
+                  disabled={!canSend}
                   aria-label="Отправить сообщение"
+                  className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-flux text-void shadow-[0_0_26px_-8px_rgba(56,189,248,0.7)] transition-all duration-200 hover:bg-ice disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <LuSend className="h-4 w-4" />
                 </button>
               </div>
-
-              <div className="mt-1.5 flex items-center justify-between gap-3 px-1">
-                <p className="mono-label truncate text-[7px] text-fog/25 sm:text-[8px]">
-                  {SUPPORTED_FORMATS.join(" · ")}
+              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
+                <p className="text-[8px] text-fog/40">
+                  {COO_FORMATS.join(" · ")} · до 10 МБ · до 5 файлов
                 </p>
-
-                <p className="hidden shrink-0 text-[8px] text-fog/25 sm:block">
-                  Enter — отправить · Shift + Enter — новая строка
+                <p className="text-[8px] text-fog/40">
+                  {inputValue.length}/{COO_MAX_MESSAGE_LENGTH}
+                  <span className="hidden sm:inline"> · Enter — отправить</span>
                 </p>
               </div>
             </div>
           </div>
         </div>
-
         <p className="mono-label hidden pt-3 text-center text-[8px] text-fog/25 sm:block">
           ИИ-операционный директор · рабочее пространство операционной аналитики
         </p>
       </main>
-
       <input
         ref={fileInputRef}
         type="file"
         multiple
         accept=".pdf,.docx,.xlsx,.pptx"
-        onChange={handleFileUpload}
         className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          void chat.upload(files);
+        }}
       />
 
-      {isContextOpen && (
+      {isContextOpen && data && (
         <div className="fixed inset-0 z-[60]">
           <button
             className="absolute inset-0 bg-void/70 backdrop-blur-sm"
             onClick={() => setIsContextOpen(false)}
             aria-label="Закрыть контекст"
+            tabIndex={-1}
           />
-
-          <aside className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-line/60 bg-[#060b18] shadow-2xl sm:w-[360px]">
+          <aside
+            ref={dialogRef}
+            id="ai-coo-context"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-coo-context-title"
+            className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-line/60 bg-[#060b18] shadow-2xl sm:w-[360px]"
+          >
             <div className="flex h-14 shrink-0 items-center justify-between border-b border-line/50 px-4">
               <div>
-                <p className="font-display text-[11px] font-bold tracking-[0.16em] text-snow">
+                <h2
+                  id="ai-coo-context-title"
+                  className="font-display text-[11px] font-bold tracking-[0.16em] text-snow"
+                >
                   КОНТЕКСТ
-                </p>
-
+                </h2>
                 <p className="mt-0.5 text-[9px] text-fog/40">
-                  Контекст ИИ-операционного директора
+                  {data.scope.name}
+                  {data.scope.personal ? " · ваши задачи" : ""}
                 </p>
               </div>
-
               <button
                 onClick={() => setIsContextOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-line/50 text-fog/60 transition-colors hover:border-line hover:text-mist"
                 aria-label="Закрыть"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-line/50 text-fog/60 hover:text-mist"
               >
                 <LuX className="h-4 w-4" />
               </button>
             </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-5">
-                <section>
-                  <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                    Компания
-                  </p>
-
-                  <div className="rounded-xl border border-line/50 bg-hull/25 p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-ion/30 bg-ion/10">
-                        <LuBuilding2 className="h-4 w-4 text-ion" />
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] font-semibold text-mist">
-                          Компания «Акме»
+            <div className="flex-1 space-y-5 overflow-y-auto p-4">
+              <ContextSection title="Компания">
+                <div className={panel}>
+                  <div className="flex items-center gap-3">
+                    <LuBuilding2 className="h-5 w-5 shrink-0 text-ion" />
+                    <div className="min-w-0">
+                      <p className="break-words text-[11px] font-semibold text-mist">
+                        {company}
+                      </p>
+                      {data.context.company.industry && (
+                        <p className="mt-1 text-[10px] text-fog/50">
+                          {data.context.company.industry}
                         </p>
-
-                        <p className="mt-0.5 text-[9px] text-fog/40">
-                          Текущее рабочее пространство
-                        </p>
-                      </div>
+                      )}
                     </div>
                   </div>
-                </section>
-
-                <section>
-                  <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                    Данные компании
+                </div>
+              </ContextSection>
+              <ContextSection title="Последняя неделя">
+                <p className="mb-2 text-[10px] text-fog/60">
+                  {date(data.context.periodStart)} —{" "}
+                  {date(data.context.periodEnd)}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      label: "Активных задач",
+                      value: data.context.tasks.active,
+                      icon: LuListTodo,
+                    },
+                    {
+                      label: "Просрочено",
+                      value: data.context.tasks.overdue,
+                      icon: LuClock3,
+                    },
+                    {
+                      label: "Выполнено",
+                      value: data.context.tasks.completed,
+                      icon: LuListTodo,
+                    },
+                    {
+                      label: "Цель и приоритеты",
+                      value: goalCount,
+                      icon: LuTarget,
+                    },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div
+                      key={label}
+                      className="rounded-xl border border-line/50 bg-hull/20 p-3"
+                    >
+                      <Icon className="mb-2 h-3.5 w-3.5 text-fog/45" />
+                      <p className="text-lg font-semibold text-snow">{value}</p>
+                      <p className="text-[8px] uppercase tracking-[0.1em] text-fog/50">
+                        {label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {data.context.tasks.included < data.context.tasks.total && (
+                  <p className="mt-2 text-[10px] text-fog/60">
+                    В подробный контекст включено {data.context.tasks.included}{" "}
+                    из {data.context.tasks.total} задач. Общие счётчики
+                    учитывают все доступные задачи периода.
                   </p>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      {
-                        label: "Цели",
-                        value: "4",
-                        icon: LuTarget,
-                      },
-                      {
-                        label: "Задачи",
-                        value: "28",
-                        icon: LuListTodo,
-                      },
-                      {
-                        label: "Встречи",
-                        value: "3",
-                        icon: LuCalendarDays,
-                      },
-                      {
-                        label: "Источники",
-                        value: "12",
-                        icon: LuDatabase,
-                      },
-                    ].map(
-                      ({
-                        label,
-                        value,
-                        icon: Icon,
-                      }) => (
-                        <div
-                          key={label}
-                          className="rounded-xl border border-line/50 bg-hull/20 p-3"
-                        >
-                          <Icon className="mb-2 h-3.5 w-3.5 text-fog/45" />
-
-                          <p className="text-lg font-semibold text-snow">
-                            {value}
+                )}
+              </ContextSection>
+              {data.context.company.goal && (
+                <ContextSection title="Цель">
+                  <p
+                    className={`${panel} break-words text-[11px] leading-relaxed`}
+                  >
+                    {data.context.company.goal}
+                  </p>
+                  {data.context.company.priorities.map((priority, i) => (
+                    <p
+                      key={i}
+                      className="mt-2 break-words text-[10px] text-fog/60"
+                    >
+                      {i + 1}. {priority}
+                    </p>
+                  ))}
+                </ContextSection>
+              )}
+              <ContextSection title="AI-сводка дашборда">
+                <DashboardContext dashboard={data.context.dashboard} />
+              </ContextSection>
+              <ContextSection title="Документы диалога">
+                <p className="mb-2 text-[10px] leading-relaxed text-fog/50">
+                  Эти документы используются в ответах этого диалога. Загружайте
+                  файлы с доступным для чтения текстом.
+                </p>
+                {!documents.length ? (
+                  <p className="text-[11px] text-fog/50">
+                    Документы ещё не добавлены.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-2 rounded-lg border border-line/40 bg-hull/15 p-3"
+                      >
+                        <LuFileText className="h-4 w-4 shrink-0 text-flux" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[10px]" title={file.name}>
+                            {file.name}
                           </p>
-
-                          <p className="text-[8px] uppercase tracking-[0.1em] text-fog/35">
-                            {label}
+                          <p className="mt-1 text-[9px] text-fog/40">
+                            {(file.size / 1024 / 1024).toFixed(1)} МБ
                           </p>
                         </div>
-                      ),
-                    )}
-                  </div>
-                </section>
-
-                <section>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="mono-label text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                      База знаний
-                    </p>
-
-                    <button
-                      onClick={openFilePicker}
-                      className="text-[9px] text-flux transition-colors hover:text-ice"
-                    >
-                      + Добавить
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {[
-                      "Стратегия компании.pdf",
-                      "Финансовый отчёт.xlsx",
-                      "Цели 3-го квартала.docx",
-                      "Операционные процессы.pptx",
-                    ].map((file) => (
-                      <div
-                        key={file}
-                        className="flex items-center gap-2.5 rounded-lg border border-line/40 bg-hull/15 px-3 py-2.5"
-                      >
-                        <LuFileText className="h-3.5 w-3.5 shrink-0 text-fog/45" />
-
-                        <span className="truncate text-[9px] text-mist/75">
-                          {file}
-                        </span>
+                        <button
+                          onClick={() => void chat.remove(file.id)}
+                          disabled={chat.busy}
+                          aria-label={`Удалить документ ${file.name}`}
+                          className="text-fog/40 hover:text-crit disabled:opacity-30"
+                        >
+                          <LuX className="h-4 w-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
-                </section>
-
-                <section>
-                  <p className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/35">
-                    Статус базы знаний
-                  </p>
-
-                  <div className="rounded-xl border border-flux/15 bg-flux/5 p-3.5">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="dot-live"
-                        style={{
-                          backgroundColor:
-                            "var(--color-ok)",
-                        }}
-                      />
-
-                      <span className="text-[10px] font-medium text-mist">
-                        База знаний активна
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-2 text-[8px] text-fog/40">
-                      <LuClock3 className="h-3 w-3" />
-                      Последняя синхронизация 4 минуты назад
-                    </div>
-                  </div>
-                </section>
-              </div>
+                )}
+              </ContextSection>
             </div>
-
             <div className="shrink-0 border-t border-line/50 p-4">
+              {chat.operation && (
+                <p
+                  role="status"
+                  className="mb-3 break-words text-[10px] text-flux"
+                >
+                  {chat.operation}
+                </p>
+              )}
+              {chat.error && (
+                <p
+                  role="alert"
+                  className="mb-3 break-words text-[10px] text-crit"
+                >
+                  {chat.error}
+                </p>
+              )}
               <button
-                onClick={openFilePicker}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-line/60 bg-hull/25 px-3 py-2.5 text-[10px] font-medium text-mist transition-colors hover:border-flux/40 hover:text-flux"
+                onClick={chooseFiles}
+                disabled={chat.busy || documents.length >= 5}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-line/60 bg-hull/25 px-3 py-2.5 text-[10px] font-medium text-mist hover:border-flux/40 hover:text-flux disabled:opacity-40"
               >
                 <LuPaperclip className="h-3.5 w-3.5" />
                 Добавить документ
@@ -900,6 +709,165 @@ ${files.map((file) => `• ${file.name}`).join("\n")}
             </div>
           </aside>
         </div>
+      )}
+    </div>
+  );
+}
+
+function Message({
+  message,
+  retry,
+  busy,
+}: {
+  message: AiCooMessage;
+  retry: () => void;
+  busy: boolean;
+}) {
+  const isUser = message.role === "user";
+  return (
+    <div
+      className={`flex gap-2.5 sm:gap-3 ${isUser ? "justify-end" : "justify-start"}`}
+    >
+      {!isUser && (
+        <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ion/40 bg-ion/10 sm:h-8 sm:w-8">
+          <LuBot className="h-4 w-4 text-ion" />
+        </div>
+      )}
+      <div
+        className={`min-w-0 ${isUser ? "max-w-[88%] sm:max-w-[75%]" : "max-w-[92%] sm:max-w-[82%]"}`}
+      >
+        {!isUser && (
+          <p className="mb-1.5 font-display text-[9px] font-bold tracking-[0.12em] text-ion">
+            ИИ-операционный директор
+          </p>
+        )}
+        <div
+          className={`rounded-xl border px-3.5 py-3 sm:px-4 ${isUser ? "border-flux/25 bg-flux/10" : "border-line/50 bg-hull/30"}`}
+        >
+          <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-mist sm:text-[13px]">
+            {isUser ? message.content : renderAssistantText(message.content)}
+          </p>
+          {Boolean(message.documents?.length) && (
+            <div className="mt-3 space-y-1.5">
+              {message.documents?.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex min-w-0 items-center gap-2 rounded-lg border border-line/30 bg-void/20 px-2.5 py-2 text-[10px] text-fog/70"
+                >
+                  <LuFileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate" title={file.name}>
+                    {file.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {message.status === "failed" && (
+            <div className="mt-3 text-[10px] text-crit">
+              Ответ не получен.
+              {message.requestId && (
+                <button
+                  onClick={retry}
+                  disabled={busy}
+                  className="ml-2 text-flux underline disabled:opacity-40"
+                >
+                  Повторить запрос
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <p
+          className={`mt-1.5 text-[8px] text-fog/40 ${isUser ? "text-right" : ""}`}
+        >
+          {time(message.createdAt)}
+        </p>
+      </div>
+      {isUser && (
+        <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-flux to-ion sm:h-8 sm:w-8">
+          <span className="text-[10px] font-bold text-void">Вы</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderAssistantText(content: string) {
+  const parts: React.ReactNode[] = [];
+  const inline = /(?<![\\`])`([^`\n]+)`(?!`)|(?<![\\*])\*\*([^*\n]+)\*\*(?!\*)|(?<![\\*])\*([^*\n]+)\*(?!\*)/g;
+  let from = 0;
+  for (const match of content.matchAll(inline)) {
+    const index = match.index!;
+    parts.push(content.slice(from, index));
+    if (match[1] !== undefined) {
+      parts.push(
+        <code key={index} className="rounded bg-void/40 px-1 font-mono text-[0.95em]">
+          {match[1]}
+        </code>,
+      );
+    } else if (match[2] !== undefined) {
+      parts.push(<strong key={index}>{match[2]}</strong>);
+    } else {
+      parts.push(<em key={index}>{match[3]}</em>);
+    }
+    from = index + match[0].length;
+  }
+  parts.push(content.slice(from));
+  return parts;
+}
+
+function ContextSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="mono-label mb-2 text-[8px] uppercase tracking-[0.16em] text-fog/50">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function DashboardContext({
+  dashboard,
+}: {
+  dashboard: AiCooState["context"]["dashboard"];
+}) {
+  const status =
+    dashboard.status === "restricted"
+      ? "Общая AI-сводка недоступна для вашей роли."
+      : dashboard.status === "unavailable"
+        ? "AI-сводка пока не готова. Чат использует доступные задачи и документы."
+        : dashboard.status === "stale"
+          ? "Сводка ожидает обновления. В ответе учитывается дата её расчёта."
+          : "AI-сводка доступна.";
+  return (
+    <div className={panel}>
+      <p className="text-[11px] text-mist">{status}</p>
+      {dashboard.generatedAt && (
+        <p className="mt-2 text-[9px] text-fog/50">
+          Рассчитана: {new Date(dashboard.generatedAt).toLocaleString("ru-RU")}
+        </p>
+      )}
+      {dashboard.analysis && (
+        <>
+          <p className="mt-3 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-fog/70">
+            {dashboard.analysis.recommendation}
+          </p>
+          {dashboard.analysis.risks.map((risk, index) => (
+            <p
+              key={index}
+              className={`mt-2 break-words text-[10px] ${risk.tone === "crit" ? "text-crit" : "text-warn"}`}
+            >
+              {risk.text}
+            </p>
+          ))}
+        </>
       )}
     </div>
   );
