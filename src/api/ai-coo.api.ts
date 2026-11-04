@@ -24,7 +24,7 @@ export const aiCooApi = {
       .post<AiCooState>(
         `${path(workspaceId)}/messages`,
         { ...params(departmentId), text, requestId },
-        { signal, timeout: 330_000 },
+        { signal, timeout: 330_000, retrySafe: true },
       )
       .then((r) => r.data),
   upload: (

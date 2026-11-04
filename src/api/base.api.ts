@@ -1,4 +1,5 @@
 import axios from "axios";
+import { installApiRetry } from "./retry";
 
 export const TOKEN_KEY = "mycoo_access_token";
 
@@ -17,10 +18,13 @@ export const api = axios.create({
   timeout: 20_000,
 });
 
+const publicMeeting = (url = "") => /^\/meetings\/join\//.test(url);
+installApiRetry(api, { getSession: () => localStorage.getItem(TOKEN_KEY) });
+
 api.interceptors.request.use((config) => {
   const publicAuth = /^\/auth\/(check-email|verify-code|resend-code|login|register)$/.test(config.url ?? "");
   const publicInvitation = /^\/invitations\//.test(config.url ?? "");
-  if (!publicAuth && !publicInvitation && !config.headers.Authorization) {
+  if (!publicAuth && !publicInvitation && !publicMeeting(config.url) && !config.headers.Authorization) {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,13 +32,13 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use((response) => response, (error) => {
-  if (axios.isCancel(error)) return Promise.reject(error);
+  if (axios.isCancel(error) || error instanceof ApiError) return Promise.reject(error);
   const status = error.response?.status ?? 0;
-  if (status === 401 && error.config?.headers?.Authorization) {
+  if (status === 401 && !publicMeeting(error.config?.url) && error.config?.headers?.Authorization) {
     window.dispatchEvent(new Event("mycoo:session-expired"));
   }
   const data = error.response?.data;
-  if (status === 402 && data?.code === 'SUBSCRIPTION_EXPIRED') {
+  if (status === 402 && !publicMeeting(error.config?.url) && data?.code === 'SUBSCRIPTION_EXPIRED') {
     window.dispatchEvent(new Event('mycoo:subscription-expired'));
   }
   const details = Array.isArray(data?.errors)
