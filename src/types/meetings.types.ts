@@ -62,12 +62,25 @@ export const MEETING_TEMPLATES: Record<string,string> = {
 export interface ProtocolTask { title: string; assigneeIds: string[]; startDate: string|null; dueDate: string|null; successCriteria: string; priority: 'low'|'medium'|'high'; }
 export interface MeetingAnalysis { summary: string; ownerSummary: string; decisions: string[]; risks: string[]; openQuestions: string[]; tasks: ProtocolTask[]; }
 export interface LiveMeeting extends Meeting {
+  guestInviteToken?: string;
   locked: boolean; canHost: boolean; canModerate: boolean; canReview: boolean; myRole: MeetingRole; callsAvailable: boolean;
-  participants: (MeetingParticipant & { name: string; admitted: boolean; removed: boolean; raisedHand: boolean; requestedAt?: string|null })[];
+  participants: (MeetingParticipant & { name: string; admitted: boolean; removed: boolean; raisedHand: boolean; requestedAt?: string|null; isGuest?: boolean })[];
   people: { id: string; name: string }[];
   recordings: { id: string; status: string; error: string|null; createdAt: string; downloadable: boolean }[];
   transcript: string|null; analysis: MeetingAnalysis|null; analysisStatus: string; analysisRevision: number; analysisError: string|null; publishedAt: string|null;
   tasks: { id: string; title: string; status: string; dueDate: string }[];
+}
+export type CallMeeting = Pick<LiveMeeting,
+  'id' | 'title' | 'startsAt' | 'startedAt' | 'departmentName' | 'waitingRoom' |
+  'muteOnEntry' | 'allowScreenShare' | 'locked' | 'myRole' | 'canHost' |
+  'canModerate' | 'participants' | 'guestInviteToken'
+> & { recordings?: LiveMeeting['recordings']; recordingActive?: boolean };
+
+export interface MeetingJoinResult {
+  waiting: boolean;
+  identity?: string;
+  token?: string;
+  url?: string;
 }
 export const MEETING_ROLES: Record<MeetingRole, string> = {
   host: 'Организатор',

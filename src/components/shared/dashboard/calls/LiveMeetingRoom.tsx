@@ -37,7 +37,7 @@ import {
 import { errorMessage } from "@/api/base.api";
 import {
   MEETING_ROLES,
-  type LiveMeeting,
+  type CallMeeting,
   type MeetingRole,
 } from "@/types/meetings.types";
 import { Avatar, MeetingDialog } from "./MeetingUI";
@@ -45,7 +45,7 @@ import { recordingState } from "./recording-state";
 
 type Confirmation =
   { kind: "leave" | "record" } | { kind: "remove"; personId: string };
-type Person = LiveMeeting["participants"][number];
+type Person = CallMeeting["participants"][number];
 
 export default function LiveMeetingRoom({
   meeting,
@@ -54,7 +54,7 @@ export default function LiveMeetingRoom({
   onLeave,
   connectionError,
 }: {
-  meeting: LiveMeeting;
+  meeting: CallMeeting;
   userId: string;
   action: (name: string, personId?: string) => Promise<void>;
   onLeave: () => void;
@@ -148,7 +148,18 @@ export default function LiveMeetingRoom({
     ? spotlight
     : null;
   const self = roster.find((p) => p.personId === userId);
-  const recording = recordingState(meeting.recordings);
+  const recording = meeting.recordingActive === undefined
+    ? recordingState(meeting.recordings || [])
+    : {
+        pending: meeting.recordingActive,
+        stopping: false,
+        capturing: meeting.recordingActive,
+        error: "",
+        label: meeting.recordingActive ? "Идёт запись" : "Запись выключена",
+        description: meeting.recordingActive
+          ? "Аудио записывается для подготовки протокола"
+          : "Запись выключена",
+      };
   const elapsed = Math.max(
     0,
     Math.floor(
@@ -180,7 +191,7 @@ export default function LiveMeetingRoom({
             Выключить звук
           </button>
         )}
-        {meeting.canHost && (
+        {meeting.canHost && !p.isGuest && (
           <button
             disabled={busy}
             className="meeting-text-button"
@@ -282,8 +293,12 @@ export default function LiveMeetingRoom({
             aria-label="Скопировать ссылку на встречу"
             onClick={() =>
               void run(
-                () => navigator.clipboard.writeText(window.location.href),
-                "Ссылка скопирована. Войти смогут приглашённые сотрудники.",
+                () => navigator.clipboard.writeText(meeting.guestInviteToken
+                  ? new URL("/meetings/join/" + meeting.guestInviteToken, window.location.origin).href
+                  : window.location.href),
+                meeting.guestInviteToken
+                  ? "Ссылка скопирована. По ней можно войти без регистрации."
+                  : "Ссылка скопирована.",
               )
             }
           >

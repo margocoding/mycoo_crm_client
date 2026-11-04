@@ -10,7 +10,7 @@ import {
   LuVideo,
   LuVideoOff,
 } from "react-icons/lu";
-import { MEETING_ROLES, type LiveMeeting } from "@/types/meetings.types";
+import { MEETING_ROLES, type CallMeeting } from "@/types/meetings.types";
 import { Avatar } from "./MeetingUI";
 
 export interface MediaChoices {
@@ -27,7 +27,7 @@ export default function LiveMeetingLobby({
   onJoin,
   onBack,
 }: {
-  meeting: LiveMeeting;
+  meeting: CallMeeting;
   userId: string;
   error: string;
   onJoin: (choices: MediaChoices) => void;

@@ -3,6 +3,7 @@ import type {
   LiveMeeting,
   Meeting,
   MeetingDraft,
+  MeetingJoinResult,
   ProtocolTask,
 } from "@/types/meetings.types";
 import type { Department, TeamMember } from "@/types/team.types";
@@ -31,12 +32,14 @@ export const meetingsApi = {
     ).then((r) => r.data),
   action: (w: string, id: string, action: string, personId?: string) =>
     api
-      .post<LiveMeeting>(path(w, id) + "/actions", { action, personId })
+      .post<LiveMeeting>(path(w, id) + "/actions", { action, personId }, { timeout: 120_000 })
       .then((r) => r.data),
-  join: (w: string, id: string) =>
+  join: (w: string, id: string, signal?: AbortSignal) =>
     api
-      .post<{ waiting: boolean; token?: string; url?: string }>(
+      .post<MeetingJoinResult>(
         path(w, id) + "/join",
+        {},
+        { signal, retrySafe: true, timeout: 120_000 },
       )
       .then((r) => r.data),
   transcript: (w: string, id: string, text: string) =>
@@ -63,6 +66,8 @@ export const meetingsApi = {
     api
       .post<{ url: string }>(
         path(w, id) + "/recordings/" + recordingId + "/url",
+        {},
+        { retrySafe: true, timeout: 120_000 },
       )
       .then((r) => r.data),
   retryRecording: (w: string, id: string, recordingId: string) =>
