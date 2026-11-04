@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import SubscriptionModal from "./components/ui/SubscriptionModal";
 import TeamPage from "./pages/TeamPage";
 import InvitationPage from "./pages/InvitationPage";
+import GuestMeetingPage from "./pages/GuestMeetingPage";
 import NotificationsPage from './pages/NotificationsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import { useModalRouter } from "./hooks/useModalRouter";
@@ -20,6 +21,9 @@ import { useModalRouter } from "./hooks/useModalRouter";
 export default function App() {
   const { state, closeModal } = useModalRouter();
   const location = useLocation();
+  if (location.pathname.startsWith("/meetings/join/")) {
+    return <Routes><Route path="/meetings/join/:token" element={<GuestMeetingPage />} /></Routes>;
+  }
   if (import.meta.env.DEV && location.pathname === "/preview/meetings") {
     return (
       <main className="min-h-screen bg-void px-4 py-6 md:px-8">

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { LiveKitRoom } from "@livekit/components-react";
 import { meetingsApi } from "@/api/meetings.api";
 import { errorMessage } from "@/api/base.api";
-import type { LiveMeeting } from "@/types/meetings.types";
+import type { CallMeeting, MeetingJoinResult } from "@/types/meetings.types";
 import LiveMeetingLobby, { type MediaChoices } from "./LiveMeetingLobby";
 import LiveMeetingRoom from "./LiveMeetingRoom";
 
@@ -13,12 +13,14 @@ export default function LiveCall({
   userId,
   action,
   onLeave,
+  joinCall,
 }: {
   workspaceId: string;
-  meeting: LiveMeeting;
+  meeting: CallMeeting;
   userId: string;
   action: (name: string, personId?: string) => Promise<void>;
   onLeave: () => void;
+  joinCall?: (signal: AbortSignal) => Promise<MeetingJoinResult>;
 }) {
   const [choices, setChoices] = useState<MediaChoices | null>(null);
   const [connection, setConnection] = useState<{
@@ -31,10 +33,13 @@ export default function LiveCall({
   useEffect(() => {
     if (!choices) return;
     let active = true;
+    const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const join = async () => {
       try {
-        const result = await meetingsApi.join(workspaceId, meeting.id);
+        const result = await (joinCall
+          ? joinCall(controller.signal)
+          : meetingsApi.join(workspaceId, meeting.id, controller.signal));
         if (!active) return;
         if (result.waiting) {
           setWaiting(true);
@@ -58,9 +63,10 @@ export default function LiveCall({
     void join();
     return () => {
       active = false;
+      controller.abort();
       clearTimeout(timer);
     };
-  }, [workspaceId, meeting.id, choices, retry]);
+  }, [workspaceId, meeting.id, choices, retry, joinCall]);
 
   if (!choices)
     return (

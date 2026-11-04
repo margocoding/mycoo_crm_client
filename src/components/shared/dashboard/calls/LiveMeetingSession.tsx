@@ -105,13 +105,17 @@ export default function LiveMeetingSession({
   }
   const act = (name: string, person?: string) =>
     void action(name, person).catch(() => {});
-  const meetingUrl = new URL(window.location.href);
-  meetingUrl.searchParams.set("workspace", workspaceId);
+  const meetingUrl = meeting?.guestInviteToken
+    ? new URL("/meetings/join/" + meeting.guestInviteToken, window.location.origin)
+    : new URL(window.location.href);
+  if (!meeting?.guestInviteToken) meetingUrl.searchParams.set("workspace", workspaceId);
   const copyLink = () =>
     navigator.clipboard
       .writeText(meetingUrl.href)
       .then(() =>
-        setNotice("Ссылка скопирована. Войти смогут приглашённые сотрудники."),
+        setNotice(meeting?.guestInviteToken
+          ? "Ссылка скопирована. По ней можно войти без регистрации."
+          : "Ссылка скопирована. Войти смогут приглашённые сотрудники."),
       )
       .catch(() => setNotice("Скопируйте ссылку из поля ниже."));
   if (joining && meeting?.status === "live")
@@ -327,7 +331,7 @@ export default function LiveMeetingSession({
                             >
                               Выключить микрофон
                             </button>
-                            {meeting.canHost && (
+                            {meeting.canHost && !p.isGuest && (
                               <button
                                 disabled={busy}
                                 className="meeting-button compact"
@@ -387,7 +391,9 @@ export default function LiveMeetingSession({
                   </div>
                 </label>
                 <p className="mt-3 text-xs leading-5 text-fog">
-                  Войти смогут сотрудники, приглашённые на встречу.
+                  {meeting.guestInviteToken
+                    ? "По ссылке можно войти без регистрации. Не пересылайте её посторонним."
+                    : "Войти смогут сотрудники, приглашённые на встречу."}
                 </p>
               </div>
             </section>
