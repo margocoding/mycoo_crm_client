@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
-import { addCalendarMonths, createDemoPartnerData, getPartnerBalance, validatePartnerData } from './partner.model.ts';
+import { addCalendarMonths, createDemoPartnerData, getPartnerBalance, migratePartnerDataV1, validatePartnerData } from './partner.model.ts';
 
 function memoryStorage() {
   const values = new Map();
@@ -16,13 +16,14 @@ beforeEach(async () => {
   assert.equal((await state().loginAdmin('admin', 'admin')).ok, true);
 });
 
-test('seed has valid references, all statuses and reconciled balances', () => {
+test('seed has registered partners, valid references, all payout statuses and reconciled balances', () => {
   const now = new Date('2026-11-06T12:00:00Z'), data = createDemoPartnerData(now);
   assert.equal(validatePartnerData(data), true);
   assert.deepEqual(getPartnerBalance(data, primary, now), {
     totalAccrued: 63_500, pending: 10_000, available: 28_500, reserved: 15_000, paid: 10_000, debt: 0,
   });
   assert.equal(new Set(data.payouts.map(item => item.status)).size, 5);
+  assert.equal(data.partners.every(partner => !('status' in partner) && Number.isFinite(Date.parse(partner.registeredAt))), true);
 });
 
 test('pending earnings mature exactly at their hold date', () => {
@@ -43,7 +44,8 @@ test('all live payout requests reserve funds immediately and prevent double spen
   assert.equal(balance().available, 0);
 });
 
-test('payout requires approved partner, complete details, minimum and cent precision', () => {
+test('payout requires an existing partner, complete details, minimum and cent precision', () => {
+  assert.equal(state().requestPayout('missing-partner', 5_000).ok, false);
   assert.equal(state().requestPayout('partner-vector', 5_000).ok, false);
   assert.equal(state().requestPayout(primary, 4_999.99).ok, false);
   assert.equal(state().requestPayout(primary, 5_000.001).ok, false);
@@ -150,15 +152,119 @@ test('payout snapshots preserve details after a partner edits their bank account
   assert.notEqual(state().partners[0].payoutDetails.bank, original.bank);
 });
 
-test('application rejection and resubmission preserve identity and validate duplicate email', () => {
-  assert.equal(state().reviewPartner('partner-vector', 'rejected').ok, false);
-  assert.equal(state().reviewPartner('partner-vector', 'rejected', 'Уточните источник').ok, true);
-  const input = { name: 'Михаил Орлов', email: 'mikhail@vector.example', company: 'Вектор', channel: 'Сайт', website: 'https://vector.example' };
-  assert.equal(state().resubmitApplication('partner-vector', input).ok, true);
-  assert.equal(state().partners.find(item => item.id === 'partner-vector').status, 'pending');
-  assert.equal(state().applyPartner(input).ok, false);
-  assert.equal(state().reviewPartner('partner-vector', 'approved').ok, true);
-  assert.equal(state().resubmitApplication('partner-vector', input).ok, false);
+test('name and email register a partner immediately without admin authentication and survive reload', async () => {
+  state().logoutAdmin();
+  const result = state().registerPartner({ name: '  Новый партнёр  ', email: '  NEW@Example.com  ', company: '', channel: '', website: '' });
+  assert.equal(result.ok, true);
+  const partner = state().partners.find(item => item.id === result.id);
+  assert.equal(state().currentPartnerId, partner.id);
+  assert.equal(partner.name, 'Новый партнёр');
+  assert.equal(partner.email, 'new@example.com');
+  assert.equal(partner.company, '');
+  assert.equal(partner.channel, '');
+  assert.equal(partner.website, '');
+  assert.ok(partner.code);
+  assert.ok(Number.isFinite(Date.parse(partner.registeredAt)));
+  for (const field of ['status', 'appliedAt', 'reviewNote']) assert.equal(field in partner, false);
+  for (const action of ['applyPartner', 'resubmitApplication', 'reviewPartner']) assert.equal(action in state(), false);
+  assert.deepEqual(getPartnerBalance(state(), partner.id), { totalAccrued: 0, pending: 0, available: 0, reserved: 0, paid: 0, debt: 0 });
+  const { usePartnerStore: reloaded } = await import(`./partner.store.ts?registration=${crypto.randomUUID()}`);
+  assert.equal(reloaded.getState().currentPartnerId, partner.id);
+  assert.deepEqual(reloaded.getState().partners.find(item => item.id === partner.id), partner);
+  assert.equal(validatePartnerData(reloaded.getState()), true);
+});
+
+test('registration normalizes optional fields and rejects duplicate email without changing state', () => {
+  const result = state().registerPartner({ name: 'Новый партнёр', email: 'new@example.com', company: '  Компания  ', channel: '  Сайт  ', website: ' https://example.com ' });
+  assert.equal(result.ok, true);
+  const partner = state().partners.find(item => item.id === result.id);
+  assert.equal(partner.company, 'Компания');
+  assert.equal(partner.channel, 'Сайт');
+  assert.equal(partner.website, 'https://example.com');
+  const snapshot = state();
+  assert.equal(state().registerPartner({ name: 'Другое имя', email: ' NEW@EXAMPLE.COM ' }).ok, false);
+  assert.equal(state(), snapshot);
+  const minimal = state().registerPartner({ name: 'Без компании', email: 'minimal@example.com' });
+  assert.equal(minimal.ok, true);
+  assert.equal(state().partners.find(item => item.id === minimal.id).company, '');
+  assert.equal(validatePartnerData(state()), true);
+});
+
+test('registration validates required text, optional types, lengths, email and website before mutation', () => {
+  const valid = { name: 'Партнёр', email: 'new@example.com', company: '', channel: '', website: '' };
+  const snapshot = state();
+  const invalid = [null, [], {}, { ...valid, name: '   ' }, { ...valid, name: 12 }, { ...valid, email: 12 },
+    { ...valid, email: 'invalid-email' }, { ...valid, website: 'example.com' }, { ...valid, website: 'javascript:alert(1)' },
+    ...['company', 'channel', 'website'].flatMap(field => [null, 42, {}].map(value => ({ ...valid, [field]: value }))),
+    ...Object.keys(valid).map(field => ({ ...valid, [field]: 'x'.repeat(501) })),
+  ];
+  for (const input of invalid) {
+    assert.equal(state().registerPartner(input).ok, false);
+    assert.equal(state(), snapshot);
+  }
+});
+
+test('newly registered partners can earn commission and request payouts as soon as funds and details are ready', () => {
+  const result = state().registerPartner({ name: 'Новый партнёр', email: 'new@example.com' });
+  assert.equal(result.ok, true);
+  const partnerId = result.id;
+  store.setState({ referrals: [...state().referrals, { id: 'ref-new', partnerId, company: 'Клиент', registeredAt: new Date().toISOString(), status: 'active' }] });
+  assert.equal(state().recordPayment('ref-new', 'NEW-PARTNER-PAYMENT', 10_000).ok, true);
+  assert.equal(getPartnerBalance(state(), partnerId).pending, 2_000);
+  assert.equal(state().adjustCommission(partnerId, 5_000, 'Начисление по акту').ok, true);
+  assert.equal(state().updateDetails(partnerId, state().partners[0].payoutDetails).ok, true);
+  state().logoutAdmin();
+  assert.equal(state().requestPayout(partnerId, 5_000).ok, true);
+  assert.equal(getPartnerBalance(state(), partnerId).reserved, 5_000);
+  assert.equal(validatePartnerData(state()), true);
+});
+
+test('v1 migration removes all former partner statuses without changing identities or finances', async () => {
+  assert.equal(state().adjustCommission(primary, 123.45, 'Сохранённая корректировка').ok, true);
+  assert.equal(state().requestPayout(primary, 5_000).ok, true);
+  assert.equal(state().updateTerms({ ...state().terms, commissionPercent: 25 }).ok, true);
+  assert.equal((await state().updateAdminCredentials('admin', 'saved-admin', 'saved-password')).ok, true);
+  state().selectPartner('partner-praktika');
+  const saved = JSON.parse(window.localStorage.getItem(keys.data));
+  const legacy = { ...saved, version: 1, data: { ...saved.data, partners: saved.data.partners.map(({ registeredAt, ...partner }, index) => ({
+    ...partner, appliedAt: registeredAt, status: ['approved', 'pending', 'rejected'][index], reviewNote: 'Старое решение',
+  })) } };
+  const original = structuredClone(legacy);
+  const migrated = migratePartnerDataV1(legacy.data);
+  assert.deepEqual(migrated, saved.data);
+  assert.deepEqual(legacy, original);
+  const credentials = window.localStorage.getItem(keys.credentials), session = window.sessionStorage.getItem(keys.session);
+  const priorBalances = saved.data.partners.map(partner => getPartnerBalance(saved.data, partner.id));
+  window.localStorage.setItem(keys.data, JSON.stringify(legacy));
+  const { usePartnerStore: reloaded } = await import(`./partner.store.ts?migration=${crypto.randomUUID()}`);
+  assert.equal(reloaded.getState().adminAuthenticated, true);
+  assert.equal(reloaded.getState().adminLogin, 'saved-admin');
+  for (const key of Object.keys(saved.data)) assert.deepEqual(reloaded.getState()[key], saved.data[key]);
+  assert.deepEqual(reloaded.getState().partners.map(partner => getPartnerBalance(reloaded.getState(), partner.id)), priorBalances);
+  assert.deepEqual(JSON.parse(window.localStorage.getItem(keys.data)), { ...saved, version: 2 });
+  assert.equal(window.localStorage.getItem(keys.credentials), credentials);
+  assert.equal(window.sessionStorage.getItem(keys.session), session);
+  for (const partnerId of ['partner-vector', 'partner-praktika']) {
+    assert.equal(reloaded.getState().adjustCommission(partnerId, 5_000, 'Начисление').ok, true);
+    assert.equal(reloaded.getState().updateDetails(partnerId, saved.data.partners[0].payoutDetails).ok, true);
+    assert.equal(reloaded.getState().requestPayout(partnerId, 5_000).ok, true);
+  }
+  const { usePartnerStore: secondReload } = await import(`./partner.store.ts?migrated-again=${crypto.randomUUID()}`);
+  assert.equal(secondReload.getState().currentPartnerId, 'partner-praktika');
+  assert.deepEqual(secondReload.getState().payouts, reloaded.getState().payouts);
+  assert.equal(secondReload.getState().adminAuthenticated, true);
+  assert.equal(validatePartnerData(secondReload.getState()), true);
+});
+
+test('v1 migration rejects malformed partners and broken financial references', () => {
+  const data = createDemoPartnerData();
+  data.partners = data.partners.map(({ registeredAt, ...partner }) => ({ ...partner, appliedAt: registeredAt, status: 'pending', reviewNote: '' }));
+  assert.notEqual(migratePartnerDataV1(data), null);
+  for (const invalid of [null, {}, { ...data, partners: [null] },
+    { ...data, partners: data.partners.map(partner => ({ ...partner, appliedAt: 'bad-date' })) },
+    { ...data, partners: data.partners.map(partner => ({ ...partner, status: 'unknown' })) },
+    { ...data, ledger: data.ledger.map(entry => ({ ...entry, partnerId: 'missing-partner' })) },
+  ]) assert.equal(migratePartnerDataV1(invalid), null);
 });
 
 test('admin mutations require local authentication', () => {
@@ -167,7 +273,6 @@ test('admin mutations require local authentication', () => {
   assert.equal(state().adjustCommission(primary, 500, 'Причина').ok, false);
   assert.equal(state().refundPayment('DEMO-1004', 100, 'Причина').ok, false);
   assert.equal(state().recordPayment('ref-atelier', 'NO-AUTH', 100).ok, false);
-  assert.equal(state().reviewPartner('partner-vector', 'approved').ok, false);
   assert.equal(state().reviewPayout('payout-new', 'approved').ok, false);
   assert.equal(state().markPaid('payout-approved', 100, new Date().toISOString()).ok, false);
 });
@@ -219,7 +324,13 @@ test('malformed, incomplete or broken storage snapshots fall back to valid demo 
   const damaged = createDemoPartnerData();
   damaged.ledger[0].partnerId = 'missing-partner';
   assert.equal(validatePartnerData(damaged), false);
-  for (const value of ['{broken-json', JSON.stringify({ version: 1, data: { partners: [] } }), JSON.stringify({ version: 1, data: damaged })]) {
+  const termsHistory = [{ effectiveAt: '2000-01-01T00:00:00.000Z', terms: damaged.terms }];
+  const legacyDamaged = { ...damaged, partners: damaged.partners.map(({ registeredAt, ...partner }) => ({
+    ...partner, appliedAt: registeredAt, status: 'pending', reviewNote: '',
+  })) };
+  for (const value of ['{broken-json', JSON.stringify({ version: 2, data: { partners: [] }, termsHistory }),
+    JSON.stringify({ version: 2, data: damaged, termsHistory }), JSON.stringify({ version: 1, data: legacyDamaged, termsHistory }),
+  ]) {
     window.localStorage.setItem(keys.data, value);
     const { usePartnerStore: restoredStore } = await import(`./partner.store.ts?corrupt=${crypto.randomUUID()}`);
     assert.equal(validatePartnerData(restoredStore.getState()), true);

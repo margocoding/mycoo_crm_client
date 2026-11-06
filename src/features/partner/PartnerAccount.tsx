@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { LuArrowDownToLine, LuArrowUpRight, LuClock3, LuLink, LuUsers } from "react-icons/lu";
+import { LuArrowDownToLine, LuArrowUpRight, LuLink, LuUsers } from "react-icons/lu";
 import { usePartnerStore } from "./partner.store";
 import { getPartnerBalance } from "./partner.model";
 import { CopyButton, EmptyState, Money, StatusBadge, formatDate } from "./PartnerUI";
@@ -14,22 +14,11 @@ export function PartnerAccount() {
   const ledger = data.ledger.filter((item) => item.partnerId === partner.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
   const payouts = data.payouts.filter((item) => item.partnerId === partner.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
   const link = `${window.location.origin}/?partner=${encodeURIComponent(partner.code)}`;
-  const approved = partner.status === "approved";
   const referralNames = new Map(referrals.map((item) => [item.id, item.company]));
 
   return (
     <>
-      <div className="p-page-head"><div><span className="p-kicker">Кабинет партнёра</span><h1>Обзор</h1></div><StatusBadge status={partner.status} /></div>
-
-      {!approved ? (
-        <section className={`p-notice ${partner.status === "pending" ? "warning" : ""}`} aria-labelledby="partner-status-title">
-          <LuClock3 size={22} aria-hidden="true" />
-          <div><strong id="partner-status-title">{partner.status === "pending" ? "Заявка на рассмотрении" : "Заявку нужно дополнить"}</strong>
-            <p>{partner.status === "pending" ? "После одобрения здесь появится ваша ссылка для приглашения компаний. Реквизиты можно заполнить уже сейчас." : partner.reviewNote || "Уточните данные заявки и отправьте её ещё раз."}</p>
-            {partner.status === "rejected" ? <Link className="p-button small" to={`/partner/apply?edit=${encodeURIComponent(partner.id)}`}>Обновить заявку <LuArrowUpRight aria-hidden="true" /></Link> : <Link to="/partner/account/details">Заполнить реквизиты</Link>}
-          </div>
-        </section>
-      ) : null}
+      <div className="p-page-head"><div><span className="p-kicker">Кабинет партнёра</span><h1>Обзор</h1></div></div>
 
       <section className="p-panel p-balance-hero" aria-labelledby="available-title">
         <div><span className="p-kicker" id="available-title">Доступно к выплате</span><div className="p-balance-value"><Money value={balance.available} /></div><p className="p-muted">После проверки оплат и с учётом отправленных заявок.</p></div>
@@ -48,7 +37,7 @@ export function PartnerAccount() {
       <div className="p-grid-2">
         <section className="p-panel" aria-labelledby="referral-link-title">
           <div className="p-panel-head"><h2 id="referral-link-title"><LuLink aria-hidden="true" /> Ваша партнёрская ссылка</h2></div>
-          {approved ? <><p className="p-muted">Поделитесь ссылкой с компанией, которой рекомендуете MyCoo.</p><div className="p-link-box"><code>{link}</code><CopyButton value={link} label="Копировать ссылку" /></div><p className="p-muted">Вознаграждение — {data.terms.commissionPercent}% от оплат в первые {data.terms.eligibleMonths} мес. после регистрации клиента.</p></> : <p className="p-muted">Ссылка станет доступна после одобрения заявки.</p>}
+          <p className="p-muted">Поделитесь ссылкой с компанией, которой рекомендуете MyCoo.</p><div className="p-link-box"><code>{link}</code><CopyButton value={link} label="Копировать ссылку" /></div><p className="p-muted">Вознаграждение — {data.terms.commissionPercent}% от оплат в первые {data.terms.eligibleMonths} мес. после регистрации клиента.</p>
         </section>
         <section className="p-panel" aria-labelledby="clients-title">
           <div className="p-panel-head"><h2 id="clients-title"><LuUsers aria-hidden="true" /> Приглашённые компании</h2><Link className="p-button small" to="/partner/account/referrals">Все компании <LuArrowUpRight aria-hidden="true" /></Link></div>

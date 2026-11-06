@@ -73,8 +73,8 @@ export function validatePartnerData(value: unknown): value is PartnerData {
   if (![value.partners, value.referrals, value.payments, value.ledger, value.payouts].every(Array.isArray)) return false;
   const { partners, referrals, payments, ledger, payouts } = value as unknown as PartnerData;
   if (!partners.length || !partners.every(p => isRecord(p) && isText(p.id) && isText(p.code) &&
-    isText(p.name) && isText(p.email) && isString(p.company) && isText(p.channel) && isString(p.website) &&
-    ['pending', 'approved', 'rejected'].includes(p.status) && isDate(p.appliedAt) && isString(p.reviewNote) &&
+    isText(p.name) && isText(p.email) && isString(p.company) && isString(p.channel) && isString(p.website) &&
+    isDate(p.registeredAt) &&
     (p.payoutDetails === null || validatePayoutDetails(p.payoutDetails)))) return false;
   if (!partners.some(p => p.id === value.currentPartnerId) || new Set(partners.map(p => p.code)).size !== partners.length) return false;
   if (!referrals.every(r => isRecord(r) && isText(r.id) && partners.some(p => p.id === r.partnerId) &&
@@ -105,6 +105,22 @@ export function validatePartnerData(value: unknown): value is PartnerData {
   });
 }
 
+// Version 1 required approval. Every existing partner now has immediate access;
+// only the registration fields change, so financial records retain their identity.
+export function migratePartnerDataV1(value: unknown): PartnerData | null {
+  if (!isRecord(value) || !Array.isArray(value.partners)) return null;
+  if (!value.partners.every(partner => isRecord(partner) &&
+    isString(partner.status) && ['pending', 'approved', 'rejected'].includes(partner.status) &&
+    isDate(partner.appliedAt) && isString(partner.reviewNote))) return null;
+  const migrated = {
+    ...value,
+    partners: value.partners.map(({ status, appliedAt, reviewNote, ...partner }) => ({
+      ...partner, registeredAt: appliedAt,
+    })),
+  };
+  return validatePartnerData(migrated) ? migrated : null;
+}
+
 export function createDemoPartnerData(now = new Date()): PartnerData {
   const ago = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
   const details: PayoutDetails = {
@@ -115,9 +131,9 @@ export function createDemoPartnerData(now = new Date()): PartnerData {
   const data: PartnerData = {
     terms: { ...DEFAULT_PARTNER_TERMS }, currentPartnerId: primary,
     partners: [
-      { id: primary, code: 'SFERA', name: 'Анна Смирнова', email: 'anna@sfera.example', company: 'Бюро Сфера', channel: 'Внедрение CRM и консалтинг', website: 'https://sfera.example', status: 'approved', appliedAt: ago(190), reviewNote: 'Заявка одобрена.', payoutDetails: details },
-      { id: 'partner-vector', code: 'VECTOR', name: 'Михаил Орлов', email: 'mikhail@vector.example', company: 'Вектор Диджитал', channel: 'Маркетинговое агентство', website: 'https://vector.example', status: 'pending', appliedAt: ago(2), reviewNote: '', payoutDetails: null },
-      { id: 'partner-praktika', code: 'PRAKTIKA', name: 'Елена Волкова', email: 'elena@praktika.example', company: 'Практика', channel: 'Образовательный канал', website: '', status: 'rejected', appliedAt: ago(9), reviewNote: 'Уточните тематику канала и план привлечения клиентов.', payoutDetails: null },
+      { id: primary, code: 'SFERA', name: 'Анна Смирнова', email: 'anna@sfera.example', company: 'Бюро Сфера', channel: 'Внедрение CRM и консалтинг', website: 'https://sfera.example', registeredAt: ago(190), payoutDetails: details },
+      { id: 'partner-vector', code: 'VECTOR', name: 'Михаил Орлов', email: 'mikhail@vector.example', company: 'Вектор Диджитал', channel: 'Маркетинговое агентство', website: 'https://vector.example', registeredAt: ago(2), payoutDetails: null },
+      { id: 'partner-praktika', code: 'PRAKTIKA', name: 'Елена Волкова', email: 'elena@praktika.example', company: 'Практика', channel: 'Образовательный канал', website: '', registeredAt: ago(9), payoutDetails: null },
     ],
     referrals: [
       { id: 'ref-atelier', partnerId: primary, company: 'ООО «Ателье Пространства»', registeredAt: ago(170), status: 'active' },

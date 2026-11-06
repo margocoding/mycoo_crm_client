@@ -13,7 +13,7 @@ export function formatPayoutId(value: string) {
 }
 
 const statuses: Record<string, [string, string]> = {
-  pending: ['На рассмотрении', 'warning'], approved: ['Одобрено', 'positive'], rejected: ['Отклонено', 'negative'],
+  approved: ['Одобрено', 'positive'], rejected: ['Отклонено', 'negative'],
   new: ['Новая', 'info'], review: ['На проверке', 'warning'], paid: ['Выплачено', 'positive'],
   trial: ['Пробный период', 'info'], active: ['Подписка активна', 'positive'], overdue: ['Оплата просрочена', 'negative'],
   cancelled: ['Отменён', 'muted'], available: ['Доступно', 'positive'], held: ['Ожидает проверки', 'warning'],

@@ -1,4 +1,3 @@
-export type PartnerStatus = "pending" | "approved" | "rejected";
 export type ReferralStatus = "trial" | "active" | "overdue" | "cancelled";
 export type PayoutStatus = "new" | "review" | "approved" | "paid" | "rejected";
 export type LedgerKind = "commission" | "refund" | "adjustment";
@@ -26,12 +25,10 @@ export interface Partner {
   company: string;
   channel: string;
   website: string;
-  status: PartnerStatus;
-  appliedAt: string;
-  reviewNote: string;
+  registeredAt: string;
   payoutDetails: PayoutDetails | null;
 }
-export type PartnerApplication = Pick<Partner, "name" | "email" | "company" | "channel" | "website">;
+export type PartnerRegistration = Pick<Partner, "name" | "email" | "company" | "channel" | "website">;
 export interface Referral {
   id: string;
   partnerId: string;
@@ -90,9 +87,7 @@ export interface PartnerStore extends PartnerData {
   adminLogin: string;
   adminAuthenticated: boolean;
   selectPartner: (id: string) => void;
-  applyPartner: (input: PartnerApplication) => ActionResult;
-  resubmitApplication: (id: string, input: PartnerApplication) => ActionResult;
-  reviewPartner: (id: string, status: "approved" | "rejected", reason?: string) => ActionResult;
+  registerPartner: (input: PartnerRegistration) => ActionResult;
   updateDetails: (id: string, details: PayoutDetails) => ActionResult;
   requestPayout: (partnerId: string, amount: number) => ActionResult;
   reviewPayout: (id: string, status: "review" | "approved" | "rejected", reason?: string) => ActionResult;
