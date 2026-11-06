@@ -989,22 +989,22 @@
   display: flex;
   gap: 20px;
 }
-.partner-ui .p-application {
+.partner-ui .p-registration {
   padding: 55px 0 75px;
   display: grid;
   grid-template-columns: 1fr 1.1fr;
   gap: 70px;
   align-items: start;
 }
-.partner-ui .p-application h1 {
+.partner-ui .p-registration h1 {
   margin: 16px 0 20px;
 }
-.partner-ui .p-application>div>p {
+.partner-ui .p-registration>div>p {
   max-width: 420px;
   color: var(--p-muted);
   line-height: 1.8;
 }
-.partner-ui .p-application .p-rule-list {
+.partner-ui .p-registration .p-rule-list {
   margin-top: 28px;
 }
 .partner-ui .p-auth {
@@ -1135,7 +1135,7 @@
   .partner-ui .p-profile label {
     display: none;
   }
-  .partner-ui .p-application {
+  .partner-ui .p-registration {
     gap: 40px;
   }
 }
@@ -1270,12 +1270,12 @@
   .partner-ui .p-step {
     padding-right: 0;
   }
-  .partner-ui .p-application {
+  .partner-ui .p-registration {
     grid-template-columns: 1fr;
     gap: 30px;
     padding-top: 35px;
   }
-  .partner-ui .p-application>div>p {
+  .partner-ui .p-registration>div>p {
     max-width: 600px;
   }
   .partner-ui .p-public-section {
@@ -1406,7 +1406,7 @@
   .partner-ui .p-actions {
     gap: 8px;
   }
-  .partner-ui .p-application .p-panel {
+  .partner-ui .p-registration .p-panel {
     padding: 20px;
   }
 }

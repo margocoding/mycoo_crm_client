@@ -1,8 +1,10 @@
 import { create } from 'zustand';
-import { addCalendarMonths, createDemoPartnerData, getPartnerBalance, isMoney, roundRub, validatePartnerData, validatePayoutDetails, validTerms } from './partner.model.ts';
-import type { ActionResult, PartnerApplication, PartnerData, PartnerStore, PayoutDetails, ProgramTerms } from './partner.types.ts';
+import { addCalendarMonths, createDemoPartnerData, getPartnerBalance, isMoney, migratePartnerDataV1, roundRub, validatePartnerData, validatePayoutDetails, validTerms } from './partner.model.ts';
+import type { ActionResult, PartnerRegistration, PartnerData, PartnerStore, PayoutDetails, ProgramTerms } from './partner.types.ts';
 
-const STORAGE_VERSION = 1;
+const DATA_STORAGE_VERSION = 2;
+const CREDENTIALS_VERSION = 1;
+// Keep the original keys so existing data, credentials and sessions survive upgrades.
 export const PARTNER_STORAGE_KEYS = {
   data: 'mycoo.partner-demo.v1.data', credentials: 'mycoo.partner-demo.v1.credentials', session: 'mycoo.partner-demo.v1.session',
 } as const;
@@ -28,7 +30,7 @@ function removeStorage(key: string, session = false): void {
 }
 function readCredentials(): DemoCredentials | null {
   const value = readStorage(PARTNER_STORAGE_KEYS.credentials) as DemoCredentials | null;
-  return value?.version === STORAGE_VERSION && typeof value.login === 'string' && value.login.trim().length >= 3 &&
+  return value?.version === CREDENTIALS_VERSION && typeof value.login === 'string' && value.login.trim().length >= 3 &&
     /^[a-f0-9]{32}$/.test(value.salt) && /^[a-f0-9]{64}$/.test(value.hash) && typeof value.revision === 'string'
     ? value : null;
 }
@@ -41,9 +43,12 @@ const stored = readStorage(PARTNER_STORAGE_KEYS.data) as { version?: number; dat
 const validHistory = (history: unknown): history is TermsRevision[] => Array.isArray(history) && history.length > 0 &&
   history.every((item, index) => item && Number.isFinite(Date.parse(item.effectiveAt)) && validTerms(item.terms) &&
     (index === 0 || Date.parse(item.effectiveAt) >= Date.parse(history[index - 1].effectiveAt)));
-const restored = stored?.version === STORAGE_VERSION && validatePartnerData(stored.data) && validHistory(stored.termsHistory);
-const initialData = restored ? stored.data as PartnerData : createDemoPartnerData();
-let termsHistory: TermsRevision[] = restored ? stored.termsHistory! : [{ effectiveAt: '2000-01-01T00:00:00.000Z', terms: { ...initialData.terms } }];
+const restoredData = stored?.version === 1 ? migratePartnerDataV1(stored.data)
+  : stored?.version === DATA_STORAGE_VERSION && validatePartnerData(stored.data) ? stored.data : null;
+const restoredHistory = stored?.termsHistory;
+const restored = restoredData !== null && validHistory(restoredHistory);
+const initialData = restored ? restoredData : createDemoPartnerData();
+let termsHistory: TermsRevision[] = restored ? restoredHistory : [{ effectiveAt: '2000-01-01T00:00:00.000Z', terms: { ...initialData.terms } }];
 let credentials = readCredentials();
 let credentialsPromise: Promise<DemoCredentials> | null = null;
 let authGeneration = 0;
@@ -56,7 +61,7 @@ async function passwordHash(password: string, salt: string): Promise<string> {
 }
 async function createCredentials(login: string, password: string): Promise<DemoCredentials> {
   const salt = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
-  return { version: STORAGE_VERSION, login, salt, hash: await passwordHash(password, salt), revision: crypto.randomUUID() };
+  return { version: CREDENTIALS_VERSION, login, salt, hash: await passwordHash(password, salt), revision: crypto.randomUUID() };
 }
 async function ensureCredentials(): Promise<DemoCredentials> {
   if (credentials) return credentials;
@@ -74,15 +79,24 @@ async function ensureCredentials(): Promise<DemoCredentials> {
   return credentialsPromise;
 }
 
-function normalizeApplication(input: PartnerApplication): PartnerApplication | null {
-  const value = Object.fromEntries(Object.entries(input).map(([key, item]) => [key, typeof item === 'string' ? item.trim() : ''])) as unknown as PartnerApplication;
-  if (!value.name || !value.channel || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email) ||
+function normalizeRegistration(input: unknown): PartnerRegistration | null {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) return null;
+  const fields = input as Record<string, unknown>;
+  if (typeof fields.name !== 'string' || typeof fields.email !== 'string') return null;
+  if (['company', 'channel', 'website'].some(key => fields[key] !== undefined && typeof fields[key] !== 'string')) return null;
+  const value: PartnerRegistration = {
+    name: fields.name.trim(), email: fields.email.trim().toLowerCase(),
+    company: typeof fields.company === 'string' ? fields.company.trim() : '',
+    channel: typeof fields.channel === 'string' ? fields.channel.trim() : '',
+    website: typeof fields.website === 'string' ? fields.website.trim() : '',
+  };
+  if (!value.name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email) ||
     Object.values(value).some(item => item.length > 500)) return null;
   if (value.website) {
     try { if (!['https:', 'http:'].includes(new URL(value.website).protocol)) return null; }
     catch { return null; }
   }
-  return { ...value, email: value.email.toLowerCase() };
+  return value;
 }
 
 // Today's date-only input means now; historical dates preserve their calendar day.
@@ -108,30 +122,12 @@ export const usePartnerStore = create<PartnerStore>((set, get) => ({
   selectPartner: id => {
     if (get().partners.some(partner => partner.id === id)) set({ currentPartnerId: id });
   },
-  applyPartner: input => {
-    const application = normalizeApplication(input);
-    if (!application) return fail('Укажите имя, корректный email и канал привлечения. Сайт — полный адрес с https://.');
-    if (get().partners.some(partner => partner.email.toLowerCase() === application.email)) return fail('Заявка с таким email уже существует. Откройте личный кабинет.');
+  registerPartner: input => {
+    const registration = normalizeRegistration(input);
+    if (!registration) return fail('Укажите имя и корректный email. Необязательные поля — текст до 500 символов; сайт — полный адрес с https://.');
+    if (get().partners.some(partner => partner.email.toLowerCase() === registration.email)) return fail('Партнёр с таким email уже зарегистрирован. Откройте личный кабинет.');
     const id = makeId('partner');
-    set(state => ({ partners: [...state.partners, { ...application, id, code: makeId('REF').slice(-12).toUpperCase(), status: 'pending', appliedAt: timestamp(), reviewNote: '', payoutDetails: null }], currentPartnerId: id }));
-    return ok(id);
-  },
-  resubmitApplication: (id, input) => {
-    const state = get(), partner = state.partners.find(item => item.id === id);
-    if (!partner || partner.status !== 'rejected') return fail('Повторная подача доступна только для отклонённой заявки.');
-    const application = normalizeApplication(input);
-    if (!application) return fail('Проверьте имя, email, канал привлечения и адрес сайта.');
-    if (state.partners.some(item => item.id !== id && item.email.toLowerCase() === application.email)) return fail('Этот email уже используется другой заявкой.');
-    set({ partners: state.partners.map(item => item.id === id ? { ...item, ...application, status: 'pending', appliedAt: timestamp(), reviewNote: '' } : item) });
-    return ok(id);
-  },
-  reviewPartner: (id, status, reason = '') => {
-    const state = get();
-    if (!state.adminAuthenticated) return fail('Войдите в кабинет администратора.');
-    if (!['approved', 'rejected'].includes(status)) return fail('Недопустимый статус заявки.');
-    if (!state.partners.some(item => item.id === id && item.status === 'pending')) return fail('Можно рассмотреть только новую заявку.');
-    if (status === 'rejected' && !reason.trim()) return fail('Укажите причину отклонения заявки.');
-    set({ partners: state.partners.map(item => item.id === id ? { ...item, status, reviewNote: reason.trim() } : item) });
+    set(state => ({ partners: [...state.partners, { ...registration, id, code: makeId('REF').slice(-12).toUpperCase(), registeredAt: timestamp(), payoutDetails: null }], currentPartnerId: id }));
     return ok(id);
   },
   updateDetails: (id, details) => {
@@ -143,7 +139,7 @@ export const usePartnerStore = create<PartnerStore>((set, get) => ({
   },
   requestPayout: (partnerId, amount) => {
     const state = get(), partner = state.partners.find(item => item.id === partnerId);
-    if (!partner || partner.status !== 'approved') return fail('Запрос выплаты доступен после одобрения партнёра.');
+    if (!partner) return fail('Партнёр не найден.');
     if (!validatePayoutDetails(partner.payoutDetails)) return fail('Сначала заполните корректные платёжные реквизиты.');
     if (!isMoney(amount) || amount < state.terms.minimumPayout) return fail(`Минимальная выплата — ${state.terms.minimumPayout.toLocaleString('ru-RU')} ₽. Укажите сумму с точностью до копейки.`);
     if (amount > getPartnerBalance(state, partnerId).available) return fail('Недостаточно доступных средств. Заявки в работе уже зарезервированы.');
@@ -193,7 +189,7 @@ export const usePartnerStore = create<PartnerStore>((set, get) => ({
     if (!state.adminAuthenticated) return fail('Войдите в кабинет администратора.');
     const id = paymentId.trim(), referral = state.referrals.find(item => item.id === referralId);
     if (!referral) return fail('Клиент не найден.');
-    if (!state.partners.some(item => item.id === referral.partnerId && item.status === 'approved')) return fail('Начисления доступны только одобренному партнёру.');
+    if (!state.partners.some(item => item.id === referral.partnerId)) return fail('Партнёр не найден.');
     if (!id || id.length > 100) return fail('Укажите ID оплаты длиной до 100 символов.');
     if (state.payments.some(payment => payment.id === id)) return fail('Оплата с этим ID уже учтена. Повторное начисление заблокировано.');
     if (!isMoney(amount) || amount <= 0) return fail('Укажите положительную сумму оплаты с точностью до копейки.');
@@ -288,8 +284,10 @@ export const usePartnerStore = create<PartnerStore>((set, get) => ({
 }));
 
 usePartnerStore.subscribe(state => {
-  writeStorage(PARTNER_STORAGE_KEYS.data, { version: STORAGE_VERSION, data: selectData(state), termsHistory });
+  writeStorage(PARTNER_STORAGE_KEYS.data, { version: DATA_STORAGE_VERSION, data: selectData(state), termsHistory });
 });
 
-// Keep seed dates stable across reloads, even before the first user action.
-if (!restored) writeStorage(PARTNER_STORAGE_KEYS.data, { version: STORAGE_VERSION, data: initialData, termsHistory });
+// Persist migrations and keep seed dates stable before the first user action.
+if (!restored || stored?.version !== DATA_STORAGE_VERSION) {
+  writeStorage(PARTNER_STORAGE_KEYS.data, { version: DATA_STORAGE_VERSION, data: initialData, termsHistory });
+}

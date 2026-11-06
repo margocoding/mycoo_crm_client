@@ -3,7 +3,7 @@ import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { usePartnerStore } from './partner.store';
 import PartnerLayout from './PartnerLayout';
 import PartnerLanding from './PartnerLanding';
-import PartnerApplication from './PartnerApplication';
+import PartnerRegistration from './PartnerRegistration';
 import { EmptyState } from './PartnerUI';
 import './partner.css';
 
@@ -32,7 +32,8 @@ export default function PartnerApp() {
   }, [pathname, hash]);
   return <div className="partner-ui"><Suspense fallback={<div className="p-empty" role="status">Загружаем страницу…</div>}><Routes>
     <Route path="/partner" element={<PartnerLanding />} />
-    <Route path="/partner/apply" element={<PartnerApplication />} />
+    <Route path="/partner/register" element={<PartnerRegistration />} />
+    <Route path="/partner/apply" element={<Navigate to="/partner/register" replace />} />
     <Route path="/partner/account" element={<PartnerLayout />}>
       <Route index element={<PartnerAccount />} />
       <Route path="referrals" element={<PartnerReferrals />} />
