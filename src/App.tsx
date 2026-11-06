@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import DashboardPage from "./pages/DashboardPage";
@@ -18,9 +19,14 @@ import NotificationsPage from './pages/NotificationsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import { useModalRouter } from "./hooks/useModalRouter";
 
+const PartnerApp = lazy(() => import('./features/partner/PartnerApp'));
+
 export default function App() {
   const { state, closeModal } = useModalRouter();
   const location = useLocation();
+  if (location.pathname === '/partner' || location.pathname.startsWith('/partner/') || location.pathname === '/admin' || location.pathname.startsWith('/admin/')) {
+    return <Suspense fallback={<div className="min-h-screen bg-void p-8 text-fog" role="status">Загружаем страницу…</div>}><PartnerApp /></Suspense>;
+  }
   if (location.pathname.startsWith("/meetings/join/")) {
     return <Routes><Route path="/meetings/join/:token" element={<GuestMeetingPage />} /></Routes>;
   }
