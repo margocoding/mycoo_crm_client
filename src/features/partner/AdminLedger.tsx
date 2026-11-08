@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { LuArrowDownLeft, LuPlus, LuRotateCcw, LuSearch } from 'react-icons/lu';
 import { usePartnerStore } from './partner.store';
+import { partnerDateInput as localDay } from './partner.model';
 import { EmptyState, TableScroll, formatDate, formatMoney, Modal, Money } from './PartnerUI';
 import type { ActionResult, LedgerKind } from './partner.types';
 
 const kindLabels: Record<LedgerKind, string> = { commission: 'Начисление', refund: 'Возврат', adjustment: 'Корректировка' };
 type LedgerDialog = 'adjustment' | 'payment' | 'refund';
-const localDay = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 export function AdminLedger() {
   const store = usePartnerStore();
@@ -33,7 +33,7 @@ export function AdminLedger() {
     setDialog(next);
     setPartnerId(store.partners[0]?.id ?? '');
     setReferralId(store.referrals[0]?.id ?? '');
-    setPaymentId(next === 'refund' ? refundablePayments[0]?.id ?? '' : next === 'payment' ? `pay-demo-${Date.now()}` : '');
+    setPaymentId(next === 'refund' ? refundablePayments[0]?.id ?? '' : '');
     setAmount('');
     setReason('');
     setDate(localDay());
@@ -41,17 +41,18 @@ export function AdminLedger() {
     setNotice('');
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (store.mutating) return;
     const value = Number(amount);
     if (!amount.trim() || !Number.isFinite(value) || value === 0 || (dialog !== 'adjustment' && value < 0)) { setError('Укажите корректную сумму операции.'); return; }
     if (dialog !== 'payment' && !reason.trim()) { setError('Укажите причину операции.'); return; }
     let result: ActionResult;
-    if (dialog === 'payment') result = store.recordPayment(referralId, paymentId.trim(), value, date);
-    else if (dialog === 'refund') result = store.refundPayment(paymentId, value, reason.trim());
-    else result = store.adjustCommission(partnerId, value, reason.trim(), paymentId.trim() || undefined);
+    if (dialog === 'payment') result = await store.recordPayment(referralId, paymentId.trim(), value, date);
+    else if (dialog === 'refund') result = await store.refundPayment(paymentId, value, reason.trim());
+    else result = await store.adjustCommission(partnerId, value, reason.trim(), paymentId.trim() || undefined);
     if (!result.ok) { setError(result.error); return; }
-    setNotice(dialog === 'payment' ? 'Оплата добавлена. Комиссия начислена.' : dialog === 'refund' ? 'Возврат сохранён. Изменение комиссии добавлено отдельной записью.' : 'Корректировка добавлена отдельной записью.');
+    setNotice(dialog === 'payment' ? 'Оплата учтена по условиям программы.' : dialog === 'refund' ? 'Возврат сохранён. Изменение комиссии добавлено отдельной записью.' : 'Корректировка добавлена отдельной записью.');
     setDialog(null);
   }
 
@@ -79,16 +80,16 @@ export function AdminLedger() {
       })}</tbody></table></TableScroll> : <EmptyState title="Операций не найдено" description="Измените фильтры или добавьте оплату." />}
       <p className="p-muted" style={{ marginTop: 20 }}>Сохранённые операции не редактируются. Чтобы изменить сумму, добавьте корректировку с причиной.</p>
     </section>
-    {dialog && <Modal title={dialog === 'payment' ? 'Добавить оплату' : dialog === 'refund' ? 'Возврат оплаты' : 'Корректировка начисления'} onClose={() => setDialog(null)}>
+    {dialog && <Modal title={dialog === 'payment' ? 'Добавить оплату' : dialog === 'refund' ? 'Возврат оплаты' : 'Корректировка начисления'} onClose={() => { if (!store.mutating) setDialog(null); }}>
       <p className="p-muted">{dialog === 'payment' ? 'Выберите клиента и укажите оплату. Повторная оплата с тем же ID не создаст второе начисление.' : dialog === 'refund' ? 'Возврат уменьшит комиссию партнёра. Исходная оплата останется в истории.' : 'Положительная сумма увеличит баланс, отрицательная — уменьшит. Исходные записи останутся в истории.'}</p>
       <form className="p-form" onSubmit={submit}>
         {dialog === 'adjustment' && <label className="p-field"><span>Партнёр</span><select value={partnerId} onChange={event => setPartnerId(event.target.value)} required><option value="" disabled>Выберите партнёра</option>{store.partners.map(partner => <option key={partner.id} value={partner.id}>{partner.name} · {partner.company || partner.email}</option>)}</select></label>}
         {dialog === 'payment' && <label className="p-field"><span>Клиент и ID привлечения</span><select value={referralId} onChange={event => setReferralId(event.target.value)} required><option value="" disabled>Выберите клиента</option>{store.referrals.map(referral => <option key={referral.id} value={referral.id}>{referral.company} · {referral.id}</option>)}</select></label>}
         {dialog === 'refund' ? <><label className="p-field"><span>Оплата</span><select value={paymentId} onChange={event => { setPaymentId(event.target.value); setAmount(''); }} required><option value="" disabled>Выберите оплату</option>{refundablePayments.map(payment => <option key={payment.id} value={payment.id}>{payment.id} · {store.referrals.find(referral => referral.id === payment.referralId)?.company} · {formatMoney(payment.amount)}</option>)}</select></label><p className="p-muted">Доступно к возврату: {formatMoney(refundableAmount)}</p></> : <label className="p-field"><span>{dialog === 'payment' ? 'Уникальный ID оплаты' : 'ID связанной оплаты, если есть'}</span><input className="p-mono" value={paymentId} onChange={event => setPaymentId(event.target.value)} required={dialog === 'payment'} placeholder="pay-…" /></label>}
-        <div className={dialog === 'payment' ? 'p-grid-2' : undefined}><label className="p-field"><span>{dialog === 'adjustment' ? 'Изменение баланса, ₽' : dialog === 'refund' ? 'Сумма возврата, ₽' : 'Сумма оплаты, ₽'}</span><input type="number" step="0.01" min={dialog === 'adjustment' ? undefined : '0.01'} max={dialog === 'refund' ? refundableAmount : undefined} value={amount} onChange={event => setAmount(event.target.value)} required placeholder={dialog === 'adjustment' ? 'Например, 1500 или −1500' : '0,00'} /></label>{dialog === 'payment' && <label className="p-field"><span>Дата оплаты</span><input type="date" max={localDay()} value={date} onChange={event => setDate(event.target.value)} required /></label>}</div>
+        <div className={dialog === 'payment' ? 'p-grid-2' : undefined}><label className="p-field"><span>{dialog === 'adjustment' ? 'Изменение баланса, ₽' : dialog === 'refund' ? 'Сумма возврата, ₽' : 'Сумма оплаты, ₽'}</span><input type="number" step="0.01" min={dialog === 'adjustment' ? undefined : '0.01'} max={dialog === 'refund' ? refundableAmount : undefined} value={amount} onChange={event => setAmount(event.target.value)} required placeholder={dialog === 'adjustment' ? 'Например, 1500 или −1500' : '0,00'} /></label>{dialog === 'payment' && <label className="p-field"><span>Дата оплаты (по Москве)</span><input type="date" max={localDay()} value={date} onChange={event => setDate(event.target.value)} required /></label>}</div>
         {dialog !== 'payment' && <label className="p-field"><span>Причина {dialog === 'refund' ? 'возврата' : 'корректировки'}</span><textarea value={reason} onChange={event => setReason(event.target.value)} rows={3} required placeholder="Укажите основание для операции" /></label>}
         {error && <p className="p-notice warning" role="alert">{error}</p>}
-        <div className="p-actions"><button className={`p-button ${dialog === 'refund' ? 'danger' : 'primary'}`} type="submit">{dialog === 'payment' ? 'Сохранить оплату' : dialog === 'refund' ? 'Записать возврат' : 'Добавить корректировку'}</button><button className="p-button" type="button" onClick={() => setDialog(null)}>Отмена</button></div>
+        <div className="p-actions"><button className={`p-button ${dialog === 'refund' ? 'danger' : 'primary'}`} type="submit" disabled={store.mutating}>{dialog === 'payment' ? 'Сохранить оплату' : dialog === 'refund' ? 'Записать возврат' : 'Добавить корректировку'}</button><button className="p-button" type="button" onClick={() => setDialog(null)}>Отмена</button></div>
       </form>
     </Modal>}
   </>;

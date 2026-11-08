@@ -1,6 +1,6 @@
 import { api } from "./base.api";
 import type { AuthRdo, CheckEmailRdo, UserRdo } from "@/types/auth.types";
-import { clearReferral, pendingReferral } from "@/lib/referral";
+import { clearReferral, pendingReferral, pendingPartner } from "@/lib/referral";
 
 export const authApi = {
   async checkEmail(email: string): Promise<CheckEmailRdo> {
@@ -28,6 +28,7 @@ export const authApi = {
       password,
       code,
       referralCode: pendingReferral(),
+      partnerCode: pendingPartner(),
     });
     clearReferral();
     return data;

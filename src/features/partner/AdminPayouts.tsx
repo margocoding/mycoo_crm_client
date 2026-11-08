@@ -1,12 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { LuArrowRight, LuCheck, LuSearch } from 'react-icons/lu';
 import { usePartnerStore } from './partner.store';
-import { getPartnerBalance } from './partner.model';
+import { getPartnerBalance, partnerDateInput as localDay } from './partner.model';
 import { EmptyState, TableScroll, formatDate, formatMoney, formatPayoutId, Modal, Money, StatusBadge } from './PartnerUI';
 import type { ActionResult, PayoutStatus } from './partner.types';
 
 const statusLabels: Record<PayoutStatus, string> = { new: 'Новые', review: 'На проверке', approved: 'Одобрены', paid: 'Выплачены', rejected: 'Отклонены' };
-const localDay = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 export function AdminPayouts() {
   const store = usePartnerStore();
@@ -47,14 +46,14 @@ export function AdminPayouts() {
     setNotice(message);
   }
 
-  function submitAction(event: FormEvent<HTMLFormElement>) {
+  async function submitAction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected) return;
+    if (!selected || store.mutating) return;
     if (action === 'reject') {
       if (!reason.trim()) { setError('Укажите причину отклонения.'); return; }
-      handleResult(store.reviewPayout(selected.id, 'rejected', reason.trim()), 'Заявка отклонена. Резерв освобождён.');
+      handleResult(await store.reviewPayout(selected.id, 'rejected', reason.trim()), 'Заявка отклонена. Резерв освобождён.');
     } else if (action === 'paid') {
-      handleResult(store.markPaid(selected.id, Number(paidAmount), paidDate), 'Дата и сумма выплаты сохранены.');
+      handleResult(await store.markPaid(selected.id, Number(paidAmount), paidDate), 'Дата и сумма выплаты сохранены.');
     }
   }
 
@@ -76,7 +75,7 @@ export function AdminPayouts() {
         return <tr key={payout.id}><td><strong className="p-mono">{formatPayoutId(payout.id)}</strong><small className="p-muted">{formatDate(payout.createdAt)}</small></td><td><strong>{owner?.name ?? 'Партнёр'}</strong><small className="p-muted">{owner?.company}</small></td><td><strong><Money value={payout.amount} /></strong>{payout.status === 'paid' && payout.paidAmount !== payout.amount ? <small className="p-muted">Фактически: {formatMoney(payout.paidAmount ?? 0)}</small> : null}</td><td><StatusBadge status={payout.status} /></td><td><button type="button" className="p-button small" onClick={() => open(payout.id)} aria-label={`Открыть заявку ${payout.id}`}>Открыть <LuArrowRight aria-hidden="true" /></button></td></tr>;
       })}</tbody></table></TableScroll> : <EmptyState title="Заявок не найдено" description="Измените поиск или выберите другой статус." />}
     </section>
-    {selected && <Modal title={`Заявка ${formatPayoutId(selected.id)}`} onClose={() => setSelectedId(null)}>
+    {selected && <Modal title={`Заявка ${formatPayoutId(selected.id)}`} onClose={() => { if (!store.mutating) setSelectedId(null); }}>
       <div className="p-panel-head"><div><strong>{partner?.name}</strong><p className="p-muted">{partner?.company} · {partner?.email}</p></div><StatusBadge status={selected.status} /></div>
       <div className="p-grid-3">
         <div className="p-stat"><span>Запрошено</span><strong><Money value={selected.amount} /></strong><small>{formatDate(selected.createdAt)}</small></div>
@@ -98,12 +97,12 @@ export function AdminPayouts() {
       {error && <p className="p-notice warning" role="alert">{error}</p>}
       {action ? <form onSubmit={submitAction} className="p-form">
         {action === 'reject' ? <label className="p-field"><span>Причина отклонения</span><textarea value={reason} onChange={event => setReason(event.target.value)} required rows={3} placeholder="Что партнёру нужно исправить?" autoFocus /></label> : <>
-          <div className="p-grid-2"><label className="p-field"><span>Фактически выплачено, ₽</span><input type="number" min="0.01" max={selected.amount} step="0.01" value={paidAmount} onChange={event => setPaidAmount(event.target.value)} required /></label><label className="p-field"><span>Дата выплаты</span><input type="date" min={localDay(new Date(selected.createdAt))} max={localDay()} value={paidDate} onChange={event => setPaidDate(event.target.value)} required /></label></div>
+          <div className="p-grid-2"><label className="p-field"><span>Фактически выплачено, ₽</span><input type="number" min="0.01" max={selected.amount} step="0.01" value={paidAmount} onChange={event => setPaidAmount(event.target.value)} required /></label><label className="p-field"><span>Дата выплаты (по Москве)</span><input type="date" min={localDay(new Date(selected.createdAt))} max={localDay()} value={paidDate} onChange={event => setPaidDate(event.target.value)} required /></label></div>
         </>}
-        <div className="p-actions"><button className={`p-button ${action === 'reject' ? 'danger' : 'primary'}`} type="submit">{action === 'reject' ? 'Отклонить заявку' : 'Зафиксировать выплату'}</button><button className="p-button" type="button" onClick={() => { setAction(null); setError(''); }}>Отмена</button></div>
+        <div className="p-actions"><button className={`p-button ${action === 'reject' ? 'danger' : 'primary'}`} type="submit" disabled={store.mutating}>{action === 'reject' ? 'Отклонить заявку' : 'Зафиксировать выплату'}</button><button className="p-button" type="button" onClick={() => { setAction(null); setError(''); }}>Отмена</button></div>
       </form> : <div className="p-actions">
-        {selected.status === 'new' && <button className="p-button primary" type="button" onClick={() => handleResult(store.reviewPayout(selected.id, 'review'), 'Заявка взята на проверку.')}>Взять на проверку <LuArrowRight aria-hidden="true" /></button>}
-        {selected.status === 'review' && <><button className="p-button primary" type="button" onClick={() => handleResult(store.reviewPayout(selected.id, 'approved'), 'Заявка одобрена. Можно отметить выплату.')}><LuCheck aria-hidden="true" /> Одобрить заявку</button><button className="p-button danger" type="button" onClick={() => { setAction('reject'); setNotice(''); }}>Отклонить</button></>}
+        {selected.status === 'new' && <button className="p-button primary" type="button" disabled={store.mutating} onClick={async () => handleResult(await store.reviewPayout(selected.id, 'review'), 'Заявка взята на проверку.')}>Взять на проверку <LuArrowRight aria-hidden="true" /></button>}
+        {selected.status === 'review' && <><button className="p-button primary" type="button" disabled={store.mutating} onClick={async () => handleResult(await store.reviewPayout(selected.id, 'approved'), 'Заявка одобрена. Можно отметить выплату.')}><LuCheck aria-hidden="true" /> Одобрить заявку</button><button className="p-button danger" type="button" onClick={() => { setAction('reject'); setNotice(''); }}>Отклонить</button></>}
         {selected.status === 'approved' && <><button className="p-button primary" type="button" onClick={() => { setAction('paid'); setPaidAmount(String(selected.amount)); setNotice(''); }}>Отметить выплату</button><button className="p-button danger" type="button" onClick={() => { setAction('reject'); setNotice(''); }}>Отклонить</button></>}
         {['paid', 'rejected'].includes(selected.status) && <p className="p-muted">Заявка завершена. Её история сохранена.</p>}
       </div>}

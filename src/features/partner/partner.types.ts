@@ -2,7 +2,7 @@ export type ReferralStatus = "trial" | "active" | "overdue" | "cancelled";
 export type PayoutStatus = "new" | "review" | "approved" | "paid" | "rejected";
 export type LedgerKind = "commission" | "refund" | "adjustment";
 
-// Prototype amounts are expressed in RUB; no external payments are performed.
+// API amounts are expressed in RUB; calculations and authorization run on the server.
 export interface ProgramTerms {
   commissionPercent: number;
   eligibleMonths: number;
@@ -28,7 +28,7 @@ export interface Partner {
   registeredAt: string;
   payoutDetails: PayoutDetails | null;
 }
-export type PartnerRegistration = Pick<Partner, "name" | "email" | "company" | "channel" | "website">;
+export type PartnerRegistration = Pick<Partner, "name" | "company" | "channel" | "website">;
 export interface Referral {
   id: string;
   partnerId: string;
@@ -83,21 +83,29 @@ export interface PartnerBalance {
   debt: number;
 }
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
+export type PartnerScope = 'public' | 'partner' | 'admin';
 export interface PartnerStore extends PartnerData {
+  scope: PartnerScope | null;
+  loading: boolean;
+  loaded: boolean;
+  loadError: string;
+  mutating: boolean;
+  partnerAuthenticated: boolean;
   adminLogin: string;
   adminAuthenticated: boolean;
-  selectPartner: (id: string) => void;
-  registerPartner: (input: PartnerRegistration) => ActionResult;
-  updateDetails: (id: string, details: PayoutDetails) => ActionResult;
-  requestPayout: (partnerId: string, amount: number) => ActionResult;
-  reviewPayout: (id: string, status: "review" | "approved" | "rejected", reason?: string) => ActionResult;
-  markPaid: (id: string, amount: number, date: string) => ActionResult;
-  adjustCommission: (partnerId: string, amount: number, description: string, paymentId?: string) => ActionResult;
-  recordPayment: (referralId: string, paymentId: string, amount: number, date?: string) => ActionResult;
-  refundPayment: (paymentId: string, amount: number, reason: string) => ActionResult;
-  updateTerms: (terms: ProgramTerms) => ActionResult;
+  load: (scope: PartnerScope) => Promise<void>;
+  invalidate: (scope: PartnerScope) => void;
+  logoutPartner: () => void;
+  registerPartner: (input: PartnerRegistration) => Promise<ActionResult>;
+  updateDetails: (id: string, details: PayoutDetails) => Promise<ActionResult>;
+  requestPayout: (partnerId: string, amount: number) => Promise<ActionResult>;
+  reviewPayout: (id: string, status: "review" | "approved" | "rejected", reason?: string) => Promise<ActionResult>;
+  markPaid: (id: string, amount: number, date: string) => Promise<ActionResult>;
+  adjustCommission: (partnerId: string, amount: number, description: string, paymentId?: string) => Promise<ActionResult>;
+  recordPayment: (referralId: string, paymentId: string, amount: number, date?: string) => Promise<ActionResult>;
+  refundPayment: (paymentId: string, amount: number, reason: string) => Promise<ActionResult>;
+  updateTerms: (terms: ProgramTerms) => Promise<ActionResult>;
   loginAdmin: (login: string, password: string) => Promise<ActionResult>;
-  logoutAdmin: () => void;
+  logoutAdmin: () => Promise<void>;
   updateAdminCredentials: (currentPassword: string, login: string, password: string) => Promise<ActionResult>;
-  resetDemo: () => void;
 }

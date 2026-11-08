@@ -3,13 +3,12 @@ import { LuCheck, LuCopy, LuMoveHorizontal } from 'react-icons/lu';
 import { Modal as AppModal } from '@/components/ui/Modal';
 
 const money = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2, minimumFractionDigits: 0 });
-const date = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+const date = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Moscow' });
 export function formatMoney(value: number) { return money.format(value); }
 export function Money({ value }: { value: number }) { return <span className="p-money">{formatMoney(value)}</span>; }
 export function formatDate(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? '—' : date.format(parsed); }
 export function formatPayoutId(value: string) {
-  const examples: Record<string, string> = { 'payout-paid': '1001', 'payout-rejected': '1002', 'payout-review': '1003', 'payout-approved': '1004', 'payout-new': '1005' };
-  return `№ ${examples[value] || value.replace(/^payout-/, '').slice(0, 8).toUpperCase()}`;
+  return `№ ${value.slice(-10).toUpperCase()}`;
 }
 
 const statuses: Record<string, [string, string]> = {
