@@ -48,7 +48,7 @@ function ReferralsView({ data, partner }: { data: PartnerStore; partner: Partner
 export function PartnerReferrals() {
   const data = usePartnerStore();
   const partner = data.partners.find((item) => item.id === data.currentPartnerId);
-  return partner ? <ReferralsView key={partner.id} data={data} partner={partner} /> : <EmptyState title="Выберите партнёра" />;
+  return partner ? <ReferralsView key={partner.id} data={data} partner={partner} /> : <EmptyState title="Профиль не найден" />;
 }
 
 export default PartnerReferrals;

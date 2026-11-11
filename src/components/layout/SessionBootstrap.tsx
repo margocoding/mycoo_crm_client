@@ -3,16 +3,12 @@ import { useAuthStore } from "@/store/auth.store";
 import { useLaunchStore } from "@/store/launch.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { useModalRouter } from "@/hooks/useModalRouter";
-import { useLocation } from 'react-router-dom';
-import { captureReferral } from '@/lib/referral';
 
 export default function SessionBootstrap() {
   const auth = useAuthStore();
   const workspace = useLaunchStore();
   const { state, openModal } = useModalRouter();
-  const { search } = useLocation();
 
-  useEffect(() => { captureReferral(search); }, [search]);
 
   useEffect(() => {
     if (!auth.user) return;

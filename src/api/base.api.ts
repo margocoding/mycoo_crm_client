@@ -34,7 +34,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use((response) => response, (error) => {
   if (axios.isCancel(error) || error instanceof ApiError) return Promise.reject(error);
   const status = error.response?.status ?? 0;
-  if (status === 401 && !publicMeeting(error.config?.url) && error.config?.headers?.Authorization) {
+  const currentToken = localStorage.getItem(TOKEN_KEY);
+  if (status === 401 && !publicMeeting(error.config?.url) && currentToken && error.config?.headers?.Authorization === `Bearer ${currentToken}`) {
     window.dispatchEvent(new Event("mycoo:session-expired"));
   }
   const data = error.response?.data;

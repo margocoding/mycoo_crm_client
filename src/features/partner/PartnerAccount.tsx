@@ -7,7 +7,7 @@ import { CopyButton, EmptyState, Money, StatusBadge, formatDate } from "./Partne
 export function PartnerAccount() {
   const data = usePartnerStore();
   const partner = data.partners.find((item) => item.id === data.currentPartnerId);
-  if (!partner) return <EmptyState title="Выберите партнёра" description="Откройте профиль в переключателе сверху." />;
+  if (!partner) return <EmptyState title="Профиль не найден" description="Обновите кабинет и повторите попытку." />;
 
   const balance = getPartnerBalance(data, partner.id);
   const referrals = data.referrals.filter((item) => item.partnerId === partner.id);

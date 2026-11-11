@@ -18,14 +18,15 @@ export function AdminSettings() {
   const [credentialsNotice, setCredentialsNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
-  function saveTerms(event: FormEvent<HTMLFormElement>) {
+  async function saveTerms(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (store.mutating) return;
     setTermsError('');
     setTermsNotice('');
     if ([percent, months, days, minimum].some(value => value.trim() === '')) { setTermsError('Заполните все условия программы.'); return; }
     const terms = { commissionPercent: Number(percent), eligibleMonths: Number(months), holdDays: Number(days), minimumPayout: Number(minimum) };
     if (!Number.isInteger(terms.eligibleMonths) || !Number.isInteger(terms.holdDays)) { setTermsError('Срок начислений и удержания указываются целым числом.'); return; }
-    const result = store.updateTerms(terms);
+    const result = await store.updateTerms(terms);
     if (!result.ok) { setTermsError(result.error); return; }
     setTermsNotice('Условия программы сохранены.');
   }
@@ -56,12 +57,12 @@ export function AdminSettings() {
       <section className="p-panel">
         <div className="p-panel-head"><div><h2><LuSlidersHorizontal aria-hidden="true" /> Условия программы</h2><p className="p-muted">Изменения применяются к новым начислениям. Уже сохранённые операции остаются в истории.</p></div></div>
         <form onSubmit={saveTerms} className="p-form">
-          <div className="p-grid-2"><label className="p-field"><span>Комиссия партнёра, %</span><input type="number" min="0" max="100" step="0.01" value={percent} onChange={event => { setPercent(event.target.value); setTermsNotice(''); }} required /></label><label className="p-field"><span>Период начислений, мес.</span><input type="number" min="1" max="120" step="1" value={months} onChange={event => { setMonths(event.target.value); setTermsNotice(''); }} required /></label></div>
+          <div className="p-grid-2"><label className="p-field"><span>Комиссия партнёра, %</span><input type="number" min="0" max="100" step="1" value={percent} onChange={event => { setPercent(event.target.value); setTermsNotice(''); }} required /></label><label className="p-field"><span>Период начислений, мес.</span><input type="number" min="1" max="120" step="1" value={months} onChange={event => { setMonths(event.target.value); setTermsNotice(''); }} required /></label></div>
           <div className="p-grid-2"><label className="p-field"><span>Удержание после оплаты, дней</span><input type="number" min="0" max="365" step="1" value={days} onChange={event => { setDays(event.target.value); setTermsNotice(''); }} required /></label><label className="p-field"><span>Минимальная выплата, ₽</span><input type="number" min="0.01" step="0.01" value={minimum} onChange={event => { setMinimum(event.target.value); setTermsNotice(''); }} required /></label></div>
           <p className="p-muted">Период начислений отсчитывается от регистрации привлечённого клиента. После удержания комиссия становится доступна к выплате.</p>
           {termsError && <p className="p-notice warning" role="alert">{termsError}</p>}
           {termsNotice && <p className="p-notice success" role="status">{termsNotice}</p>}
-          <button className="p-button primary" type="submit"><LuSave aria-hidden="true" /> Сохранить условия</button>
+          <button className="p-button primary" type="submit" disabled={store.mutating}><LuSave aria-hidden="true" /> Сохранить условия</button>
         </form>
       </section>
       <section className="p-panel">
@@ -73,7 +74,7 @@ export function AdminSettings() {
           <label className="p-field"><span>Повторите новый пароль</span><input type="password" name="confirm-password" autoComplete="new-password" minLength={8} maxLength={256} value={confirmation} onChange={event => setConfirmation(event.target.value)} required /></label>
           {credentialsError && <p className="p-notice warning" role="alert">{credentialsError}</p>}
           {credentialsNotice && <p className="p-notice success" role="status">{credentialsNotice}</p>}
-          <button className="p-button primary" type="submit" disabled={busy}><LuSave aria-hidden="true" /> {busy ? 'Сохраняем…' : 'Сохранить данные для входа'}</button>
+          <button className="p-button primary" type="submit" disabled={busy || store.mutating}><LuSave aria-hidden="true" /> {busy ? 'Сохраняем…' : 'Сохранить данные для входа'}</button>
         </form>
       </section>
     </div>

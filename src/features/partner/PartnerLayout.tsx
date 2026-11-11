@@ -38,7 +38,7 @@ export default function PartnerLayout({ admin = false }: { admin?: boolean }) {
     <header className="p-topbar">
       <button ref={menuButton} className="p-button small p-mobile-menu" type="button" aria-controls="partner-navigation" aria-expanded={menuOpen} onClick={() => menuOpen ? closeMenu() : setMenuPath(location.pathname)}>{menuOpen ? <LuX aria-hidden="true" /> : <LuMenu aria-hidden="true" />}Меню</button>
       <span className="p-topbar-title">Партнёрская программа <span aria-hidden="true"> / </span> {admin ? 'Администрирование' : 'Личный кабинет'}</span>
-      {admin ? <span className="p-kicker">{store.adminLogin}</span> : <div className="p-profile"><label htmlFor="partner-profile">Партнёр</label><select id="partner-profile" aria-label="Партнёр" value={store.currentPartnerId} onChange={event => store.selectPartner(event.target.value)}>{store.partners.map(partner => <option key={partner.id} value={partner.id}>{partner.company || partner.name}</option>)}</select></div>}
+      {admin ? <span className="p-kicker">{store.adminLogin}</span> : <span className="p-profile">{store.partners.find(partner => partner.id === store.currentPartnerId)?.name}</span>}
     </header>
     <aside ref={navigation} id="partner-navigation" className={`p-sidebar ${menuOpen ? 'is-open' : ''}`} onKeyDown={event => { if (event.key === 'Escape' && menuOpen) { event.preventDefault(); closeMenu(); } }} onClick={event => { if ((event.target as HTMLElement).closest('a') && menuOpen) closeMenu(); }}>
       <PartnerBrand />
@@ -46,7 +46,7 @@ export default function PartnerLayout({ admin = false }: { admin?: boolean }) {
       <div className="p-sidebar-bottom">
         <Link to="/partner">О программе <LuArrowUpRight style={{ display: 'inline' }} aria-hidden="true" /></Link>
         <Link to={admin ? '/partner/account' : '/admin'}>{admin ? 'Кабинет партнёра' : 'Администратор'}</Link>
-        {admin && <button type="button" className="p-button small" onClick={() => { store.logoutAdmin(); navigate('/admin/login'); }}><LuLogOut aria-hidden="true" />Выйти</button>}
+        <button type="button" className="p-button small" disabled={store.mutating} onClick={async () => { if (admin) { try { await store.logoutAdmin(); } catch { /* Local session has already been cleared. */ } navigate('/admin/login'); } else { store.logoutPartner(); navigate('/partner/login'); } }}><LuLogOut aria-hidden="true" />Выйти</button>
       </div>
     </aside>
     <div className="p-main-wrap">

@@ -25,10 +25,11 @@ function PayoutsView({ data, partner }: { data: PartnerStore; partner: Partner }
   const canRequest = Boolean(partner.payoutDetails) && balance.available >= data.terms.minimumPayout;
 
   function openRequest() { setAmount(String(balance.available)); setConfirmed(false); setError(""); setSuccess(""); setRequestOpen(true); }
-  function submitRequest(event: FormEvent) {
+  async function submitRequest(event: FormEvent) {
     event.preventDefault();
+    if (data.mutating) return;
     if (!confirmed) { setError("Подтвердите сумму и реквизиты получателя."); return; }
-    const result = data.requestPayout(partner.id, Number(amount.replace(",", ".")));
+    const result = await data.requestPayout(partner.id, Number(amount.replace(",", ".")));
     if (!result.ok) { setError(result.error); return; }
     setRequestOpen(false);
     setSuccess("Заявка отправлена. Сумма зарезервирована до решения по выплате.");
@@ -42,13 +43,13 @@ function PayoutsView({ data, partner }: { data: PartnerStore; partner: Partner }
     <section className="p-panel" aria-labelledby="payout-history-title"><div className="p-panel-head"><h2 id="payout-history-title">История заявок</h2><span className="p-muted">{payouts.length} заявок</span></div>
       {payouts.length ? <TableScroll label="История заявок на выплату"><table className="p-table" aria-label="История заявок на выплату"><thead><tr><th scope="col">Заявка</th><th scope="col">Запрошено</th><th scope="col">Статус</th><th scope="col">Выплата</th><th scope="col"><span className="p-sr-only">Подробности</span></th></tr></thead><tbody>{payouts.map((payout) => <tr key={payout.id}><td><strong>{formatDate(payout.createdAt)}</strong><small className="p-mono p-muted">{formatPayoutId(payout.id)}</small></td><td><Money value={payout.amount} /></td><td><StatusBadge status={payout.status} />{payout.status === "rejected" && payout.reviewNote ? <small className="p-muted p-table-note">{payout.reviewNote}</small> : null}</td><td>{payout.status === "paid" ? <><strong><Money value={payout.paidAmount ?? payout.amount} /></strong><small className="p-muted">{payout.paidAt ? formatDate(payout.paidAt) : "Дата не указана"}</small></> : "—"}</td><td><button className="p-button small" type="button" onClick={() => setSelectedId(payout.id)} aria-label={`Подробности заявки ${payout.id}`}>Подробнее <LuArrowUpRight aria-hidden="true" /></button></td></tr>)}</tbody></table></TableScroll> : <EmptyState title="Первое вознаграждение впереди" description="Здесь будет история ваших заявок: от отправки до выплаты." />}
     </section>
-    {requestOpen && partner.payoutDetails ? <Modal title="Запросить выплату" onClose={() => setRequestOpen(false)}><form className="p-form" onSubmit={submitRequest} noValidate>
+    {requestOpen && partner.payoutDetails ? <Modal title="Запросить выплату" onClose={() => { if (!data.mutating) setRequestOpen(false); }}><form className="p-form" onSubmit={submitRequest} noValidate>
       <p className="p-muted">Доступно <Money value={balance.available} />. После отправки сумма будет зарезервирована.</p>
       <label className="p-field"><span>Сумма, ₽</span><input autoFocus type="number" inputMode="decimal" min={data.terms.minimumPayout} max={balance.available} step="0.01" required value={amount} onChange={(event) => { setAmount(event.target.value); setConfirmed(false); setError(""); }} aria-invalid={Boolean(error) && confirmed} aria-describedby={`payout-amount-hint${error && confirmed ? " payout-request-error" : ""}`} /><small className="p-muted" id="payout-amount-hint">От {formatMoney(data.terms.minimumPayout)} до {formatMoney(balance.available)}</small></label>
       <h3>Куда перевести</h3><DetailsSummary details={partner.payoutDetails} /><p className="p-muted">Эти реквизиты сохранятся в заявке. <Link to="/partner/account/details">Изменить реквизиты</Link></p>
       <label className="p-checkbox"><input type="checkbox" checked={confirmed} onChange={(event) => { setConfirmed(event.target.checked); setError(""); }} aria-invalid={Boolean(error) && !confirmed} aria-describedby={error && !confirmed ? "payout-request-error" : undefined} /><span>Подтверждаю сумму и реквизиты получателя</span></label>
       {error ? <p className="p-notice warning" id="payout-request-error" role="alert">{error}</p> : null}
-      <div className="p-actions"><button className="p-button" type="button" onClick={() => setRequestOpen(false)}>Отмена</button><button className="p-button primary" type="submit">Отправить заявку</button></div>
+      <div className="p-actions"><button className="p-button" type="button" onClick={() => setRequestOpen(false)}>Отмена</button><button className="p-button primary" type="submit" disabled={data.mutating}>Отправить заявку</button></div>
     </form></Modal> : null}
     {selected ? <Modal title="Заявка на выплату" onClose={() => setSelectedId(null)}><div className="p-panel-head"><span className="p-mono p-muted">{formatPayoutId(selected.id)}</span><StatusBadge status={selected.status} /></div><dl className="p-detail-list"><div><dt>Дата заявки</dt><dd>{formatDate(selected.createdAt)}</dd></div><div><dt>Запрошено</dt><dd><Money value={selected.amount} /></dd></div>{selected.status === "paid" ? <><div><dt>Выплачено</dt><dd><Money value={selected.paidAmount ?? selected.amount} /></dd></div><div><dt>Дата выплаты</dt><dd>{selected.paidAt ? formatDate(selected.paidAt) : "Не указана"}</dd></div></> : null}</dl>{selected.reviewNote ? <div className={`p-notice ${selected.status === "rejected" ? "warning" : ""}`}><div><strong>{selected.status === "rejected" ? "Причина отклонения" : "Комментарий"}</strong><p>{selected.reviewNote}</p>{selected.status === "rejected" ? <p>Сумма возвращена в доступный баланс с учётом корректировок.</p> : null}</div></div> : null}<h3>Реквизиты в этой заявке</h3><DetailsSummary details={selected.details} /><div className="p-actions"><button className="p-button" type="button" onClick={() => setSelectedId(null)}>Закрыть</button></div></Modal> : null}
   </>;
@@ -57,7 +58,7 @@ function PayoutsView({ data, partner }: { data: PartnerStore; partner: Partner }
 export function PartnerPayouts() {
   const data = usePartnerStore();
   const partner = data.partners.find((item) => item.id === data.currentPartnerId);
-  return partner ? <PayoutsView key={partner.id} data={data} partner={partner} /> : <EmptyState title="Выберите партнёра" />;
+  return partner ? <PayoutsView key={partner.id} data={data} partner={partner} /> : <EmptyState title="Профиль не найден" />;
 }
 
 export default PartnerPayouts;

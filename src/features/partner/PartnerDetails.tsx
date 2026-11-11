@@ -11,9 +11,10 @@ function DetailsForm({ partner, updateDetails }: { partner: Partner; updateDetai
   const [details, setDetails] = useState<PayoutDetails>(() => ({ ...(partner.payoutDetails || emptyDetails) }));
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const busy = usePartnerStore(state => state.mutating);
 
   function updateField<K extends keyof PayoutDetails>(field: K, value: PayoutDetails[K]) { setDetails((current) => ({ ...current, [field]: value })); setError(""); setSaved(false); }
-  function submit(event: FormEvent) { event.preventDefault(); const result = updateDetails(partner.id, details); if (!result.ok) { setError(result.error); setSaved(false); return; } setError(""); setSaved(true); }
+  async function submit(event: FormEvent) { event.preventDefault(); if (busy) return; const result = await updateDetails(partner.id, details); if (!result.ok) { setError(result.error); setSaved(false); return; } setError(""); setSaved(true); }
 
   return <>
     <div className="p-page-head"><div><span className="p-kicker">Кабинет партнёра</span><h1>Реквизиты</h1><p>Данные получателя для выплаты вознаграждения.</p></div></div>
@@ -25,7 +26,7 @@ function DetailsForm({ partner, updateDetails }: { partner: Partner; updateDetai
       <p className="p-muted">Изменения будут использоваться в новых заявках. Реквизиты уже отправленных заявок сохранятся.</p>
       {error ? <div className="p-notice warning" id="details-error" role="alert"><p>{error}</p></div> : null}
       {saved ? <div className="p-notice success" role="status"><LuCircleCheck aria-hidden="true" /><div><strong>Реквизиты сохранены</strong><p>Теперь их можно использовать для выплаты.</p></div></div> : null}
-      <div className="p-actions"><button className="p-button primary" type="submit"><LuSave aria-hidden="true" /> Сохранить реквизиты</button>{saved ? <Link className="p-button" to="/partner/account/payouts">К выплатам <LuArrowUpRight aria-hidden="true" /></Link> : null}</div>
+      <div className="p-actions"><button className="p-button primary" type="submit" disabled={busy}><LuSave aria-hidden="true" /> Сохранить реквизиты</button>{saved ? <Link className="p-button" to="/partner/account/payouts">К выплатам <LuArrowUpRight aria-hidden="true" /></Link> : null}</div>
     </form></section>
   </>;
 }
@@ -33,7 +34,7 @@ function DetailsForm({ partner, updateDetails }: { partner: Partner; updateDetai
 export function PartnerDetails() {
   const data = usePartnerStore();
   const partner = data.partners.find((item) => item.id === data.currentPartnerId);
-  return partner ? <DetailsForm key={partner.id} partner={partner} updateDetails={data.updateDetails} /> : <EmptyState title="Выберите партнёра" />;
+  return partner ? <DetailsForm key={partner.id} partner={partner} updateDetails={data.updateDetails} /> : <EmptyState title="Профиль не найден" />;
 }
 
 export default PartnerDetails;
