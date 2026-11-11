@@ -74,6 +74,10 @@ export const meetingsApi = {
     api
       .post<LiveMeeting>(path(w, id) + "/recordings/" + recordingId + "/retry")
       .then((r) => r.data),
+  shareRecording: (w: string, id: string, recordingId: string, enabled: boolean) =>
+    api.post<{ token: string | null; expiresAt: string | null }>(path(w, id) + "/recordings/" + recordingId + "/share", { enabled }).then((r) => r.data),
+  sharedRecording: (token: string, signal?: AbortSignal) =>
+    api.get<{ title: string; createdAt: string; expiresAt: string; url: string }>("/meetings/recordings/shared/" + encodeURIComponent(token), { signal }).then((r) => r.data),
   notes: (w: string, id: string, notes: string) =>
     api
       .patch<LiveMeeting>(path(w, id) + "/notes", { notes })

@@ -15,6 +15,8 @@ import SubscriptionModal from "./components/ui/SubscriptionModal";
 import TeamPage from "./pages/TeamPage";
 import InvitationPage from "./pages/InvitationPage";
 import GuestMeetingPage from "./pages/GuestMeetingPage";
+import SharedMeetingRecordingPage from './pages/SharedMeetingRecordingPage';
+import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import { useModalRouter } from "./hooks/useModalRouter";
@@ -26,6 +28,10 @@ export default function App() {
   const { state, closeModal } = useModalRouter();
   const location = useLocation();
   useEffect(() => { captureReferral(location.search); }, [location.search]);
+  if (location.pathname === '/auth/oauth/callback') return <OAuthCallbackPage />;
+  if (location.pathname.startsWith('/meetings/recordings/')) {
+    return <Routes><Route path="/meetings/recordings/:token" element={<SharedMeetingRecordingPage />} /></Routes>;
+  }
   if (location.pathname === '/partner' || location.pathname.startsWith('/partner/') || location.pathname === '/admin' || location.pathname.startsWith('/admin/')) {
     return <Suspense fallback={<div className="min-h-screen bg-void p-8 text-fog" role="status">Загружаем страницу…</div>}><PartnerApp /></Suspense>;
   }

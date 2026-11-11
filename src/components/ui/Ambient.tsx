@@ -5,7 +5,7 @@ import { Reveal, useCountUp, useInView, useReducedMotion } from "../../lib/motio
 
 type Star = { x: number; y: number; r: number; a: number; sp: number; ph: number };
 
-export function Starfield() {
+export function Starfield({ className = 'fixed inset-0 -z-10 h-full w-full' }: { className?: string } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reduced = useReducedMotion();
 
@@ -77,7 +77,7 @@ export function Starfield() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 -z-10 h-full w-full"
+      className={className}
       aria-hidden="true"
     />
   );

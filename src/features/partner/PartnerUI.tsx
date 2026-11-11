@@ -7,6 +7,8 @@ const date = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', 
 export function formatMoney(value: number) { return money.format(value); }
 export function Money({ value }: { value: number }) { return <span className="p-money">{formatMoney(value)}</span>; }
 export function formatDate(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? '—' : date.format(parsed); }
+const dateTime = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Moscow' });
+export function formatDateTime(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? '—' : `${dateTime.format(parsed)} МСК`; }
 export function formatPayoutId(value: string) {
   return `№ ${value.slice(-10).toUpperCase()}`;
 }

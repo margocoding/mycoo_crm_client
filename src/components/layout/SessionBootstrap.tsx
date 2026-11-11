@@ -14,8 +14,11 @@ export default function SessionBootstrap() {
     if (!auth.user) return;
     const refresh = () => { void useLaunchStore.getState().loadWorkspace(true); };
     const onFocus = () => { if (document.visibilityState === 'visible') refresh(); };
+    const poll = window.setInterval(onFocus, 30_000);
     window.addEventListener('mycoo:subscription-expired', refresh);
+    window.addEventListener('mycoo:workspace-unavailable', refresh);
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
     const end = workspace.workspace?.subscription?.activeUntil;
     let timer: number | undefined;
     const schedule = () => {
@@ -25,10 +28,17 @@ export default function SessionBootstrap() {
     schedule();
     return () => {
       window.removeEventListener('mycoo:subscription-expired', refresh);
+      window.removeEventListener('mycoo:workspace-unavailable', refresh);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+      clearInterval(poll);
       if (timer !== undefined) clearTimeout(timer);
     };
   }, [auth.user?.id, workspace.workspace?.subscription?.activeUntil, workspace.workspace?.id]);
+
+  useEffect(() => {
+    if (auth.user && workspace.loadedFor === auth.user.id && !workspace.workspace) useOnboardingStore.getState().reset(auth.user.email);
+  }, [auth.user?.id, workspace.loadedFor, workspace.workspace?.id]);
 
   useEffect(() => {
     const expire = () => useAuthStore.getState().clearSession();

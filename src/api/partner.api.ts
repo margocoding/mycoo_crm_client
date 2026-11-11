@@ -2,7 +2,7 @@ import axios from 'axios';
 import { api, ApiError } from './base.api';
 import { installApiRetry } from './retry';
 import { createOperationKeys, isDefinitiveOperationRejection } from '../features/partner/partner.requests';
-import type { ActionResult, PartnerData, ProgramTerms } from '../features/partner/partner.types';
+import type { ActionResult, LedgerEntry, PartnerData, PartnerNotification, PartnerPage, PartnerPayoutEvent, ProgramTerms } from '../features/partner/partner.types';
 
 const ADMIN_TOKEN_KEY = 'mycoo.partner.admin-session';
 let adminToken: string | null = null;
@@ -53,6 +53,10 @@ async function operationFingerprint(path: string, body: object, admin: boolean) 
 }
 
 export const partnerApi = {
+  ledger: async (cursor?: string) => (await api.get<PartnerPage<LedgerEntry>>('/partners/me/ledger', { params: cursor ? { cursor } : undefined })).data,
+  notifications: async (cursor?: string) => (await api.get<PartnerPage<PartnerNotification> & { unreadCount: number }>('/partners/me/notifications', { params: cursor ? { cursor } : undefined })).data,
+  readNotification: async (id?: string) => { await api.post(id ? `/partners/me/notifications/${encodeURIComponent(id)}/read` : '/partners/me/notifications/read-all', {}, { retrySafe: true }); },
+  payoutHistory: async (id: string) => (await adminApi.get<{ items: PartnerPayoutEvent[] }>(`/partner-admin/payouts/${encodeURIComponent(id)}/history`)).data,
   terms: async () => (await api.get<ProgramTerms>('/partners/terms')).data,
   data: async (admin: boolean) => (await (admin ? adminApi : api).get<PartnerData>(admin ? '/partner-admin/data' : '/partners/me')).data,
   adminSession: async () => (await adminApi.get<{ adminId: string; login: string }>('/partner-admin/session')).data,

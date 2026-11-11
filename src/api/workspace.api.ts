@@ -2,6 +2,8 @@ import { api } from "./base.api";
 import type { CompanyStepDto, OwnerStepDto, GoalsStepDto, Workspace, WorkspaceStatus, Question, DiagnosticAnswer } from "@/types/workspace.types";
 
 export const workspaceApi = {
+  remove: (id: string) => api.delete<{ success: boolean }>(`/workspace/${encodeURIComponent(id)}`).then((r) => r.data),
+  leave: (id: string) => api.post<{ success: boolean }>(`/workspace/${encodeURIComponent(id)}/leave`).then((r) => r.data),
   status: () => api.get<WorkspaceStatus>("/workspace/status").then((r) => r.data),
   get: (id: string) => api.get<Workspace>(`/workspace/${id}`).then((r) => r.data),
   saveCompany: (dto: CompanyStepDto, id?: string) => (id

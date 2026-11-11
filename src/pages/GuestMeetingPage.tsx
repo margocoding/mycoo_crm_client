@@ -96,6 +96,7 @@ function GuestMeeting({ token }: { token: string }) {
     myRole: "participant",
     canHost: false,
     canModerate: false,
+    canRecord: false,
     participants: meeting.participants.some((p) => p.personId === identity)
       ? meeting.participants
       : [...meeting.participants, {

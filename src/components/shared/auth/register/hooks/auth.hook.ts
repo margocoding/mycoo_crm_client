@@ -39,7 +39,6 @@ export function useAuthFlow(
   const [emailErr, setEmailErr] = useState("");
   const [pwErr, setPwErr] = useState("");
   const [codeErr, setCodeErr] = useState("");
-  const [socialNote, setSocialNote] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [timer, setTimer] = useState(RESEND_SECONDS);
   const [sent, setSent] = useState(false);
@@ -70,11 +69,6 @@ export function useAuthFlow(
   const setPw2 = (value: string) => {
     setPw2State(value);
     setPwErr("");
-  };
-
-  const showSocialNote = (providerName: string) => {
-    setSocialNote(`Вход через ${providerName} появится в следующем билде — используйте email.`);
-    setEmailErr("");
   };
 
   const backToEmail = () => {
@@ -117,7 +111,6 @@ export function useAuthFlow(
     setEmailErr("");
     setPwErr("");
     setCodeErr("");
-    setSocialNote("");
     setAttempt(0);
     setTimer(RESEND_SECONDS);
     setSent(false);
@@ -159,7 +152,6 @@ export function useAuthFlow(
     }
 
     setEmailErr("");
-    setSocialNote("");
     setChecking(true);
     busyRef.current = true;
 
@@ -374,14 +366,12 @@ export function useAuthFlow(
     codeErr,
     timer,
     sent,
-    socialNote,
     attempt,
     requestId,
     boxRefs,
     setEmail,
     setPw,
     setPw2,
-    showSocialNote,
     submitEmail,
     submitPw,
     backToEmail,

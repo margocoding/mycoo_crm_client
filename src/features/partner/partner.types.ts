@@ -53,7 +53,24 @@ export interface LedgerEntry {
   createdAt: string;
   availableAt: string;
   description: string;
+  actor?: string;
 }
+export interface PartnerNotification {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+}
+export interface PartnerPayoutEvent {
+  id: string;
+  status: PayoutStatus;
+  note: string;
+  actor: string;
+  createdAt: string;
+  amount: number | null;
+}
+export interface PartnerPage<T> { items: T[]; nextCursor: string | null }
 export interface PartnerPayout {
   id: string;
   partnerId: string;
@@ -73,6 +90,7 @@ export interface PartnerData {
   payouts: PartnerPayout[];
   terms: ProgramTerms;
   currentPartnerId: string;
+  notificationUnreadCount?: number;
 }
 export interface PartnerBalance {
   totalAccrued: number;

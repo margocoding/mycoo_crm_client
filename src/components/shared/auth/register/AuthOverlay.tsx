@@ -3,32 +3,13 @@ import { StatusDot } from "../../../ui/Ambient";
 import Button from "../../../ui/Button";
 import Input from "../../../ui/Input";
 import { FiArrowRight, FiCheck, FiMail } from "react-icons/fi";
-import { SiVk, SiYandexcloud } from "react-icons/si";
 import PasswordFields from "./PasswordFields";
 import { useAuthFlow } from "./hooks/auth.hook";
 import { AUTH_PHASES } from "@/lib/constants/constants";
 import { useAuthStore } from "@/store/auth.store";
 import { useModalRouter } from "@/hooks/useModalRouter";
 import { useLaunch } from "@/store/launch.store";
-
-const SOCIALS = [
-  {
-    name: "Яндекс ID",
-    mark: (
-      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#FC3F1D] text-white">
-        <SiYandexcloud className="h-3.5 w-3.5" />
-      </span>
-    ),
-  },
-  {
-    name: "VK ID",
-    mark: (
-      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#0077FF] text-white">
-        <SiVk className="h-3.5 w-3.5" />
-      </span>
-    ),
-  },
-];
+import SocialLogin from '../SocialLogin';
 
 export function AuthOverlay() {
   const { state, closeModal, updateAuthStep } = useModalRouter();
@@ -184,34 +165,7 @@ export function AuthOverlay() {
                 </Button>
               </form>
 
-              <div className="mt-7">
-                <div className="flex items-center gap-4">
-                  <span className="h-px flex-1 bg-line/60" />
-                  <span className="mono-label text-fog/50">или через</span>
-                  <span className="h-px flex-1 bg-line/60" />
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2.5">
-                  {SOCIALS.map((social) => (
-                    <Button
-                      key={social.name}
-                      variant="secondary"
-                      onClick={() => flow.showSocialNote(social.name)}
-                      iconLeft={social.mark}
-                      className="!px-3 !py-3 !text-[13px] hover:-translate-y-0.5 hover:!border-flux/50 hover:shadow-[0_8px_24px_-12px_rgba(56,189,248,0.5)]"
-                    >
-                      {social.name}
-                    </Button>
-                  ))}
-                </div>
-
-                {flow.socialNote && (
-                  <p className="mt-3 flex items-start gap-2 rounded-md border border-warn/25 bg-warn/5 px-3 py-2.5 font-mono text-[11px] leading-relaxed text-warn/90">
-                    <StatusDot color="var(--color-warn)" />
-                    {flow.socialNote}
-                  </p>
-                )}
-              </div>
+              <SocialLogin disabled={flow.busy} />
 
               <p className="mono-label mt-6 text-fog/40">
                 продолжая, вы принимаете условия обработки данных

@@ -14,7 +14,6 @@ import {
   LuDatabase,
   LuClock3,
 } from "react-icons/lu";
-import { Starfield } from "../../../ui/Ambient";
 import { useAuthStore } from "@/store/auth.store";
 import { useLaunchStore } from "@/store/launch.store";
 import {
@@ -215,18 +214,9 @@ function Conversation({
   const assistantPending = chat.pendingMessage || chat.hasPending;
 
   return (
-    <div className="relative flex h-[calc(100dvh-5.5rem)] min-h-0 flex-col bg-void font-body text-mist md:h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-4rem)]">
-      <Starfield />
-      <div
-        className="pointer-events-none fixed inset-0 -z-20"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 50% at 30% -10%, rgba(30,58,138,0.25), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 20%, rgba(139,133,248,0.09), transparent 65%), linear-gradient(180deg, #04070f 0%, #060b18 55%, #04070f 100%)",
-        }}
-      />
-      <div className="noise-overlay" />
-      <header className="header-solid relative z-40 shrink-0 border-b border-line/40">
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-3 px-3 sm:px-5 lg:px-7">
+    <div className="relative flex h-[calc(100dvh-5.5rem)] min-h-[24rem] flex-col font-body text-mist md:h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-4rem)]">
+      <header className="relative z-10 mb-4 shrink-0 border-b border-line/40">
+        <div className="flex h-14 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ion/50 bg-ion/10">
               <LuBot className="h-4 w-4 text-ion" />
@@ -256,7 +246,7 @@ function Conversation({
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-2 py-2 sm:px-4 sm:py-4 lg:px-6">
+      <main className="flex min-h-0 w-full flex-1 flex-col">
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line/50 bg-hull/15 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
           <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line/40 px-3 py-2 sm:px-4">
             <div className="flex min-w-0 items-center gap-1.5 text-[10px] text-fog/60">
@@ -747,6 +737,15 @@ function Message({
           <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-mist sm:text-[13px]">
             {isUser ? message.content : renderAssistantText(message.content)}
           </p>
+          {!isUser && Boolean(message.sources?.length) && <div className="mt-3 space-y-2 border-t border-line/40 pt-3 text-[11px]">
+            <p className="font-medium text-fog">Источники</p>
+            {message.sources?.map((source, index) => <div key={source.url + index} className="min-w-0 break-words">
+              {source.status === 'read' && /^https?:\/\//i.test(source.url)
+                ? <a href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="text-flux underline underline-offset-2">{source.title || source.url}</a>
+                : <span className="text-fog">{source.title || source.url}</span>}
+              <p className="mt-0.5 text-fog/60">{source.status === 'read' ? source.truncated ? 'Прочитан фрагмент страницы' : 'Страница прочитана' : source.error || 'Страница недоступна'}</p>
+            </div>)}
+          </div>}
           {Boolean(message.documents?.length) && (
             <div className="mt-3 space-y-1.5">
               {message.documents?.map((file) => (

@@ -4,6 +4,7 @@ import { usePartnerStore } from './partner.store';
 import { getPartnerBalance, partnerDateInput as localDay } from './partner.model';
 import { EmptyState, TableScroll, formatDate, formatMoney, formatPayoutId, Modal, Money, StatusBadge } from './PartnerUI';
 import type { ActionResult, PayoutStatus } from './partner.types';
+import { AdminPayoutHistory } from './AdminPayoutHistory';
 
 const statusLabels: Record<PayoutStatus, string> = { new: 'Новые', review: 'На проверке', approved: 'Одобрены', paid: 'Выплачены', rejected: 'Отклонены' };
 
@@ -92,6 +93,7 @@ export function AdminPayouts() {
       </dl></section>
       <div className={`p-notice ${returnedPayments.length || (balance?.debt ?? 0) > 0 ? 'warning' : ''}`}><div><strong>Проверка возвратов</strong><p>{returnedPayments.length ? `У клиентов партнёра есть возвраты: ${formatMoney(returnedPayments.reduce((sum, payment) => sum + payment.refundedAmount, 0))}. Они учтены в начислениях.` : 'У клиентов этого партнёра возвратов нет.'}{(balance?.debt ?? 0) > 0 ? ` Задолженность: ${formatMoney(balance?.debt ?? 0)}.` : ''}</p></div></div>
       {selected.reviewNote && <div className="p-notice"><div><strong>Комментарий к заявке</strong><p>{selected.reviewNote}</p></div></div>}
+      <AdminPayoutHistory key={selected.id} id={selected.id} status={selected.status} />
       {selected.status === 'paid' && <div className="p-notice success"><LuCheck aria-hidden="true" /> Отмечено как выплачено: {formatMoney(selected.paidAmount ?? 0)} · {selected.paidAt ? formatDate(selected.paidAt) : 'Дата не указана'}</div>}
       {notice && <p className="p-notice success" role="status">{notice}</p>}
       {error && <p className="p-notice warning" role="alert">{error}</p>}

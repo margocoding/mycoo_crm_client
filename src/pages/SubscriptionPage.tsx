@@ -2,13 +2,15 @@ import { Link, Navigate } from 'react-router-dom';
 import SubscriptionContent from '@/components/shared/billing/SubscriptionContent';
 import { useAuthStore } from '@/store/auth.store';
 import { useLaunchStore } from '@/store/launch.store';
+import DashboardBackground from '@/components/layout/DashboardBackground';
 
 export default function SubscriptionPage() {
   const { user, isLoading, clearSession } = useAuthStore();
   const hasAccess = useLaunchStore(s => s.trialActive);
   if (isLoading) return <div role="status" className="min-h-screen bg-void p-8 text-fog">Загружаем подписку…</div>;
   if (!user) return <Navigate to="/?auth=true" replace />;
-  return <main className="min-h-screen bg-void px-4 py-8 text-mist">
+  return <main className="relative isolate min-h-screen px-4 py-8 text-mist">
+    <DashboardBackground />
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-xl font-bold text-snow">Подписка MyCOO</h1>

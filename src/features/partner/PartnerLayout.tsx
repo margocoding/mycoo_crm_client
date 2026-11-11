@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LuArrowUpRight, LuChartNoAxesCombined, LuCreditCard, LuListChecks, LuLogOut, LuMenu, LuSettings2, LuUsers, LuWallet, LuX } from 'react-icons/lu';
+import { LuArrowUpRight, LuBell, LuChartNoAxesCombined, LuCreditCard, LuListChecks, LuLogOut, LuMenu, LuSettings2, LuUsers, LuWallet, LuX } from 'react-icons/lu';
 import { Logo } from '@/components/icons';
 import { usePartnerStore } from './partner.store';
 
@@ -9,7 +9,9 @@ export function PartnerBrand() { return <Link to="/partner" className="p-brand" 
 const partnerNav = [
   { to: '/partner/account', label: 'Обзор', icon: LuChartNoAxesCombined },
   { to: '/partner/account/referrals', label: 'Рефералы', icon: LuUsers },
+  { to: '/partner/account/ledger', label: 'Начисления', icon: LuListChecks },
   { to: '/partner/account/payouts', label: 'Выплаты', icon: LuWallet },
+  { to: '/partner/account/notifications', label: 'Уведомления', icon: LuBell },
   { to: '/partner/account/details', label: 'Реквизиты', icon: LuCreditCard },
 ];
 const adminNav = [
@@ -42,7 +44,7 @@ export default function PartnerLayout({ admin = false }: { admin?: boolean }) {
     </header>
     <aside ref={navigation} id="partner-navigation" className={`p-sidebar ${menuOpen ? 'is-open' : ''}`} onKeyDown={event => { if (event.key === 'Escape' && menuOpen) { event.preventDefault(); closeMenu(); } }} onClick={event => { if ((event.target as HTMLElement).closest('a') && menuOpen) closeMenu(); }}>
       <PartnerBrand />
-      <nav aria-label={admin ? 'Администрирование программы' : 'Кабинет партнёра'}>{menu.map(item => <NavLink end to={item.to} key={item.to}><item.icon aria-hidden="true" />{item.label}</NavLink>)}</nav>
+      <nav aria-label={admin ? 'Администрирование программы' : 'Кабинет партнёра'}>{menu.map(item => <NavLink end to={item.to} key={item.to}><item.icon aria-hidden="true" />{item.label}{item.to.endsWith('/notifications') && (store.notificationUnreadCount ?? 0) > 0 && <span className="p-status info" aria-label={`Непрочитанных: ${store.notificationUnreadCount}`}>{(store.notificationUnreadCount ?? 0) > 99 ? '99+' : store.notificationUnreadCount}</span>}</NavLink>)}</nav>
       <div className="p-sidebar-bottom">
         <Link to="/partner">О программе <LuArrowUpRight style={{ display: 'inline' }} aria-hidden="true" /></Link>
         <Link to={admin ? '/partner/account' : '/admin'}>{admin ? 'Кабинет партнёра' : 'Администратор'}</Link>

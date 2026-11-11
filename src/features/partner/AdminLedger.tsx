@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { LuArrowDownLeft, LuPlus, LuRotateCcw, LuSearch } from 'react-icons/lu';
 import { usePartnerStore } from './partner.store';
 import { partnerDateInput as localDay } from './partner.model';
-import { EmptyState, TableScroll, formatDate, formatMoney, Modal, Money } from './PartnerUI';
+import { EmptyState, TableScroll, formatDate, formatDateTime, formatMoney, Modal, Money } from './PartnerUI';
 import type { ActionResult, LedgerKind } from './partner.types';
 
 const kindLabels: Record<LedgerKind, string> = { commission: 'Начисление', refund: 'Возврат', adjustment: 'Корректировка' };
@@ -76,7 +76,7 @@ export function AdminLedger() {
         const partner = store.partners.find(item => item.id === entry.partnerId);
         const referral = store.referrals.find(item => item.id === entry.referralId);
         const held = new Date(entry.availableAt).getTime() > now;
-        return <tr key={entry.id}><td><strong>{kindLabels[entry.kind]}</strong><small className="p-muted">{formatDate(entry.createdAt)}</small></td><td><strong>{partner?.name ?? entry.partnerId}</strong><small className="p-muted">{referral?.company ?? 'Без привязки к клиенту'}</small>{entry.referralId && <small className="p-muted p-mono">{entry.referralId}</small>}</td><td className="p-mono">{entry.paymentId ?? '—'}</td><td><strong style={{ color: entry.amount < 0 ? 'var(--p-danger, #ff9999)' : undefined }}>{entry.amount > 0 ? '+' : ''}<Money value={entry.amount} /></strong></td><td>{held ? <>После {formatDate(entry.availableAt)}<small className="p-muted">На удержании</small></> : <span className="p-muted">Учтено в балансе</span>}</td><td style={{ minWidth: 200, maxWidth: 320, whiteSpace: 'normal' }}>{entry.description}<small className="p-muted p-mono">{entry.id}</small></td></tr>;
+        return <tr key={entry.id}><td><strong>{kindLabels[entry.kind]}</strong><small className="p-muted">{formatDateTime(entry.createdAt)}</small></td><td><strong>{partner?.name ?? entry.partnerId}</strong><small className="p-muted">{referral?.company ?? 'Без привязки к клиенту'}</small>{entry.referralId && <small className="p-muted p-mono">{entry.referralId}</small>}</td><td className="p-mono">{entry.paymentId ?? '—'}</td><td><strong style={{ color: entry.amount < 0 ? 'var(--p-danger, #ff9999)' : undefined }}>{entry.amount > 0 ? '+' : ''}<Money value={entry.amount} /></strong></td><td>{held ? <>После {formatDate(entry.availableAt)}<small className="p-muted">На удержании</small></> : <span className="p-muted">Учтено в балансе</span>}</td><td style={{ minWidth: 200, maxWidth: 320, whiteSpace: 'normal' }}>{entry.description}{entry.actor && <small className="p-muted">{entry.actor}</small>}<small className="p-muted p-mono">{entry.id}</small></td></tr>;
       })}</tbody></table></TableScroll> : <EmptyState title="Операций не найдено" description="Измените фильтры или добавьте оплату." />}
       <p className="p-muted" style={{ marginTop: 20 }}>Сохранённые операции не редактируются. Чтобы изменить сумму, добавьте корректировку с причиной.</p>
     </section>
