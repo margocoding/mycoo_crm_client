@@ -25,6 +25,8 @@ export default function MeetingProtocol({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState<string | null>(null);
+  const [shares, setShares] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState("");
   async function analyze() {
     setBusy(true);
     setError("");
@@ -45,6 +47,11 @@ export default function MeetingProtocol({
   return (
     <section className="meeting-panel p-6">
       <h2 className="meeting-section-heading">Запись и протокол</h2>
+      {notice && (
+        <p role="status" className="mt-3 text-sm text-flux">
+          {notice}
+        </p>
+      )}
       {error && (
         <p role="alert" className="mt-3 text-crit">
           {error}
@@ -83,6 +90,97 @@ export default function MeetingProtocol({
                 >
                   Открыть запись
                 </button>
+              )}
+              {r.downloadable && m.canRecord && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-fog">
+                    Можно поделиться этим фрагментом без доступа к остальной
+                    встрече. Ссылка действует 7 дней; новая ссылка заменяет
+                    предыдущую.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      disabled={busy}
+                      className="meeting-button"
+                      onClick={async () => {
+                        setBusy(true);
+                        setError("");
+                        setNotice("");
+                        try {
+                          const result = await meetingsApi.shareRecording(
+                            workspaceId,
+                            m.id,
+                            r.id,
+                            true,
+                          );
+                          const link = new URL(
+                            "/meetings/recordings/" + result.token,
+                            window.location.origin,
+                          ).href;
+                          setShares((current) => ({
+                            ...current,
+                            [r.id]: link,
+                          }));
+                          onUpdate(await meetingsApi.get(workspaceId, m.id));
+                          try {
+                            await navigator.clipboard.writeText(link);
+                            setNotice("Ссылка на запись скопирована.");
+                          } catch {
+                            setNotice("Ссылка готова — скопируйте её из поля.");
+                          }
+                        } catch (reason) {
+                          setError(errorMessage(reason));
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Создать ссылку на запись
+                    </button>
+                    {(shares[r.id] || r.shareExpiresAt) && (
+                      <button
+                        disabled={busy}
+                        className="meeting-button"
+                        onClick={async () => {
+                          setBusy(true);
+                          setError("");
+                          try {
+                            await meetingsApi.shareRecording(
+                              workspaceId,
+                              m.id,
+                              r.id,
+                              false,
+                            );
+                            setShares((current) => {
+                              const next = { ...current };
+                              delete next[r.id];
+                              return next;
+                            });
+                            onUpdate(await meetingsApi.get(workspaceId, m.id));
+                            setNotice(
+                              "Доступ по ссылке закрыт. Уже открытый файл может оставаться доступным до 5 минут.",
+                            );
+                          } catch (reason) {
+                            setError(errorMessage(reason));
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        Закрыть доступ по ссылке
+                      </button>
+                    )}
+                  </div>
+                  {shares[r.id] && (
+                    <input
+                      className="w-full rounded border border-line bg-void p-2 text-xs"
+                      readOnly
+                      aria-label="Ссылка на запись"
+                      value={shares[r.id]}
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                  )}
+                </div>
               )}
               {r.status === "failed" && m.canModerate && !m.publishedAt && (
                 <button

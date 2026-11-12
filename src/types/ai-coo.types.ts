@@ -12,6 +12,7 @@ export interface AiCooMessage {
   content: string;
   createdAt: string;
   documents?: Array<{ id: string; name: string }>;
+  sources?: Array<{ url: string; title: string; status: 'read' | 'unavailable'; error?: string; truncated?: boolean }>;
   status?: "pending" | "failed" | "complete";
   requestId?: string;
 }

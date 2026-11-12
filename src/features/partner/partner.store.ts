@@ -5,7 +5,7 @@ import { getAdminToken, partnerApi, saveAdminToken, setAdminActor, setPartnerAct
 import { useAuthStore } from '../../store/auth.store';
 import type { ActionResult, PartnerData, PartnerScope, PartnerStore } from './partner.types';
 
-const emptyData = (): PartnerData => ({ partners: [], referrals: [], payments: [], ledger: [], payouts: [], currentPartnerId: '', terms: { commissionPercent: 0, eligibleMonths: 0, holdDays: 0, minimumPayout: 0 } });
+const emptyData = (): PartnerData => ({ partners: [], referrals: [], payments: [], ledger: [], payouts: [], currentPartnerId: '', notificationUnreadCount: 0, terms: { commissionPercent: 0, eligibleMonths: 0, holdDays: 0, minimumPayout: 0 } });
 let revision = 0;
 let mutationRevision = 0;
 let pendingLoad: { scope: PartnerScope; promise: Promise<void> } | null = null;

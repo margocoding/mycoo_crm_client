@@ -12,6 +12,13 @@ import {
 } from "react-icons/lu";
 import { MEETING_ROLES, type CallMeeting } from "@/types/meetings.types";
 import { Avatar } from "./MeetingUI";
+import {
+  mediaChoicesKey,
+  mediaPreferenceKey,
+  parseMediaChoices,
+  parseMediaPreference,
+  type MediaPreference,
+} from "./call-policy";
 
 export interface MediaChoices {
   audioEnabled: boolean;
@@ -33,10 +40,30 @@ export default function LiveMeetingLobby({
   onJoin: (choices: MediaChoices) => void;
   onBack: () => void;
 }) {
-  const [audioEnabled, setAudio] = useState(!meeting.muteOnEntry);
-  const [videoEnabled, setVideo] = useState(false);
-  const [audioDeviceId, setAudioDevice] = useState("default");
-  const [videoDeviceId, setVideoDevice] = useState("default");
+  const [preference, setPreference] = useState<MediaPreference>(() => {
+    try {
+      return parseMediaPreference(localStorage.getItem(mediaPreferenceKey));
+    } catch {
+      return "once";
+    }
+  });
+  const [saved] = useState(() => {
+    try {
+      return parseMediaChoices(
+        preference === "remember"
+          ? localStorage.getItem(mediaChoicesKey)
+          : null,
+      );
+    } catch {
+      return parseMediaChoices(null);
+    }
+  });
+  const [audioEnabled, setAudio] = useState(
+    saved.audioEnabled && !meeting.muteOnEntry,
+  );
+  const [videoEnabled, setVideo] = useState(saved.videoEnabled);
+  const [audioDeviceId, setAudioDevice] = useState(saved.audioDeviceId);
+  const [videoDeviceId, setVideoDevice] = useState(saved.videoDeviceId);
   const [deviceError, setDeviceError] = useState("");
   const preview = useRef<HTMLVideoElement>(null);
   const handleDeviceError = useCallback(() => {
@@ -48,8 +75,14 @@ export default function LiveMeetingLobby({
   }, []);
   const tracks = usePreviewTracks(
     {
-      audio: audioEnabled ? { deviceId: audioDeviceId } : false,
-      video: videoEnabled ? { deviceId: videoDeviceId } : false,
+      audio:
+        preference !== "listen" && audioEnabled
+          ? { deviceId: audioDeviceId }
+          : false,
+      video:
+        preference !== "listen" && videoEnabled
+          ? { deviceId: videoDeviceId }
+          : false,
     },
     handleDeviceError,
   );
@@ -123,6 +156,7 @@ export default function LiveMeetingLobby({
                 audioEnabled ? "Выключить микрофон" : "Включить микрофон"
               }
               aria-pressed={audioEnabled}
+              disabled={preference === "listen"}
               onClick={() => {
                 setDeviceError("");
                 setAudio(!audioEnabled);
@@ -134,6 +168,7 @@ export default function LiveMeetingLobby({
               className={"meeting-control " + (!videoEnabled ? "off" : "")}
               aria-label={videoEnabled ? "Выключить камеру" : "Включить камеру"}
               aria-pressed={videoEnabled}
+              disabled={preference === "listen"}
               onClick={() => {
                 setDeviceError("");
                 setVideo(!videoEnabled);
@@ -160,6 +195,39 @@ export default function LiveMeetingLobby({
               </p>
             </div>
           </div>
+          <label className="meeting-field mb-4">
+            Камера и микрофон
+            <select
+              value={preference}
+              onChange={(event) => {
+                const value = event.target.value as MediaPreference;
+                setPreference(value);
+                if (value === "listen") {
+                  setAudio(false);
+                  setVideo(false);
+                }
+                try {
+                  if (value === "once") {
+                    localStorage.removeItem(mediaPreferenceKey);
+                    localStorage.removeItem(mediaChoicesKey);
+                  } else localStorage.setItem(mediaPreferenceKey, value);
+                } catch {
+                  /* This meeting still works without browser storage. */
+                }
+              }}
+            >
+              <option value="once">Выбрать устройства на эту встречу</option>
+              <option value="remember">
+                Запомнить выбор для следующих встреч
+              </option>
+              <option value="listen">Не использовать камеру и микрофон</option>
+            </select>
+            <span className="text-xs leading-5 text-fog">
+              Доступ к устройствам запрашивает браузер при их включении.
+              Постоянное разрешение можно изменить в настройках сайта в
+              браузере.
+            </span>
+          </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="meeting-field">
               Микрофон
@@ -213,14 +281,25 @@ export default function LiveMeetingLobby({
           )}
           <button
             className="meeting-button primary w-full"
-            onClick={() =>
-              onJoin({
-                audioEnabled,
-                videoEnabled,
+            onClick={() => {
+              const choices = {
+                audioEnabled: preference !== "listen" && audioEnabled,
+                videoEnabled: preference !== "listen" && videoEnabled,
                 audioDeviceId,
                 videoDeviceId,
-              })
-            }
+              };
+              if (preference === "remember") {
+                try {
+                  localStorage.setItem(
+                    mediaChoicesKey,
+                    JSON.stringify(choices),
+                  );
+                } catch {
+                  /* Device choice remains valid for this call. */
+                }
+              }
+              onJoin(choices);
+            }}
           >
             Войти во встречу <LuArrowRight />
           </button>

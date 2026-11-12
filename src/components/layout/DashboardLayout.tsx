@@ -8,14 +8,18 @@ import {
   LuCreditCard,
   LuCalendar,
   LuBell,
+  LuLogOut,
+  LuBuilding2,
   LuUsers
 } from 'react-icons/lu';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Logo } from '../icons';
 import { useLaunch, useLaunchStore } from '@/store/launch.store';
 import { useAuthStore } from '@/store/auth.store';
 import { TeamProvider, useTeam } from '@/components/shared/team/TeamProvider';
 import { NotificationsProvider, useNotifications } from '@/components/shared/notifications/NotificationsProvider';
+import DashboardBackground from './DashboardBackground';
+import WorkspaceExitModal from '@/components/shared/WorkspaceExitModal';
 
 interface SidebarProps {
   children: ReactNode;
@@ -40,15 +44,19 @@ export default function DashboardLayout({ children }: SidebarProps) {
 }
 
 function DashboardShell({ children }: SidebarProps) {
-  const { exitToSite, openSubscription, workspace } = useLaunch();
+  const { exitToSite, openSubscription, workspace, resetDemo } = useLaunch();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { data } = useTeam();
   const { data: notifications } = useNotifications();
   const displayName = user?.name || (workspace?.ownerId === user?.id ? workspace?.ownerName : null) || user?.email || 'Пользователь';
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [exitWorkspace, setExitWorkspace] = useState(false);
+  const isOwner = workspace?.ownerId === user?.id;
 
   return (
-    <div className="relative min-h-screen bg-void font-body text-mist">
+    <div className="relative isolate min-h-screen font-body text-mist">
+      <DashboardBackground />
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-void/80 backdrop-blur-sm lg:hidden"
@@ -57,16 +65,16 @@ function DashboardShell({ children }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 glass border-r border-line/50 transform transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-dvh w-64 flex-col glass border-r border-line/50 transform transition-transform duration-300 lg:translate-x-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-14 items-center gap-3 border-b border-line/40 px-5">
+        <div className="flex h-14 shrink-0 items-center gap-3 border-b border-line/40 px-5">
           <Logo className="h-7 w-7 shrink-0" />
           <span className="font-display text-[14px] font-bold tracking-[0.22em] text-snow">MYCOO</span>
         </div>
 
-        <nav className="mt-6 max-h-[calc(100dvh-19rem)] overflow-y-auto px-3 space-y-1">
+        <nav className="my-4 min-h-0 flex-1 overflow-y-auto px-3 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -98,13 +106,20 @@ function DashboardShell({ children }: SidebarProps) {
           </NavLink>)}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-line/40 space-y-2">
+        <div className="shrink-0 p-3 border-t border-line/40 space-y-1">
           <button
             onClick={openSubscription}
             className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-flux/80 hover:text-flux hover:bg-flux/10 transition-all border border-flux/20"
           >
             <LuCreditCard className="w-5 h-5 shrink-0" />
             Подписка
+          </button>
+          <button onClick={() => { setIsSidebarOpen(false); setExitWorkspace(true); }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-fog/70 transition-colors hover:bg-crit/5 hover:text-crit">
+            <LuBuilding2 className="h-4 w-4 shrink-0" />{isOwner ? 'Удалить компанию' : 'Выйти из компании'}
+          </button>
+          <button onClick={resetDemo} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-fog/70 transition-colors hover:bg-hull/40 hover:text-snow">
+            <LuLogOut className="h-4 w-4 shrink-0" />Выйти из аккаунта
           </button>
           
           <button
@@ -141,15 +156,19 @@ function DashboardShell({ children }: SidebarProps) {
             <Logo className="h-6 w-6" />
             <span className="font-display text-sm font-bold tracking-wider text-snow">MYCOO</span>
           </div>
-          <div className="w-10" />
+          <button onClick={resetDemo} aria-label="Выйти из аккаунта" title="Выйти из аккаунта" className="rounded-md p-2.5 text-fog transition-colors hover:bg-hull/40 hover:text-snow">
+            <LuLogOut className="h-5 w-5" />
+          </button>
         </header>
 
-        <main className="p-4 md:p-6 lg:p-8">
+        <main className="min-w-0 p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
             {children}
           </div>
         </main>
       </div>
+      {exitWorkspace && workspace && <WorkspaceExitModal workspace={{ id: workspace.id, company: workspace.company ?? null, isOwner }}
+        onClose={() => setExitWorkspace(false)} onComplete={() => { navigate('/', { replace: true }); }} />}
     </div>
   );
 }

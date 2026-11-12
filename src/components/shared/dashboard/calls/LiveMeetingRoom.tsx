@@ -42,6 +42,7 @@ import {
 } from "@/types/meetings.types";
 import { Avatar, MeetingDialog } from "./MeetingUI";
 import { recordingState } from "./recording-state";
+import { unreadChatCount } from "./call-policy";
 
 type Confirmation =
   { kind: "leave" | "record" } | { kind: "remove"; personId: string };
@@ -85,6 +86,14 @@ export default function LiveMeetingRoom({
   const [draft, setDraft] = useState("");
   const room = useRef<HTMLElement>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
+  const [seenMessages, setSeenMessages] = useState<Set<string>>(new Set());
+  const screenShareAvailable =
+    typeof navigator.mediaDevices?.getDisplayMedia === "function";
+  const unread = unreadChatCount(
+    chatMessages,
+    seenMessages,
+    localParticipant.identity,
+  );
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -108,6 +117,41 @@ export default function LiveMeetingRoom({
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ block: "end" });
   }, [chatMessages.length, panel]);
+  useEffect(() => {
+    const markSeen = () => {
+      if (panel === "chat" && document.visibilityState === "visible") {
+        setSeenMessages((current) => {
+          if (chatMessages.every((message) => current.has(message.id)))
+            return current;
+          return new Set(chatMessages.map((message) => message.id));
+        });
+      }
+    };
+    markSeen();
+    document.addEventListener("visibilitychange", markSeen);
+    return () => document.removeEventListener("visibilitychange", markSeen);
+  }, [chatMessages, panel]);
+  useEffect(() => {
+    const listenInBackground = () => {
+      if (
+        document.visibilityState !== "hidden" ||
+        !window.matchMedia("(pointer: coarse)").matches ||
+        localParticipant.isScreenShareEnabled
+      )
+        return;
+      void Promise.allSettled([
+        localParticipant.setCameraEnabled(false),
+        localParticipant.setMicrophoneEnabled(false),
+      ]).then(() =>
+        setNotice(
+          "При сворачивании камера и микрофон выключены. При необходимости включите их снова.",
+        ),
+      );
+    };
+    document.addEventListener("visibilitychange", listenInBackground);
+    return () =>
+      document.removeEventListener("visibilitychange", listenInBackground);
+  }, [localParticipant]);
 
   async function run(task: () => Promise<unknown>, success?: string) {
     if (pending.current) return;
@@ -148,18 +192,19 @@ export default function LiveMeetingRoom({
     ? spotlight
     : null;
   const self = roster.find((p) => p.personId === userId);
-  const recording = meeting.recordingActive === undefined
-    ? recordingState(meeting.recordings || [])
-    : {
-        pending: meeting.recordingActive,
-        stopping: false,
-        capturing: meeting.recordingActive,
-        error: "",
-        label: meeting.recordingActive ? "Идёт запись" : "Запись выключена",
-        description: meeting.recordingActive
-          ? "Аудио записывается для подготовки протокола"
-          : "Запись выключена",
-      };
+  const recording =
+    meeting.recordingActive === undefined
+      ? recordingState(meeting.recordings || [])
+      : {
+          pending: meeting.recordingActive,
+          stopping: false,
+          capturing: meeting.recordingActive,
+          error: "",
+          label: meeting.recordingActive ? "Идёт запись" : "Запись выключена",
+          description: meeting.recordingActive
+            ? "Аудио записывается для подготовки протокола"
+            : "Запись выключена",
+        };
   const elapsed = Math.max(
     0,
     Math.floor(
@@ -293,9 +338,15 @@ export default function LiveMeetingRoom({
             aria-label="Скопировать ссылку на встречу"
             onClick={() =>
               void run(
-                () => navigator.clipboard.writeText(meeting.guestInviteToken
-                  ? new URL("/meetings/join/" + meeting.guestInviteToken, window.location.origin).href
-                  : window.location.href),
+                () =>
+                  navigator.clipboard.writeText(
+                    meeting.guestInviteToken
+                      ? new URL(
+                          "/meetings/join/" + meeting.guestInviteToken,
+                          window.location.origin,
+                        ).href
+                      : window.location.href,
+                  ),
                 meeting.guestInviteToken
                   ? "Ссылка скопирована. По ней можно войти без регистрации."
                   : "Ссылка скопирована.",
@@ -626,6 +677,23 @@ export default function LiveMeetingRoom({
         <footer className="meeting-room-controls">
           <div className="flex flex-wrap justify-center gap-2">
             <Control
+              caption="Слушать"
+              label="Только слушать: выключить камеру и микрофон"
+              disabled={busy || !connected}
+              onClick={() =>
+                void run(async () => {
+                  await Promise.all([
+                    localParticipant.setCameraEnabled(false),
+                    localParticipant.setMicrophoneEnabled(false),
+                  ]);
+                  if (isScreenShareEnabled)
+                    await localParticipant.setScreenShareEnabled(false);
+                }, "Камера и микрофон выключены. Вы продолжаете слышать встречу.")
+              }
+            >
+              <LuShieldCheck />
+            </Control>
+            <Control
               caption="Микрофон"
               label={
                 isMicrophoneEnabled ? "Выключить микрофон" : "Включить микрофон"
@@ -664,6 +732,7 @@ export default function LiveMeetingRoom({
               disabled={
                 busy ||
                 !connected ||
+                !screenShareAvailable ||
                 (!meeting.canModerate && !meeting.allowScreenShare)
               }
               onClick={() =>
@@ -683,7 +752,7 @@ export default function LiveMeetingRoom({
             >
               <LuHand />
             </Control>
-            {meeting.canModerate && (
+            {meeting.canRecord && (
               <Control
                 caption="Запись"
                 label={
@@ -716,11 +785,25 @@ export default function LiveMeetingRoom({
             </Control>
             <Control
               caption="Чат"
-              label="Чат встречи"
+              label={
+                unread
+                  ? `Чат встречи: ${unread} новых сообщений`
+                  : "Чат встречи"
+              }
               active={panel === "chat"}
               onClick={() => setPanel(panel === "chat" ? null : "chat")}
             >
-              <LuMessageSquare />
+              <span className="relative inline-flex">
+                <LuMessageSquare />
+                {unread > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-3 -top-2 min-w-4 rounded-full bg-flux px-1 text-center text-[10px] font-bold leading-4 text-void"
+                  >
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
+              </span>
             </Control>
             <Control
               caption="Настройки"
@@ -738,6 +821,12 @@ export default function LiveMeetingRoom({
             </button>
           </div>
         </footer>
+        {!screenShareAvailable && (
+          <p className="px-4 pb-3 text-center text-xs text-fog">
+            Этот браузер не поддерживает показ экрана. Вы можете смотреть
+            демонстрацию других участников.
+          </p>
+        )}
       </section>
       {confirm && (
         <MeetingDialog

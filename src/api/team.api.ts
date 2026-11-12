@@ -22,6 +22,6 @@ export const teamApi = {
     api.patch(path(workspaceId) + '/members/' + userId + '/departments', { departmentIds }),
   invitation: (token: string, signal?: AbortSignal) =>
     api.get<InvitationInfo>('/invitations/' + encodeURIComponent(token), { signal }).then((r) => r.data),
-  accept: (token: string, password: string) =>
+  accept: (token: string, password?: string) =>
     api.post<AcceptedInvitation>('/invitations/' + encodeURIComponent(token) + '/accept', { password }).then((r) => r.data),
 };

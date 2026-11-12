@@ -1,4 +1,6 @@
 .partner-ui {
+  position: relative;
+  isolation: isolate;
   --p-bg: #070c1a;
   --p-panel: #0b1226;
   --p-line: #243250;

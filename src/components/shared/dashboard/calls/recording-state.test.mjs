@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { recordingState } from "./recording-state.ts";
+import { DisconnectReason } from "livekit-client";
+import { parseMediaChoices, parseMediaPreference, shouldReconnect, unreadChatCount } from "./call-policy.ts";
+
+test("reconnects transport failures but never removal, duplicate sessions or closed meetings", () => {
+  for (const reason of [DisconnectReason.SIGNAL_CLOSE, DisconnectReason.SERVER_SHUTDOWN, DisconnectReason.CONNECTION_TIMEOUT]) assert.equal(shouldReconnect(reason), true);
+  for (const reason of [DisconnectReason.PARTICIPANT_REMOVED, DisconnectReason.ROOM_DELETED, DisconnectReason.ROOM_CLOSED, DisconnectReason.CLIENT_INITIATED, DisconnectReason.DUPLICATE_IDENTITY]) assert.equal(shouldReconnect(reason), false);
+});
+test("counts only unread messages from other participants", () => {
+  const messages = [{ id: '1', from: { identity: 'other' } }, { id: '2', from: { identity: 'self' } }, { id: '3', from: { identity: 'other' } }];
+  assert.equal(unreadChatCount(messages, new Set(['1']), 'self'), 1);
+  assert.equal(unreadChatCount(messages, new Set(messages.map((m) => m.id)), 'self'), 0);
+});
+test("unknown or corrupt stored choices cannot silently enable camera or microphone", () => {
+  assert.equal(parseMediaPreference('always'), 'once');
+  for (const raw of [null, 'broken', '{"audioEnabled":"true","videoEnabled":"true"}']) {
+    assert.equal(parseMediaChoices(raw).audioEnabled, false);
+    assert.equal(parseMediaChoices(raw).videoEnabled, false);
+  }
+  assert.equal(parseMediaPreference('listen'), 'listen');
+  assert.equal(parseMediaChoices('{"audioEnabled":true,"videoEnabled":false}').audioEnabled, true);
+});
 
 const row = (status, error = null) => ({
   id: status,
@@ -41,4 +62,10 @@ test("does not keep an older failure after a newer recording succeeds", () => {
   assert.equal(state.error, "");
   assert.equal(state.label, "Запись сохранена");
   assert.equal(state.pending, false);
+});
+test("a saved fragment being transcribed does not block recording the next fragment", () => {
+  const state = recordingState([row("transcribing")]);
+  assert.equal(state.pending, false);
+  assert.equal(state.stopping, false);
+  assert.equal(recordingState([row("transcribing"), row("starting")]).label, "Запись запускается");
 });

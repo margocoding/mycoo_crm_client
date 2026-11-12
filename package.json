@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/components/shared/dashboard/calls/recording-state.test.mjs src/api/retry.test.mjs src/features/partner/partner.model.test.mjs",
+    "test": "node --experimental-strip-types --test src/components/shared/dashboard/calls/recording-state.test.mjs src/api/retry.test.mjs src/features/partner/partner.model.test.mjs src/lib/oauth.test.mjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

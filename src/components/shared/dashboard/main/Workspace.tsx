@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Logo } from "../../../icons";
-import { Starfield, StatusDot } from "../../../ui/Ambient";
+import { StatusDot } from "../../../ui/Ambient";
 import { useCountUp } from "../../../../lib/motion";
 import { useLaunch } from "@/store/launch.store";
 import { useAuthStore } from "@/store/auth.store";
@@ -79,7 +78,7 @@ function Card({
 /* ================= workspace ================= */
 
 export default function Workspace() {
-  const { exitToSite, resetDemo, workspace, openSubscription } = useLaunch();
+  const { workspace, openSubscription } = useLaunch();
   const user = useAuthStore(s => s.user);
   const { data: team } = useTeam();
   const [departmentId, setDepartmentId] = useState('');
@@ -120,54 +119,12 @@ export default function Workspace() {
   const updatedAt = data?.ai.generatedAt ? new Date(data.ai.generatedAt).toLocaleString('ru-RU') : null;
 
   return (
-    <div className="relative min-h-screen bg-void font-body text-mist">
-      <Starfield />
-      <div
-        className="pointer-events-none fixed inset-0 -z-20"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 50% at 30% -10%, rgba(30,58,138,0.25), transparent 60%), radial-gradient(ellipse 50% 40% at 85% 20%, rgba(139,133,248,0.09), transparent 65%), linear-gradient(180deg, #04070f 0%, #060b18 55%, #04070f 100%)",
-        }}
-      />
-      <div className="noise-overlay" />
-
-      {/* app bar */}
-      <header className="header-solid sticky top-0 z-40 max-sm:hidden">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-5 md:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <Logo className="h-7 w-7 shrink-0" />
-            <span className="font-display text-[14px] font-bold tracking-[0.22em] text-snow">MYCOO</span>
-            <span className="hidden h-4 w-px bg-line sm:block" />
-            <span className="font-display hidden truncate text-[12px] font-semibold tracking-[0.14em] text-flux sm:block">
-              МОЙ БИЗНЕС
-            </span>
-            <span className="hidden max-w-[180px] truncate rounded border border-line bg-hull/60 px-2 py-0.5 font-mono text-[10px] tracking-[0.1em] text-fog md:block">
-              {company}
-            </span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className="hidden items-center gap-2 rounded border border-flux/40 bg-flux/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-flux sm:inline-flex">
-              <StatusDot />
-              {subscriptionLabel} · {daysLeft} дн
-            </span>
-            <button
-              onClick={exitToSite}
-              className="rounded-md border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-all duration-300 hover:border-flux/50 hover:text-snow"
-            >
-              На сайт
-            </button>
-            <button
-              onClick={resetDemo}
-              title="Выйти из аккаунта"
-              className="mono-label hidden rounded-md px-3 py-2 text-fog/50 transition-colors hover:text-crit sm:block"
-            >
-              Выйти
-            </button>
-          </div>
-        </div>
+    <div className="relative font-body text-mist">
+      <header className="mb-5 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
+        <h1 className="font-display text-2xl font-bold text-snow">Дашборд</h1>
+        <span className="max-w-full break-words text-sm text-fog">{company}</span>
       </header>
-
-      <main className="mx-auto max-w-7xl px-5 pb-20 pt-8 md:px-8">
+      <div className="pb-8">
         <section className="step-in glass corner rounded-xl p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -181,9 +138,9 @@ export default function Workspace() {
         {/* greeting */}
         <div className="step-in mt-8 flex flex-wrap items-end justify-between gap-3" style={{ animationDelay: "0.1s" }}>
           <div>
-            <h1 className="font-display text-2xl font-bold text-snow md:text-3xl">
+            <h2 className="font-display text-2xl font-bold text-snow md:text-3xl">
               Добро пожаловать, {owner}
-            </h1>
+            </h2>
             <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-fog">
               Задачи и команда обновляются автоматически. AI-сводка рассчитывается
               раз в 24 часа по задачам за последние 7 дней.
@@ -371,7 +328,7 @@ export default function Workspace() {
         <p className="mono-label mt-10 text-center text-fog/35">
           mycoo workspace · {data?.scope.name ?? company}
         </p>
-      </main>
+      </div>
     </div>
   );
 }

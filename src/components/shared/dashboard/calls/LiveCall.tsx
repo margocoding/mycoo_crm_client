@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LiveKitRoom } from "@livekit/components-react";
 import { meetingsApi } from "@/api/meetings.api";
@@ -6,6 +6,7 @@ import { errorMessage } from "@/api/base.api";
 import type { CallMeeting, MeetingJoinResult } from "@/types/meetings.types";
 import LiveMeetingLobby, { type MediaChoices } from "./LiveMeetingLobby";
 import LiveMeetingRoom from "./LiveMeetingRoom";
+import { shouldReconnect } from "./call-policy";
 
 export default function LiveCall({
   workspaceId,
@@ -30,8 +31,45 @@ export default function LiveCall({
   const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [recovering, setRecovering] = useState(false);
+  const attempts = useRef(0);
   useEffect(() => {
-    if (!choices) return;
+    const hideDevices = () => {
+      if (
+        document.visibilityState === "hidden" &&
+        window.matchMedia("(pointer: coarse)").matches
+      )
+        setChoices((current) =>
+          current
+            ? { ...current, audioEnabled: false, videoEnabled: false }
+            : current,
+        );
+    };
+    document.addEventListener("visibilitychange", hideDevices);
+    return () => document.removeEventListener("visibilitychange", hideDevices);
+  }, []);
+  useEffect(() => {
+    if (!recovering) return;
+    const retryWhenVisible = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        setRecovering(false);
+        setRetry((value) => value + 1);
+      }
+    };
+    const timer = setTimeout(
+      retryWhenVisible,
+      Math.min(1000 * 2 ** attempts.current, 15000),
+    );
+    document.addEventListener("visibilitychange", retryWhenVisible);
+    window.addEventListener("online", retryWhenVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
+      window.removeEventListener("online", retryWhenVisible);
+    };
+  }, [recovering]);
+  useEffect(() => {
+    if (!choices || recovering || connection) return;
     let active = true;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -66,7 +104,15 @@ export default function LiveCall({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [workspaceId, meeting.id, choices, retry, joinCall]);
+  }, [
+    workspaceId,
+    meeting.id,
+    choices,
+    retry,
+    joinCall,
+    recovering,
+    connection,
+  ]);
 
   if (!choices)
     return (
@@ -76,6 +122,7 @@ export default function LiveCall({
         error={error}
         onBack={onLeave}
         onJoin={(value) => {
+          attempts.current = 0;
           setError("");
           setChoices(value);
         }}
@@ -88,9 +135,11 @@ export default function LiveCall({
         <h1>
           {error
             ? "Не удалось войти"
-            : waiting
-              ? "Ожидаем организатора"
-              : "Подключаемся к встрече…"}
+            : recovering
+              ? "Восстанавливаем соединение…"
+              : waiting
+                ? "Ожидаем организатора"
+                : "Подключаемся к встрече…"}
         </h1>
         <p>
           {error ||
@@ -129,10 +178,18 @@ export default function LiveCall({
         video={
           choices.videoEnabled ? { deviceId: choices.videoDeviceId } : false
         }
-        onDisconnected={() => {
+        onDisconnected={(reason) => {
           setConnection(null);
-          setChoices(null);
-          setError("Соединение завершено. При необходимости войдите снова.");
+          if (shouldReconnect(reason) && attempts.current < 5) {
+            attempts.current += 1;
+            setError("");
+            setRecovering(true);
+          } else {
+            setChoices(null);
+            setError(
+              "Соединение завершено. Если встреча ещё идёт, проверьте доступ и войдите снова.",
+            );
+          }
         }}
         onError={(e) => setError(errorMessage(e))}
       >

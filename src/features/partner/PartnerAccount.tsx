@@ -48,7 +48,7 @@ export function PartnerAccount() {
 
       <div className="p-grid-2">
         <section className="p-panel" aria-labelledby="recent-ledger-title">
-          <div className="p-panel-head"><h2 id="recent-ledger-title">Последние начисления</h2></div>
+          <div className="p-panel-head"><h2 id="recent-ledger-title">Последние начисления</h2><Link className="p-button small" to="/partner/account/ledger">Вся история <LuArrowUpRight aria-hidden="true" /></Link></div>
           {ledger.length ? <ul className="p-activity-list">{ledger.map((entry) => <li key={entry.id}><div><strong>{entry.referralId ? referralNames.get(entry.referralId) || "Приглашённая компания" : "Корректировка баланса"}</strong><p className="p-muted">{entry.description}</p><small className="p-muted">{formatDate(entry.createdAt)}{entry.amount > 0 && new Date(entry.availableAt).getTime() > Date.now() ? ` · Доступно с ${formatDate(entry.availableAt)}` : ""}</small></div><strong className={entry.amount < 0 ? "p-negative" : "p-positive"}>{entry.amount > 0 ? "+" : ""}<Money value={entry.amount} /></strong></li>)}</ul> : <EmptyState title="Начислений пока нет" description="Когда приглашённая компания оплатит подписку, здесь появится вознаграждение." />}
         </section>
         <section className="p-panel" aria-labelledby="recent-payouts-title">

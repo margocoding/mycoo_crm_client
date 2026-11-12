@@ -1,8 +1,19 @@
 import { api } from "./base.api";
 import type { AuthRdo, CheckEmailRdo, UserRdo } from "@/types/auth.types";
 import { clearReferral, pendingReferral, pendingPartner } from "@/lib/referral";
+import type { OAuthProviderId } from '@/lib/oauth';
+
+export interface OAuthProvider { id: OAuthProviderId; name: string; enabled: boolean; }
+export type OAuthExchange = (AuthRdo & { returnTo?: string }) | { requiresEmail: true; email?: string };
 
 export const authApi = {
+  providers: (signal?: AbortSignal) => api.get<OAuthProvider[]>('/auth/oauth/providers', { signal }).then((r) => r.data),
+  oauthStart: (provider: OAuthProviderId, input: { codeChallenge: string; returnTo: string }) =>
+    api.post<{ authorizationUrl: string }>(`/auth/oauth/${provider}/start`, {
+      ...input, partnerCode: pendingPartner(), referralCode: pendingReferral(),
+    }).then((r) => r.data),
+  oauthExchange: (input: { ticket: string; codeVerifier: string; email?: string; code?: string }) =>
+    api.post<OAuthExchange>('/auth/oauth/exchange', input).then((r) => r.data),
   async checkEmail(email: string): Promise<CheckEmailRdo> {
     const { data } = await api.post<CheckEmailRdo>("/auth/check-email", {
       email,

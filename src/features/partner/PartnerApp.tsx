@@ -7,12 +7,15 @@ import PartnerRegistration from './PartnerRegistration';
 import PartnerLogin from './PartnerLogin';
 import { TOKEN_KEY } from '../../api/base.api';
 import { EmptyState } from './PartnerUI';
+import DashboardBackground from '@/components/layout/DashboardBackground';
 import './partner.css';
 
 const PartnerAccount = lazy(() => import('./PartnerAccount'));
 const PartnerReferrals = lazy(() => import('./PartnerReferrals'));
 const PartnerPayouts = lazy(() => import('./PartnerPayouts'));
 const PartnerDetails = lazy(() => import('./PartnerDetails'));
+const PartnerLedger = lazy(() => import('./PartnerLedger'));
+const PartnerNotifications = lazy(() => import('./PartnerNotifications'));
 const AdminLogin = lazy(() => import('./AdminLogin'));
 const AdminPayouts = lazy(() => import('./AdminPayouts'));
 const AdminPartners = lazy(() => import('./AdminPartners'));
@@ -48,7 +51,8 @@ export default function PartnerApp() {
     window.addEventListener('mycoo:partner-admin-expired', expireAdmin);
     window.addEventListener('storage', changedSession);
     window.addEventListener('focus', refresh);
-    return () => { window.removeEventListener('mycoo:session-expired', expirePartner); window.removeEventListener('mycoo:partner-admin-expired', expireAdmin); window.removeEventListener('storage', changedSession); window.removeEventListener('focus', refresh); };
+    const timer = scope === 'partner' ? window.setInterval(refresh, 60_000) : undefined;
+    return () => { window.clearInterval(timer); window.removeEventListener('mycoo:session-expired', expirePartner); window.removeEventListener('mycoo:partner-admin-expired', expireAdmin); window.removeEventListener('storage', changedSession); window.removeEventListener('focus', refresh); };
   }, [scope]);
   useEffect(() => {
     document.title = pathname.startsWith('/admin') ? 'Администрирование · Партнёры MyCoo' : 'Партнёрская программа · MyCoo';
@@ -57,9 +61,9 @@ export default function PartnerApp() {
     return () => { document.title = 'MyCoo'; };
   }, [pathname, hash]);
   const waiting = store.scope !== scope || store.loading || (!store.loaded && !store.loadError);
-  if (waiting) return <div className="partner-ui"><div className="p-empty" role="status">Загружаем кабинет…</div></div>;
-  if (store.loadError) return <div className="partner-ui"><div className="p-auth p-panel"><h1>Не удалось загрузить данные</h1><p role="alert">{store.loadError}</p><button type="button" className="p-button primary" onClick={() => void store.load(scope)}>Повторить</button><Link className="p-button" to="/partner">О программе</Link></div></div>;
-  return <div className="partner-ui"><Suspense fallback={<div className="p-empty" role="status">Загружаем страницу…</div>}><Routes>
+  if (waiting) return <div className="partner-ui"><DashboardBackground /><div className="p-empty" role="status">Загружаем кабинет…</div></div>;
+  if (store.loadError) return <div className="partner-ui"><DashboardBackground /><div className="p-auth p-panel"><h1>Не удалось загрузить данные</h1><p role="alert">{store.loadError}</p><button type="button" className="p-button primary" onClick={() => void store.load(scope)}>Повторить</button><Link className="p-button" to="/partner">О программе</Link></div></div>;
+  return <div className="partner-ui"><DashboardBackground /><Suspense fallback={<div className="p-empty" role="status">Загружаем страницу…</div>}><Routes>
     <Route path="/partner" element={<PartnerLanding />} />
     <Route path="/partner/login" element={<PartnerLogin />} />
     <Route path="/partner/register" element={<PartnerRegistration />} />
@@ -69,6 +73,8 @@ export default function PartnerApp() {
       <Route path="referrals" element={<PartnerReferrals />} />
       <Route path="payouts" element={<PartnerPayouts />} />
       <Route path="details" element={<PartnerDetails />} />
+      <Route path="ledger" element={<PartnerLedger />} />
+      <Route path="notifications" element={<PartnerNotifications />} />
     </Route>
     <Route path="/admin/login" element={<AdminLogin />} />
     <Route path="/admin" element={<AdminGuard />}>
