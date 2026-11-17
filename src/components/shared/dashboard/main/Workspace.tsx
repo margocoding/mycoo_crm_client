@@ -9,6 +9,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { ActivityFeed } from '@/components/shared/notifications/NotificationList';
 import { tasksApi } from '@/api/tasks.api';
 import { errorMessage } from '@/api/base.api';
+import UsagePanel from './UsagePanel';
 
 const toneVar = {
   crit: "var(--color-crit)",
@@ -175,6 +176,7 @@ export default function Workspace() {
         {aiMessage && <p role="status" className="mt-4 text-sm text-fog">{aiMessage}</p>}
 
         {/* grid */}
+        {workspace && <UsagePanel workspaceId={workspace.id} departmentId={departmentId || (isOwner ? undefined : data?.scope.departmentId ?? team?.departments[0]?.id)} />}
         <div className="mt-7 grid gap-4 lg:grid-cols-12">
           {/* Цели */}
           <Card title="Цели" code="SYS·GOALS" delay={0.15} className="lg:col-span-5">

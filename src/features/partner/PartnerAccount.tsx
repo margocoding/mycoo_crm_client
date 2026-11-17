@@ -21,13 +21,13 @@ export function PartnerAccount() {
       <div className="p-page-head"><div><span className="p-kicker">Кабинет партнёра</span><h1>Обзор</h1></div></div>
 
       <section className="p-panel p-balance-hero" aria-labelledby="available-title">
-        <div><span className="p-kicker" id="available-title">Доступно к выплате</span><div className="p-balance-value"><Money value={balance.available} /></div><p className="p-muted">После проверки оплат и с учётом отправленных заявок.</p></div>
+        <div><span className="p-kicker" id="available-title">Доступно к выплате</span><div className="p-balance-value"><Money value={balance.available} /></div><p className="p-muted">С учётом возвратов и отправленных заявок.</p></div>
         <div className="p-balance-action"><Link className="p-button primary" to="/partner/account/payouts"><LuArrowDownToLine aria-hidden="true" /> Запросить выплату</Link><small className="p-muted">Минимальная сумма — <Money value={data.terms.minimumPayout} /></small></div>
       </section>
 
       <div className="p-stats">
         <div className="p-stat"><span>Начислено всего</span><strong><Money value={balance.totalAccrued} /></strong><small>С учётом корректировок</small></div>
-        <div className="p-stat"><span>Ожидает проверки</span><strong><Money value={balance.pending} /></strong><small>Проверка — {data.terms.holdDays} дн.</small></div>
+        <div className="p-stat"><span>Пока недоступно</span><strong><Money value={balance.pending} /></strong><small>Сроки — в истории начислений</small></div>
         <div className="p-stat"><span>В заявках на выплату</span><strong><Money value={balance.reserved} /></strong><small>Сумма зарезервирована</small></div>
         <div className="p-stat"><span>Выплачено</span><strong><Money value={balance.paid} /></strong><small>Все завершённые выплаты</small></div>
       </div>
