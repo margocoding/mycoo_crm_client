@@ -5,6 +5,7 @@ import { usePartnerStore } from "./partner.store";
 import { getPartnerBalance } from "./partner.model";
 import { EmptyState, TableScroll, Modal, Money, StatusBadge, formatDate, formatMoney, formatPayoutId } from "./PartnerUI";
 import type { Partner, PartnerStore, PayoutDetails } from "./partner.types";
+import { PayoutSchedule } from './PayoutSchedule';
 
 const legalForms: Record<PayoutDetails["legalForm"], string> = { "self-employed": "Самозанятый", entrepreneur: "ИП", company: "Юридическое лицо" };
 
@@ -37,6 +38,7 @@ function PayoutsView({ data, partner }: { data: PartnerStore; partner: Partner }
 
   return <>
     <div className="p-page-head"><div><span className="p-kicker">Кабинет партнёра</span><h1>Выплаты</h1><p>Запрашивайте вознаграждение и следите за статусом заявок.</p></div></div>
+    <PayoutSchedule terms={data.terms} />
     {success ? <div className="p-notice success" role="status"><LuCircleCheck aria-hidden="true" /><p>{success}</p></div> : null}
     <section className="p-panel p-balance-hero" aria-labelledby="payout-balance-title"><div><span className="p-kicker" id="payout-balance-title">Доступно к выплате</span><div className="p-balance-value"><Money value={balance.available} /></div><p className="p-muted">В заявках: <Money value={balance.reserved} /> · Выплачено: <Money value={balance.paid} /></p></div><div className="p-balance-action"><button className="p-button primary" type="button" disabled={!canRequest} onClick={openRequest} aria-describedby={!canRequest ? "payout-unavailable" : undefined}><LuArrowDownToLine aria-hidden="true" /> Запросить выплату</button><small className="p-muted">От <Money value={data.terms.minimumPayout} /></small></div></section>
     {!canRequest ? <div className="p-notice warning" id="payout-unavailable"><p>{!partner.payoutDetails ? <>Для первой выплаты заполните данные получателя. <Link to="/partner/account/details">Добавить реквизиты <LuArrowUpRight aria-hidden="true" /></Link></> : <>Минимальная сумма выплаты — <Money value={data.terms.minimumPayout} />. {balance.pending > 0 ? <>Ещё <Money value={balance.pending} /> ожидает проверки.</> : "Приглашайте компании, чтобы пополнить доступный баланс."}</>}</p></div> : null}

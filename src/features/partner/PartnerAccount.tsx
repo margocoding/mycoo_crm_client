@@ -3,6 +3,7 @@ import { LuArrowDownToLine, LuArrowUpRight, LuLink, LuUsers } from "react-icons/
 import { usePartnerStore } from "./partner.store";
 import { getPartnerBalance } from "./partner.model";
 import { CopyButton, EmptyState, Money, StatusBadge, formatDate } from "./PartnerUI";
+import { PayoutSchedule } from './PayoutSchedule';
 
 export function PartnerAccount() {
   const data = usePartnerStore();
@@ -19,6 +20,7 @@ export function PartnerAccount() {
   return (
     <>
       <div className="p-page-head"><div><span className="p-kicker">Кабинет партнёра</span><h1>Обзор</h1></div></div>
+      <PayoutSchedule terms={data.terms} />
 
       <section className="p-panel p-balance-hero" aria-labelledby="available-title">
         <div><span className="p-kicker" id="available-title">Доступно к выплате</span><div className="p-balance-value"><Money value={balance.available} /></div><p className="p-muted">С учётом возвратов и отправленных заявок.</p></div>

@@ -1,6 +1,7 @@
 export type ReferralStatus = "trial" | "active" | "overdue" | "cancelled";
 export type PayoutStatus = "new" | "review" | "approved" | "paid" | "rejected";
 export type LedgerKind = "commission" | "refund" | "adjustment";
+export type PayoutFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 
 // API amounts are expressed in RUB; calculations and authorization run on the server.
 export interface ProgramTerms {
@@ -8,7 +9,11 @@ export interface ProgramTerms {
   eligibleMonths: number;
   holdDays: number;
   minimumPayout: number;
+  payoutFrequency: PayoutFrequency;
+  payoutAnchorDate: string | null;
+  nextPayoutDate: string | null;
 }
+export type ProgramTermsInput = Omit<ProgramTerms, 'nextPayoutDate'>;
 export interface PayoutDetails {
   recipient: string;
   taxId: string;
@@ -122,7 +127,7 @@ export interface PartnerStore extends PartnerData {
   adjustCommission: (partnerId: string, amount: number, description: string, paymentId?: string) => Promise<ActionResult>;
   recordPayment: (referralId: string, paymentId: string, amount: number, date?: string) => Promise<ActionResult>;
   refundPayment: (paymentId: string, amount: number, reason: string) => Promise<ActionResult>;
-  updateTerms: (terms: ProgramTerms) => Promise<ActionResult>;
+  updateTerms: (terms: ProgramTermsInput) => Promise<ActionResult>;
   loginAdmin: (login: string, password: string) => Promise<ActionResult>;
   logoutAdmin: () => Promise<void>;
   updateAdminCredentials: (currentPassword: string, login: string, password: string) => Promise<ActionResult>;
