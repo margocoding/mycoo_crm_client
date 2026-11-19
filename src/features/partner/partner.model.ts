@@ -1,4 +1,8 @@
-import type { PartnerBalance, PartnerData } from './partner.types.ts';
+import type { PartnerBalance, PartnerData, PayoutFrequency } from './partner.types.ts';
+
+export const payoutFrequencyLabels: Record<PayoutFrequency, string> = {
+  WEEKLY: 'Раз в неделю', MONTHLY: 'Раз в месяц', QUARTERLY: 'Раз в квартал', YEARLY: 'Раз в год',
+};
 
 const moscowCalendar = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' });
 export const partnerDateInput = (value = new Date()) => moscowCalendar.format(value);

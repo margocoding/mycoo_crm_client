@@ -5,6 +5,7 @@ import { getPartnerBalance, partnerDateInput as localDay } from './partner.model
 import { EmptyState, TableScroll, formatDate, formatMoney, formatPayoutId, Modal, Money, StatusBadge } from './PartnerUI';
 import type { ActionResult, PayoutStatus } from './partner.types';
 import { AdminPayoutHistory } from './AdminPayoutHistory';
+import { PayoutSchedule } from './PayoutSchedule';
 
 const statusLabels: Record<PayoutStatus, string> = { new: 'Новые', review: 'На проверке', approved: 'Одобрены', paid: 'Выплачены', rejected: 'Отклонены' };
 
@@ -60,6 +61,7 @@ export function AdminPayouts() {
 
   return <>
     <div className="p-page-head"><div><span className="p-kicker">Партнёрская программа</span><h1>Заявки на выплату</h1><p>Проверьте начисления и реквизиты, затем отметьте результат выплаты.</p></div></div>
+    <PayoutSchedule terms={store.terms} />
     <div className="p-stats">
       <div className="p-stat"><span>Новые заявки</span><strong>{store.payouts.filter(item => item.status === 'new').length}</strong><small>Ждут первого просмотра</small></div>
       <div className="p-stat"><span>На проверке</span><strong>{store.payouts.filter(item => item.status === 'review').length}</strong><small>Проверьте возвраты и реквизиты</small></div>

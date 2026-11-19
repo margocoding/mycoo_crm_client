@@ -1,13 +1,16 @@
 import { useState, type FormEvent } from 'react';
 import { LuLockKeyhole, LuSave, LuSlidersHorizontal } from 'react-icons/lu';
 import { usePartnerStore } from './partner.store';
+import { payoutFrequencyLabels } from './partner.model';
+import type { PayoutFrequency } from './partner.types';
 
 export function AdminSettings() {
   const store = usePartnerStore();
   const [percent, setPercent] = useState(String(store.terms.commissionPercent));
   const [months, setMonths] = useState(String(store.terms.eligibleMonths));
-  const [days, setDays] = useState(String(store.terms.holdDays));
   const [minimum, setMinimum] = useState(String(store.terms.minimumPayout));
+  const [payoutFrequency, setPayoutFrequency] = useState<PayoutFrequency>(store.terms.payoutFrequency ?? 'MONTHLY');
+  const [payoutAnchorDate, setPayoutAnchorDate] = useState(store.terms.payoutAnchorDate ?? '');
   const [termsError, setTermsError] = useState('');
   const [termsNotice, setTermsNotice] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -23,9 +26,9 @@ export function AdminSettings() {
     if (store.mutating) return;
     setTermsError('');
     setTermsNotice('');
-    if ([percent, months, days, minimum].some(value => value.trim() === '')) { setTermsError('Заполните все условия программы.'); return; }
-    const terms = { commissionPercent: Number(percent), eligibleMonths: Number(months), holdDays: Number(days), minimumPayout: Number(minimum) };
-    if (!Number.isInteger(terms.eligibleMonths) || !Number.isInteger(terms.holdDays)) { setTermsError('Срок начислений и удержания указываются целым числом.'); return; }
+    if ([percent, months, minimum, payoutAnchorDate].some(value => value.trim() === '')) { setTermsError('Заполните условия программы и первую дату выплаты.'); return; }
+    const terms = { commissionPercent: Number(percent), eligibleMonths: Number(months), holdDays: 0, minimumPayout: Number(minimum), payoutFrequency, payoutAnchorDate };
+    if (!Number.isInteger(terms.eligibleMonths)) { setTermsError('Срок начислений указывается целым числом.'); return; }
     const result = await store.updateTerms(terms);
     if (!result.ok) { setTermsError(result.error); return; }
     setTermsNotice('Условия программы сохранены.');
@@ -55,11 +58,19 @@ export function AdminSettings() {
     <div className="p-page-head"><div><span className="p-kicker">Управление программой</span><h1>Настройки</h1><p>Условия для партнёров и доступ к кабинету администратора.</p></div></div>
     <div className="p-grid-2" style={{ alignItems: 'start' }}>
       <section className="p-panel">
-        <div className="p-panel-head"><div><h2><LuSlidersHorizontal aria-hidden="true" /> Условия программы</h2><p className="p-muted">Изменения применяются к новым начислениям. Уже сохранённые операции остаются в истории.</p></div></div>
+        <div className="p-panel-head"><div><h2><LuSlidersHorizontal aria-hidden="true" /> Условия программы</h2><p className="p-muted">График выплат общий для всех партнёров. Условия комиссии применяются к новым начислениям, история сохраняется.</p></div></div>
         <form onSubmit={saveTerms} className="p-form">
           <div className="p-grid-2"><label className="p-field"><span>Комиссия партнёра, %</span><input type="number" min="0" max="100" step="1" value={percent} onChange={event => { setPercent(event.target.value); setTermsNotice(''); }} required /></label><label className="p-field"><span>Период начислений, мес.</span><input type="number" min="1" max="120" step="1" value={months} onChange={event => { setMonths(event.target.value); setTermsNotice(''); }} required /></label></div>
-          <div className="p-grid-2"><label className="p-field"><span>Удержание после оплаты, дней</span><input type="number" min="0" max="365" step="1" value={days} onChange={event => { setDays(event.target.value); setTermsNotice(''); }} required /></label><label className="p-field"><span>Минимальная выплата, ₽</span><input type="number" min="0.01" step="0.01" value={minimum} onChange={event => { setMinimum(event.target.value); setTermsNotice(''); }} required /></label></div>
-          <p className="p-muted">Период начислений отсчитывается от регистрации привлечённого клиента. После удержания комиссия становится доступна к выплате.</p>
+          <div className="p-grid-2">
+            {/* Удержание комиссии временно отключено вместе с настройкой на сервере. */}
+            <label className="p-field"><span>Минимальная выплата, ₽</span><input type="number" min="0.01" step="0.01" value={minimum} onChange={event => { setMinimum(event.target.value); setTermsNotice(''); }} required /></label>
+          </div>
+          <div className="p-grid-2">
+            <label className="p-field"><span>Как часто выплачиваем</span><select value={payoutFrequency} onChange={event => { setPayoutFrequency(event.target.value as PayoutFrequency); setTermsNotice(''); }} aria-describedby="payout-schedule-hint">{Object.entries(payoutFrequencyLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="p-field"><span>Первая дата выплаты</span><input type="date" value={payoutAnchorDate} onChange={event => { setPayoutAnchorDate(event.target.value); setTermsNotice(''); }} aria-describedby="payout-schedule-hint" required /></label>
+          </div>
+          <p className="p-muted" id="payout-schedule-hint">Следующие даты считаются от первой по московскому времени. Если такого дня в месяце нет, выплата приходится на последний день месяца. Заявки можно подавать в любое время.</p>
+          <p className="p-muted">Период начислений отсчитывается от регистрации привлечённого клиента.</p>
           {termsError && <p className="p-notice warning" role="alert">{termsError}</p>}
           {termsNotice && <p className="p-notice success" role="status">{termsNotice}</p>}
           <button className="p-button primary" type="submit" disabled={store.mutating}><LuSave aria-hidden="true" /> Сохранить условия</button>
