@@ -1,8 +1,57 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { recordingState } from "./recording-state.ts";
-import { DisconnectReason } from "livekit-client";
-import { parseMediaChoices, parseMediaPreference, shouldReconnect, unreadChatCount } from "./call-policy.ts";
+import { ConnectionState, DisconnectReason, ParticipantEvent, Room, RoomEvent, Track } from "livekit-client";
+import { callConnectionError, parseMediaChoices, parseMediaPreference, shouldReconnect, unreadChatCount } from "./call-policy.ts";
+import { rememberMediaState } from "./media-state.ts";
+
+test("remembers individual media changes without overwriting the other device during startup", () => {
+  const room = new Room();
+  let choices = { audioEnabled: true, videoEnabled: true };
+  const stop = rememberMediaState(room, (update) => { choices = { ...choices, ...update }; });
+  room.state = ConnectionState.Connected;
+  room.localParticipant.emit(ParticipantEvent.LocalTrackPublished, { source: Track.Source.Microphone, isMuted: false });
+  assert.deepEqual(choices, { audioEnabled: true, videoEnabled: true });
+  room.localParticipant.emit(ParticipantEvent.TrackMuted, { source: Track.Source.Microphone, isMuted: true });
+  assert.deepEqual(choices, { audioEnabled: false, videoEnabled: true });
+  room.localParticipant.emit(ParticipantEvent.TrackUnmuted, { source: Track.Source.Microphone, isMuted: false });
+  room.localParticipant.emit(ParticipantEvent.TrackMuted, { source: Track.Source.Camera, isMuted: true });
+  assert.deepEqual(choices, { audioEnabled: true, videoEnabled: false });
+  stop();
+});
+
+test("transport teardown cannot overwrite media choices used for reconnecting", () => {
+  const room = new Room();
+  const changes = [];
+  const stop = rememberMediaState(room, (update) => changes.push(update));
+  for (const state of [ConnectionState.Connecting, ConnectionState.Reconnecting, ConnectionState.SignalReconnecting, ConnectionState.Disconnected]) {
+    room.state = state;
+    room.localParticipant.emit(ParticipantEvent.TrackMuted, { source: Track.Source.Microphone, isMuted: true });
+  }
+  room.state = ConnectionState.Connected;
+  room.localParticipant.emit(ParticipantEvent.LocalTrackUnpublished, { source: Track.Source.Camera, isMuted: true });
+  room.localParticipant.emit(ParticipantEvent.TrackMuted, { source: Track.Source.ScreenShare, isMuted: true });
+  assert.deepEqual(changes, []);
+  room.emit(RoomEvent.ActiveDeviceChanged, "audioinput", "selected-mic");
+  room.emit(RoomEvent.ActiveDeviceChanged, "videoinput", "selected-camera");
+  assert.deepEqual(changes, [{ audioDeviceId: "selected-mic" }, { videoDeviceId: "selected-camera" }]);
+  stop();
+  room.localParticipant.emit(ParticipantEvent.TrackUnmuted, { source: Track.Source.Camera, isMuted: false });
+  room.emit(RoomEvent.ActiveDeviceChanged, "audioinput", "other-mic");
+  assert.equal(changes.length, 2);
+});
+
+test("connection errors do not display bearer tokens", () => {
+  const token = [{ alg: "HS256" }, { sub: "test" }]
+    .map((value) => Buffer.from(JSON.stringify(value)).toString("base64url"))
+    .concat("signature")
+    .join(".");
+  const expired = callConnectionError(`could not establish signal connection: invalid token: ${token}, error: token has invalid claims: token is expired`);
+  assert.equal(expired.includes(token), false);
+  assert.match(expired, /Повторите вход/);
+  assert.equal(callConnectionError(`Connection failed: ${token}`), "Connection failed: [токен скрыт]");
+  assert.equal(callConnectionError("Нет доступа к микрофону"), "Нет доступа к микрофону");
+});
 
 test("reconnects transport failures but never removal, duplicate sessions or closed meetings", () => {
   for (const reason of [DisconnectReason.SIGNAL_CLOSE, DisconnectReason.SERVER_SHUTDOWN, DisconnectReason.CONNECTION_TIMEOUT]) assert.equal(shouldReconnect(reason), true);

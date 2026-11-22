@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LiveKitRoom } from "@livekit/components-react";
+import type { DisconnectReason } from "livekit-client";
 import { meetingsApi } from "@/api/meetings.api";
 import { errorMessage } from "@/api/base.api";
 import type { CallMeeting, MeetingJoinResult } from "@/types/meetings.types";
 import LiveMeetingLobby, { type MediaChoices } from "./LiveMeetingLobby";
 import LiveMeetingRoom from "./LiveMeetingRoom";
-import { shouldReconnect } from "./call-policy";
+import { callConnectionError, shouldReconnect } from "./call-policy";
 
 export default function LiveCall({
   workspaceId,
@@ -33,6 +34,47 @@ export default function LiveCall({
   const [retry, setRetry] = useState(0);
   const [recovering, setRecovering] = useState(false);
   const attempts = useRef(0);
+  const audio = useMemo(
+    () => (choices?.audioEnabled ? { deviceId: choices.audioDeviceId } : false),
+    [choices?.audioEnabled, choices?.audioDeviceId],
+  );
+  const video = useMemo(
+    () => (choices?.videoEnabled ? { deviceId: choices.videoDeviceId } : false),
+    [choices?.videoEnabled, choices?.videoDeviceId],
+  );
+  const handleMediaChange = useCallback((update: Partial<MediaChoices>) => {
+    setChoices((current) => {
+      if (
+        !current ||
+        Object.entries(update).every(
+          ([key, value]) => current[key as keyof MediaChoices] === value,
+        )
+      )
+        return current;
+      return { ...current, ...update };
+    });
+  }, []);
+  const handleConnected = useCallback(() => {
+    attempts.current = 0;
+    setError("");
+  }, []);
+  const handleDisconnected = useCallback((reason?: DisconnectReason) => {
+    setConnection(null);
+    if (shouldReconnect(reason) && attempts.current < 5) {
+      attempts.current += 1;
+      setError("");
+      setRecovering(true);
+    } else {
+      setChoices(null);
+      setError(
+        "Соединение завершено. Если встреча ещё идёт, проверьте доступ и войдите снова.",
+      );
+    }
+  }, []);
+  // LiveKit's connection effect depends on onError. Keep it stable during meeting polling.
+  const handleError = useCallback((cause: Error) => {
+    setError(callConnectionError(errorMessage(cause)));
+  }, []);
   useEffect(() => {
     const hideDevices = () => {
       if (
@@ -172,26 +214,11 @@ export default function LiveCall({
         token={connection.token}
         serverUrl={connection.url}
         connect
-        audio={
-          choices.audioEnabled ? { deviceId: choices.audioDeviceId } : false
-        }
-        video={
-          choices.videoEnabled ? { deviceId: choices.videoDeviceId } : false
-        }
-        onDisconnected={(reason) => {
-          setConnection(null);
-          if (shouldReconnect(reason) && attempts.current < 5) {
-            attempts.current += 1;
-            setError("");
-            setRecovering(true);
-          } else {
-            setChoices(null);
-            setError(
-              "Соединение завершено. Если встреча ещё идёт, проверьте доступ и войдите снова.",
-            );
-          }
-        }}
-        onError={(e) => setError(errorMessage(e))}
+        audio={audio}
+        video={video}
+        onConnected={handleConnected}
+        onDisconnected={handleDisconnected}
+        onError={handleError}
       >
         <LiveMeetingRoom
           meeting={meeting}
@@ -199,6 +226,7 @@ export default function LiveCall({
           action={action}
           onLeave={onLeave}
           connectionError={error}
+          onMediaChange={handleMediaChange}
         />
       </LiveKitRoom>
     </div>,
