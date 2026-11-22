@@ -76,6 +76,8 @@ export default function LiveCall({
     setError(callConnectionError(errorMessage(cause)));
   }, []);
   useEffect(() => {
+    // The active room handles background mode, including the screen-sharing exception.
+    if (connection) return;
     const hideDevices = () => {
       if (
         document.visibilityState === "hidden" &&
@@ -89,7 +91,7 @@ export default function LiveCall({
     };
     document.addEventListener("visibilitychange", hideDevices);
     return () => document.removeEventListener("visibilitychange", hideDevices);
-  }, []);
+  }, [connection]);
   useEffect(() => {
     if (!recovering) return;
     const retryWhenVisible = () => {
