@@ -47,6 +47,16 @@ export function shouldReconnect(reason?: DisconnectReason): boolean {
     ].includes(reason)
   );
 }
+export function callConnectionError(message: string): string {
+  if (
+    /invalid token|token (?:is |has )?(?:expired|invalid)|token has invalid claims/i.test(message)
+  )
+    return "Срок доступа к звонку истёк или доступ изменился. Повторите вход во встречу.";
+  return message.replace(
+    /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+    "[токен скрыт]",
+  );
+}
 export function unreadChatCount(
   messages: { id: string; from?: { identity: string } }[],
   seen: Set<string>,

@@ -9,6 +9,7 @@ import {
   useLocalParticipant,
   useMediaDeviceSelect,
   useParticipants,
+  useRoomContext,
   useTrackMutedIndicator,
   useTracks,
   type TrackReferenceOrPlaceholder,
@@ -43,6 +44,8 @@ import {
 import { Avatar, MeetingDialog } from "./MeetingUI";
 import { recordingState } from "./recording-state";
 import { unreadChatCount } from "./call-policy";
+import { rememberMediaState } from "./media-state";
+import type { MediaChoices } from "./LiveMeetingLobby";
 
 type Confirmation =
   { kind: "leave" | "record" } | { kind: "remove"; personId: string };
@@ -54,13 +57,16 @@ export default function LiveMeetingRoom({
   action,
   onLeave,
   connectionError,
+  onMediaChange,
 }: {
   meeting: CallMeeting;
   userId: string;
   action: (name: string, personId?: string) => Promise<void>;
   onLeave: () => void;
   connectionError: string;
+  onMediaChange: (update: Partial<MediaChoices>) => void;
 }) {
+  const liveRoom = useRoomContext();
   const {
     localParticipant,
     isMicrophoneEnabled,
@@ -73,6 +79,10 @@ export default function LiveMeetingRoom({
     { source: Track.Source.ScreenShare, withPlaceholder: false },
   ]);
   const connectionState = useConnectionState();
+  useEffect(
+    () => rememberMediaState(liveRoom, onMediaChange),
+    [liveRoom, onMediaChange],
+  );
   const { chatMessages, send, isSending } = useChat();
   const [panel, setPanel] = useState<"people" | "chat" | "settings" | null>(
     "people",
